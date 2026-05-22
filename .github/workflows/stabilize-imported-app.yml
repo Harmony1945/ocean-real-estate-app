@@ -1,0 +1,57 @@
+name: Stabilize imported app
+
+on:
+  push:
+    branches:
+      - feature/stabilize-imported-real-app
+    paths:
+      - ".github/workflows/stabilize-imported-app.yml"
+      - "package.json"
+      - ".gitignore"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  stabilize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout stabilization branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/stabilize-imported-real-app
+
+      - name: Confirm real app was imported
+        run: |
+          set -euo pipefail
+          test "$(wc -l < app/page.tsx | tr -d ' ')" = "3206"
+          grep -q "MobileBottomNav" app/page.tsx
+          grep -q "Sahibinden" app/api/sahibinden-import/route.ts
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies and generate lockfile
+        run: npm install
+
+      - name: Typecheck
+        run: npm run check
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit lockfile and cleanup workflow
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/stabilize-imported-app.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json package.json .gitignore
+          git add -u .github || true
+          git status --short
+          git commit -m "Stabilize imported real app setup" || exit 0
+          git push origin HEAD:feature/stabilize-imported-real-app

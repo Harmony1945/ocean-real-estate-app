@@ -5,13 +5,13 @@
   "description": "OCEAN BrokerageOS real estate brokerage operating system.",
   "engines": {
     "node": ">=20.0.0",
-    "npm": ">=10.0.0"
+    "npm": ">=8.5.0"
   },
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "check": "tsc --noEmit"
+    "check": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "next": "16.2.6",

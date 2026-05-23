@@ -1,0 +1,560 @@
+name: Materialize Free Supabase Auth
+
+on:
+  push:
+    branches:
+      - feature/free-supabase-auth
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    if: github.ref == 'refs/heads/feature/free-supabase-auth'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/free-supabase-auth
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Materialize auth shell and Supabase foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          mkdir -p lib/supabase supabase/migrations
+
+          if [ ! -f app/ocean-app.tsx ]; then
+            cp app/page.tsx app/ocean-app.tsx
+          fi
+
+          cat > lib/supabase/client.ts <<'EOF'
+          import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+          let browserClient: SupabaseClient | null = null;
+
+          export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+          export function getSupabaseBrowserClient() {
+            if (!isSupabaseConfigured) return null;
+
+            if (!browserClient) {
+              browserClient = createClient(supabaseUrl as string, supabaseAnonKey as string, {
+                auth: {
+                  persistSession: true,
+                  autoRefreshToken: true,
+                  detectSessionInUrl: true
+                }
+              });
+            }
+
+            return browserClient;
+          }
+          EOF
+
+          cat > .env.example <<'EOF'
+          NEXT_PUBLIC_SUPABASE_URL=
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=
+          EOF
+
+          cat > supabase/migrations/202605230001_create_profiles.sql <<'EOF'
+          create table if not exists public.profiles (
+            id uuid primary key references auth.users(id) on delete cascade,
+            full_name text,
+            email text,
+            role text not null default 'advisor' check (role in ('admin', 'advisor', 'portfolio_owner', 'viewer')),
+            phone text,
+            company text,
+            avatar_url text,
+            created_at timestamptz not null default now(),
+            updated_at timestamptz not null default now()
+          );
+
+          alter table public.profiles enable row level security;
+
+          create policy "profiles_select_own"
+            on public.profiles for select
+            to authenticated
+            using (auth.uid() = id);
+
+          create policy "profiles_insert_own"
+            on public.profiles for insert
+            to authenticated
+            with check (auth.uid() = id);
+
+          create policy "profiles_update_own"
+            on public.profiles for update
+            to authenticated
+            using (auth.uid() = id)
+            with check (auth.uid() = id);
+
+          create or replace function public.set_updated_at()
+          returns trigger
+          language plpgsql
+          security definer
+          set search_path = public
+          as $$
+          begin
+            new.updated_at = now();
+            return new;
+          end;
+          $$;
+
+          drop trigger if exists profiles_set_updated_at on public.profiles;
+          create trigger profiles_set_updated_at
+            before update on public.profiles
+            for each row execute function public.set_updated_at();
+
+          create or replace function public.handle_new_user()
+          returns trigger
+          language plpgsql
+          security definer
+          set search_path = public
+          as $$
+          begin
+            insert into public.profiles (id, full_name, email)
+            values (
+              new.id,
+              coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name'),
+              new.email
+            )
+            on conflict (id) do update
+              set email = excluded.email,
+                  full_name = coalesce(public.profiles.full_name, excluded.full_name),
+                  updated_at = now();
+            return new;
+          end;
+          $$;
+
+          drop trigger if exists on_auth_user_created on auth.users;
+          create trigger on_auth_user_created
+            after insert on auth.users
+            for each row execute function public.handle_new_user();
+          EOF
+
+          cat > app/page.tsx <<'EOF'
+          "use client";
+
+          import type { User } from "@supabase/supabase-js";
+          import { useEffect, useMemo, useState } from "react";
+          import OceanApp from "./ocean-app";
+          import {
+            getSupabaseBrowserClient,
+            isSupabaseConfigured
+          } from "@/lib/supabase/client";
+
+          type AuthMode = "login" | "signup";
+          type ThemeMode = "light" | "dark";
+
+          type AuthForm = {
+            name: string;
+            email: string;
+            password: string;
+          };
+
+          function applyTheme(theme: ThemeMode) {
+            if (typeof document === "undefined") return;
+            document.documentElement.classList.toggle("dark", theme === "dark");
+            document.documentElement.style.colorScheme = theme;
+          }
+
+          function getAuthDisplayName(user: User | null) {
+            if (!user) return "";
+
+            const metadataName =
+              typeof user.user_metadata?.full_name === "string"
+                ? user.user_metadata.full_name
+                : typeof user.user_metadata?.name === "string"
+                  ? user.user_metadata.name
+                  : "";
+
+            return metadataName || user.email || "Ocean Advisor";
+          }
+
+          function getAuthMessage(message?: string) {
+            if (!message) return "İşlem tamamlanamadı. Lütfen tekrar deneyin.";
+            if (message.includes("Invalid login credentials")) return "E-posta veya şifre hatalı.";
+            if (message.includes("Email not confirmed")) return "E-posta adresinizi doğrulamanız gerekiyor.";
+            if (message.includes("User already registered")) return "Bu e-posta adresiyle daha önce hesap oluşturulmuş.";
+            if (message.includes("Password should be")) return "Şifre Supabase güvenlik koşullarını karşılamıyor.";
+            return message;
+          }
+
+          export default function Home() {
+            const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+            const [theme, setTheme] = useState<ThemeMode>("light");
+            const [authMode, setAuthMode] = useState<AuthMode>("login");
+            const [authForm, setAuthForm] = useState<AuthForm>({ name: "", email: "", password: "" });
+            const [authUser, setAuthUser] = useState<User | null>(null);
+            const [authLoading, setAuthLoading] = useState(true);
+            const [authError, setAuthError] = useState("");
+            const [authNotice, setAuthNotice] = useState("");
+            const [dashboardReady, setDashboardReady] = useState(false);
+
+            useEffect(() => {
+              const savedTheme = window.localStorage.getItem("ocean-theme");
+              const systemPreference = window.matchMedia("(prefers-color-scheme: dark)");
+              const preferredTheme: ThemeMode =
+                savedTheme === "dark" || savedTheme === "light"
+                  ? savedTheme
+                  : systemPreference.matches
+                    ? "dark"
+                    : "light";
+
+              setTheme(preferredTheme);
+              applyTheme(preferredTheme);
+
+              function syncSystemTheme(event: MediaQueryListEvent) {
+                if (window.localStorage.getItem("ocean-theme")) return;
+
+                const nextTheme = event.matches ? "dark" : "light";
+                setTheme(nextTheme);
+                applyTheme(nextTheme);
+              }
+
+              systemPreference.addEventListener("change", syncSystemTheme);
+              return () => systemPreference.removeEventListener("change", syncSystemTheme);
+            }, []);
+
+            useEffect(() => {
+              if (!supabase) {
+                setAuthLoading(false);
+                return;
+              }
+
+              let mounted = true;
+
+              async function loadSession() {
+                const { data } = await supabase.auth.getSession();
+                if (!mounted) return;
+
+                const user = data.session?.user ?? null;
+                setAuthUser(user);
+                setAuthLoading(false);
+
+                if (user) void ensureProfile(user);
+              }
+
+              loadSession();
+
+              const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+                const user = session?.user ?? null;
+                setAuthUser(user);
+                setAuthLoading(false);
+
+                if (user) void ensureProfile(user);
+              });
+
+              return () => {
+                mounted = false;
+                authListener.subscription.unsubscribe();
+              };
+            }, [supabase]);
+
+            useEffect(() => {
+              if (!authUser) {
+                setDashboardReady(false);
+                return;
+              }
+
+              window.localStorage.setItem("ocean-authenticated", "true");
+              setDashboardReady(true);
+            }, [authUser]);
+
+            useEffect(() => {
+              if (!supabase) return;
+
+              const originalRemoveItem = Storage.prototype.removeItem;
+
+              Storage.prototype.removeItem = function patchedRemoveItem(key: string) {
+                if (key === "ocean-authenticated") {
+                  void supabase.auth.signOut();
+                  setAuthUser(null);
+                }
+
+                return originalRemoveItem.call(this, key);
+              };
+
+              return () => {
+                Storage.prototype.removeItem = originalRemoveItem;
+              };
+            }, [supabase]);
+
+            async function ensureProfile(user: User, fullName?: string) {
+              if (!supabase) return;
+
+              await supabase.from("profiles").upsert({
+                id: user.id,
+                full_name: fullName || getAuthDisplayName(user),
+                email: user.email,
+                role: "advisor"
+              });
+            }
+
+            function toggleTheme() {
+              const nextTheme = theme === "dark" ? "light" : "dark";
+              window.localStorage.setItem("ocean-theme", nextTheme);
+              setTheme(nextTheme);
+              applyTheme(nextTheme);
+            }
+
+            async function submitAuth() {
+              if (!supabase) {
+                setAuthError("Supabase bağlantısı eksik. Lütfen ortam değişkenlerini ayarlayın.");
+                return;
+              }
+
+              setAuthLoading(true);
+              setAuthError("");
+              setAuthNotice("");
+
+              if (authMode === "signup") {
+                const { data, error } = await supabase.auth.signUp({
+                  email: authForm.email.trim(),
+                  password: authForm.password,
+                  options: {
+                    data: { full_name: authForm.name.trim() },
+                    emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined
+                  }
+                });
+
+                if (error) {
+                  setAuthError(getAuthMessage(error.message));
+                  setAuthLoading(false);
+                  return;
+                }
+
+                if (data.user) await ensureProfile(data.user, authForm.name.trim());
+                if (!data.session) setAuthNotice("Hesap oluşturuldu. Supabase e-posta doğrulaması açıksa gelen kutunuzu kontrol edin.");
+                setAuthLoading(false);
+                return;
+              }
+
+              const { error } = await supabase.auth.signInWithPassword({
+                email: authForm.email.trim(),
+                password: authForm.password
+              });
+
+              if (error) {
+                setAuthError(getAuthMessage(error.message));
+                setAuthLoading(false);
+                return;
+              }
+
+              setAuthLoading(false);
+            }
+
+            async function continueWithGoogle() {
+              if (!supabase) {
+                setAuthError("Supabase bağlantısı eksik. Lütfen ortam değişkenlerini ayarlayın.");
+                return;
+              }
+
+              setAuthLoading(true);
+              setAuthError("");
+              setAuthNotice("");
+
+              const { error } = await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: { redirectTo: window.location.origin }
+              });
+
+              if (error) {
+                setAuthError(getAuthMessage(error.message));
+                setAuthLoading(false);
+              }
+            }
+
+            async function logout() {
+              if (supabase) await supabase.auth.signOut();
+              window.localStorage.setItem("ocean-authenticated", "false");
+              setAuthUser(null);
+            }
+
+            if (authLoading) {
+              return <AuthScreen mode={authMode} form={authForm} theme={theme} loading error="" notice="" isConfigured={isSupabaseConfigured} onModeChange={setAuthMode} onFormChange={setAuthForm} onToggleTheme={toggleTheme} onSubmit={submitAuth} onGoogle={continueWithGoogle} />;
+            }
+
+            if (!authUser) {
+              return <AuthScreen mode={authMode} form={authForm} theme={theme} loading={false} error={authError} notice={authNotice} isConfigured={isSupabaseConfigured} onModeChange={setAuthMode} onFormChange={setAuthForm} onToggleTheme={toggleTheme} onSubmit={submitAuth} onGoogle={continueWithGoogle} />;
+            }
+
+            return (
+              <>
+                {dashboardReady ? <OceanApp /> : null}
+                <div className="fixed right-4 top-4 z-[60] hidden items-center gap-2 rounded-full border border-white/60 bg-white/85 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-300 md:flex">
+                  <span className="max-w-44 truncate">{getAuthDisplayName(authUser)}</span>
+                  <button type="button" className="font-medium text-slate-950 dark:text-slate-100" onClick={logout}>Çıkış</button>
+                </div>
+              </>
+            );
+          }
+
+          function AuthScreen({
+            mode,
+            form,
+            theme,
+            loading,
+            error,
+            notice,
+            isConfigured,
+            onModeChange,
+            onFormChange,
+            onToggleTheme,
+            onSubmit,
+            onGoogle
+          }: {
+            mode: AuthMode;
+            form: AuthForm;
+            theme: ThemeMode;
+            loading: boolean;
+            error: string;
+            notice: string;
+            isConfigured: boolean;
+            onModeChange: (mode: AuthMode) => void;
+            onFormChange: (form: AuthForm) => void;
+            onToggleTheme: () => void;
+            onSubmit: () => void;
+            onGoogle: () => void;
+          }) {
+            const [localError, setLocalError] = useState("");
+
+            function update(key: keyof AuthForm, value: string) {
+              onFormChange({ ...form, [key]: value });
+              setLocalError("");
+            }
+
+            function submit() {
+              if (!isConfigured) {
+                setLocalError("Supabase ortam değişkenleri eksik. Kurulum tamamlanınca giriş aktif olur.");
+                return;
+              }
+
+              if (mode === "signup") {
+                if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
+                  setLocalError("Lütfen tüm alanları doldurun.");
+                  return;
+                }
+                onSubmit();
+                return;
+              }
+
+              if (!form.email.trim() || !form.password.trim()) {
+                setLocalError("E-posta ve şifre zorunludur.");
+                return;
+              }
+
+              onSubmit();
+            }
+
+            return (
+              <main className="relative min-h-dvh overflow-hidden bg-stone-50 px-3 text-slate-950 dark:bg-slate-950 dark:text-slate-100 sm:px-4" style={{ backgroundImage: "url('/mandarin-2.jpeg')", backgroundPosition: "center", backgroundSize: "cover" }}>
+                <div className="relative mx-auto flex min-h-dvh max-w-md items-center justify-center py-6 sm:py-8">
+                  <section className="w-full rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/85 sm:p-6">
+                    <div className="mb-4 flex justify-end">
+                      <button type="button" className="btn-secondary min-h-9 px-3 py-1 text-xs" onClick={onToggleTheme}>{theme === "dark" ? "Koyu" : "Açık"}</button>
+                    </div>
+                    <div className="mb-6 text-center">
+                      <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold shadow-sm dark:border-slate-700 dark:bg-slate-900">O</div>
+                      <h1 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-3xl">OCEAN BrokerageOS</h1>
+                      <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Brokerage operations, portfolios and commissions in one private workspace.</p>
+                    </div>
+
+                    <div className="mb-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
+                      <button type="button" onClick={() => onModeChange("login")} className={`rounded-xl px-3 py-2 text-sm transition ${mode === "login" ? "bg-white text-slate-950 shadow-sm dark:bg-slate-950 dark:text-slate-100" : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"}`}>Login</button>
+                      <button type="button" onClick={() => onModeChange("signup")} className={`rounded-xl px-3 py-2 text-sm transition ${mode === "signup" ? "bg-white text-slate-950 shadow-sm dark:bg-slate-950 dark:text-slate-100" : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"}`}>Signup</button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {mode === "signup" ? <input className="input !rounded-xl !px-4 !py-3" placeholder="Ad Soyad" value={form.name} onChange={(event) => update("name", event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") submit(); }} /> : null}
+                      <input className="input !rounded-xl !px-4 !py-3" placeholder="Kullanıcı adı veya e-posta" value={form.email} onChange={(event) => update("email", event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") submit(); }} />
+                      <input className="input !rounded-xl !px-4 !py-3" placeholder="Şifre" type="password" value={form.password} onChange={(event) => update("password", event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") submit(); }} />
+                      {!isConfigured ? <p className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-sm leading-6 text-slate-600 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">Supabase kurulumu bekleniyor. `NEXT_PUBLIC_SUPABASE_URL` ve `NEXT_PUBLIC_SUPABASE_ANON_KEY` eklenince gerçek giriş aktif olur.</p> : null}
+                      {notice ? <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">{notice}</p> : null}
+                      {localError || error ? <p className="text-sm text-red-600 dark:text-red-300">{localError || error}</p> : null}
+                      <button type="button" onClick={submit} disabled={loading || !isConfigured} className="w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-100 dark:text-slate-950">{loading ? "Kontrol ediliyor..." : mode === "signup" ? "Hesap Oluştur" : "Giriş Yap"}</button>
+                      <button type="button" onClick={onGoogle} disabled={loading || !isConfigured} className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"><span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 text-xs font-semibold dark:border-slate-700">G</span>Continue with Google</button>
+                    </div>
+
+                    <p className="mt-6 text-center text-xs text-slate-400">Private workspace for OCEAN advisors.</p>
+                  </section>
+                </div>
+              </main>
+            );
+          }
+          EOF
+
+          cat >> README.md <<'EOF'
+
+          ## Free-Tier Supabase Auth Setup
+
+          Ocean uses a free-tier-friendly foundation: Vercel free tier for hosting and Supabase free tier for Auth, Postgres, and advisor profile records. No paid auth, CRM, analytics, realtime, storage, or background job services are included in this stage.
+
+          ### Environment Variables
+
+          Create `.env.local` locally and add the same variables in Vercel Project Settings:
+
+          ```bash
+          NEXT_PUBLIC_SUPABASE_URL=your-project-url
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+          ```
+
+          `.env.example` contains placeholders only. Do not commit real secrets.
+
+          ### Database Migration
+
+          Apply `supabase/migrations/202605230001_create_profiles.sql`. It creates the `profiles` table, enables RLS, allows authenticated users to read/insert/update only their own profile, and creates a trigger for new Supabase Auth users.
+
+          ### Google OAuth
+
+          In Supabase Dashboard, go to Authentication → Providers → Google, add the Google Client ID and Secret, then add local and production redirect URLs such as:
+
+          ```text
+          http://localhost:3000
+          http://127.0.0.1:3030
+          https://your-vercel-domain.vercel.app
+          ```
+
+          Also add the matching Supabase callback URL in Google Cloud Console.
+
+          ### Free-Tier Sustainability Notes
+
+          This stage intentionally keeps the database lean and auth-only. It does not include portfolio persistence, matching engine tables, CRM data, realtime subscriptions, storage uploads, admin panels, or paid services.
+          EOF
+
+          npm install @supabase/supabase-js --package-lock-only --lockfile-version=3
+          git checkout origin/main -- .github/workflows/ci.yml
+          rm -f .github/workflows/materialize-free-supabase-auth.yml .github/free-supabase-auth-trigger.txt
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run check
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit materialized source
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.tsx app/ocean-app.tsx package.json package-lock.json README.md .env.example lib/supabase/client.ts supabase/migrations/202605230001_create_profiles.sql .github/workflows/ci.yml
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Add free Supabase advisor auth"
+          git push

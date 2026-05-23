@@ -1,0 +1,22 @@
+name: Trigger dark theme materialization
+
+on:
+  push:
+    branches:
+      - feature/dark-theme
+    paths:
+      - ".github/workflows/trigger-dark-theme.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch materialization workflow
+        run: gh workflow run materialize-dark-theme.yml --ref feature/dark-theme
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -98,6 +98,24 @@ async function request<T>(path: string, options: RequestInit & { token?: string 
 export function createSupabaseAuthClient() {
   if (!isSupabaseConfigured || !supabaseUrl) return null;
 
+  async function refreshSession(refreshToken: string) {
+    const data = await request<AuthResponse>("/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+    const session = normalizeSession(data);
+    if (!session) throw new Error("Oturum yenilenemedi.");
+    saveSession(session);
+    return session;
+  }
+
+  async function getUser(accessToken: string) {
+    return request<SupabaseAuthUser>("/auth/v1/user", {
+      method: "GET",
+      token: accessToken
+    });
+  }
+
   return {
     async getSession() {
       const stored = readStoredSession();
@@ -107,7 +125,7 @@ export function createSupabaseAuthClient() {
         const expiresSoon = stored.expires_at - Math.floor(Date.now() / 1000) < 60;
 
         if (expiresSoon) {
-          return this.refreshSession(stored.refresh_token);
+          return refreshSession(stored.refresh_token);
         }
       }
 
@@ -139,23 +157,9 @@ export function createSupabaseAuthClient() {
       return session;
     },
 
-    async refreshSession(refreshToken: string) {
-      const data = await request<AuthResponse>("/auth/v1/token?grant_type=refresh_token", {
-        method: "POST",
-        body: JSON.stringify({ refresh_token: refreshToken })
-      });
-      const session = normalizeSession(data);
-      if (!session) throw new Error("Oturum yenilenemedi.");
-      saveSession(session);
-      return session;
-    },
+    refreshSession,
 
-    async getUser(accessToken: string) {
-      return request<SupabaseAuthUser>("/auth/v1/user", {
-        method: "GET",
-        token: accessToken
-      });
-    },
+    getUser,
 
     async signOut() {
       const stored = readStoredSession();
@@ -212,7 +216,7 @@ export function createSupabaseAuthClient() {
 
       if (!accessToken) return { session: null, error: "" };
 
-      const user = await this.getUser(accessToken);
+      const user = await getUser(accessToken);
       const session: SupabaseSession = {
         access_token: accessToken,
         refresh_token: refreshToken,

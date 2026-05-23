@@ -18,6 +18,18 @@ export type SupabaseSession = {
   user: SupabaseAuthUser;
 };
 
+export type AdvisorProfile = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: "admin" | "advisor" | "portfolio_owner" | "viewer" | string;
+  phone: string | null;
+  company: string | null;
+  avatar_url: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
 type AuthResponse = {
   access_token?: string;
   refresh_token?: string;
@@ -76,7 +88,10 @@ async function request<T>(path: string, options: RequestInit & { token?: string 
 
   const headers = new Headers(options.headers);
   headers.set("apikey", supabaseAnonKey);
-  headers.set("Content-Type", "application/json");
+
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
 
   if (options.token) {
     headers.set("Authorization", `Bearer ${options.token}`);
@@ -114,6 +129,50 @@ export function createSupabaseAuthClient(): any {
       method: "GET",
       token: accessToken
     });
+  }
+
+  function getAccessToken() {
+    return readStoredSession()?.access_token || "";
+  }
+
+  async function getProfile(userId: string) {
+    const token = getAccessToken();
+    if (!token) return null;
+
+    const rows = await request<AdvisorProfile[]>(
+      `/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=id,full_name,email,role,phone,company,avatar_url,created_at,updated_at&limit=1`,
+      {
+        method: "GET",
+        token
+      }
+    );
+
+    return rows[0] ?? null;
+  }
+
+  async function saveProfile(
+    user: SupabaseAuthUser,
+    profile: { fullName: string; phone: string; company: string }
+  ) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    const rows = await request<AdvisorProfile[]>("/rest/v1/profiles?on_conflict=id", {
+      method: "POST",
+      token,
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=representation"
+      },
+      body: JSON.stringify({
+        id: user.id,
+        email: user.email,
+        full_name: profile.fullName.trim(),
+        phone: profile.phone.trim(),
+        company: profile.company.trim()
+      })
+    });
+
+    return rows[0] ?? null;
   }
 
   return {
@@ -161,6 +220,10 @@ export function createSupabaseAuthClient(): any {
 
     getUser,
 
+    getProfile,
+
+    saveProfile,
+
     async signOut() {
       const stored = readStoredSession();
       if (stored?.access_token) {
@@ -186,8 +249,7 @@ export function createSupabaseAuthClient(): any {
         body: JSON.stringify({
           id: user.id,
           email: user.email,
-          full_name: fullName || getUserDisplayName(user),
-          role: "advisor"
+          full_name: fullName || getUserDisplayName(user)
         })
       }).catch(() => null);
     },
@@ -230,8 +292,10 @@ export function createSupabaseAuthClient(): any {
   };
 }
 
-export function getUserDisplayName(user: SupabaseAuthUser | null) {
+export function getUserDisplayName(user: SupabaseAuthUser | null, profile?: AdvisorProfile | null) {
   if (!user) return "";
+
+  if (profile?.full_name?.trim()) return profile.full_name;
 
   const metadataName =
     typeof user.user_metadata?.full_name === "string"
@@ -240,5 +304,5 @@ export function getUserDisplayName(user: SupabaseAuthUser | null) {
         ? user.user_metadata.name
         : "";
 
-  return metadataName || user.email || "Ocean Advisor";
+  return metadataName || user.email || "OOS Advisor";
 }

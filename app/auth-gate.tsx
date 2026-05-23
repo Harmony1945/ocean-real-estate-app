@@ -6,6 +6,7 @@ import {
   createSupabaseAuthClient,
   getUserDisplayName,
   isSupabaseConfigured,
+  type AdvisorProfile,
   type SupabaseAuthUser
 } from "@/lib/supabase/client";
 
@@ -16,6 +17,12 @@ type AuthForm = {
   name: string;
   email: string;
   password: string;
+};
+
+type ProfileForm = {
+  fullName: string;
+  phone: string;
+  company: string;
 };
 
 function applyTheme(theme: ThemeMode) {
@@ -31,6 +38,20 @@ function getAuthMessage(message?: string) {
   if (message.includes("User already registered")) return "Bu e-posta adresiyle daha önce hesap oluşturulmuş.";
   if (message.includes("Password should be")) return "Şifre Supabase güvenlik koşullarını karşılamıyor.";
   return message;
+}
+
+function isProfileComplete(profile: AdvisorProfile | null) {
+  return Boolean(
+    profile?.full_name?.trim() && profile.phone?.trim() && profile.company?.trim()
+  );
+}
+
+function getInitialProfileForm(user: SupabaseAuthUser | null, profile?: AdvisorProfile | null): ProfileForm {
+  return {
+    fullName: profile?.full_name || getUserDisplayName(user, profile) || "",
+    phone: profile?.phone || "",
+    company: profile?.company || ""
+  };
 }
 
 function replaceLegacyBrandText() {
@@ -72,9 +93,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authForm, setAuthForm] = useState<AuthForm>({ name: "", email: "", password: "" });
   const [authUser, setAuthUser] = useState<SupabaseAuthUser | null>(null);
+  const [profile, setProfile] = useState<AdvisorProfile | null>(null);
+  const [profileForm, setProfileForm] = useState<ProfileForm>({ fullName: "", phone: "", company: "" });
   const [authLoading, setAuthLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authNotice, setAuthNotice] = useState("");
+  const [profileError, setProfileError] = useState("");
   const [dashboardReady, setDashboardReady] = useState(false);
 
   useEffect(() => {
@@ -102,6 +128,34 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     return () => systemPreference.removeEventListener("change", syncSystemTheme);
   }, []);
 
+  async function loadProfileForUser(user: SupabaseAuthUser, fallbackFullName = "") {
+    if (!supabase) return;
+
+    setProfileLoading(true);
+    setProfileError("");
+
+    try {
+      let nextProfile = await supabase.getProfile(user.id);
+
+      if (!nextProfile) {
+        await supabase.upsertProfile(user, fallbackFullName || getUserDisplayName(user));
+        nextProfile = await supabase.getProfile(user.id);
+      }
+
+      setProfile(nextProfile);
+      setProfileForm(getInitialProfileForm(user, nextProfile));
+    } catch (error) {
+      setProfileError(
+        getAuthMessage(error instanceof Error ? error.message : undefined) ||
+          "Profil bilgileri alınamadı. Bilgileri kaydederek devam edebilirsiniz."
+      );
+      setProfile(null);
+      setProfileForm(getInitialProfileForm(user));
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!supabase) {
       setAuthLoading(false);
@@ -120,7 +174,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
         const user = session?.user ?? null;
         setAuthUser(user);
-        if (user) void supabase.upsertProfile(user);
+        if (user) await loadProfileForUser(user);
       } catch (error) {
         if (mounted) setAuthError(getAuthMessage(error instanceof Error ? error.message : undefined));
       } finally {
@@ -138,12 +192,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!authUser) {
       setDashboardReady(false);
+      setProfile(null);
       return;
     }
 
     window.localStorage.setItem("ocean-authenticated", "true");
-    setDashboardReady(true);
-  }, [authUser]);
+    setDashboardReady(isProfileComplete(profile));
+  }, [authUser, profile]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -154,6 +209,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       if (key === "ocean-authenticated") {
         void supabase.signOut();
         setAuthUser(null);
+        setProfile(null);
       }
 
       return originalRemoveItem.call(this, key);
@@ -200,8 +256,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         });
 
         if (result.user) await supabase.upsertProfile(result.user, authForm.name.trim());
-        if (result.session?.user) setAuthUser(result.session.user);
-        if (!result.session) setAuthNotice("Hesap oluşturuldu. Supabase e-posta doğrulaması açıksa gelen kutunuzu kontrol edin.");
+        if (result.session?.user) {
+          setAuthUser(result.session.user);
+          await loadProfileForUser(result.session.user, authForm.name.trim());
+        }
+        if (!result.session) setAuthNotice("Hesap oluşturuldu. E-posta doğrulaması açıksa gelen kutunuzu kontrol edin, ardından giriş yapın.");
         return;
       }
 
@@ -210,7 +269,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         password: authForm.password
       });
       setAuthUser(session.user);
-      await supabase.upsertProfile(session.user);
+      await loadProfileForUser(session.user);
     } catch (error) {
       setAuthError(getAuthMessage(error instanceof Error ? error.message : undefined));
     } finally {
@@ -227,10 +286,33 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     window.location.href = supabase.getOAuthUrl("google", window.location.origin);
   }
 
+  async function saveAdvisorProfile() {
+    if (!supabase || !authUser) return;
+
+    if (!profileForm.fullName.trim() || !profileForm.phone.trim() || !profileForm.company.trim()) {
+      setProfileError("Lütfen ad soyad, telefon ve şirket alanlarını doldurun.");
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileError("");
+
+    try {
+      const savedProfile = await supabase.saveProfile(authUser, profileForm);
+      setProfile(savedProfile);
+      setProfileForm(getInitialProfileForm(authUser, savedProfile));
+    } catch (error) {
+      setProfileError(getAuthMessage(error instanceof Error ? error.message : undefined));
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
   async function logout() {
     if (supabase) await supabase.signOut();
     window.localStorage.setItem("ocean-authenticated", "false");
     setAuthUser(null);
+    setProfile(null);
   }
 
   if (authLoading) {
@@ -271,10 +353,30 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
+  if (profileLoading) {
+    return <ProfileLoadingScreen theme={theme} onToggleTheme={toggleTheme} />;
+  }
+
+  if (!isProfileComplete(profile)) {
+    return (
+      <ProfileCompletionScreen
+        user={authUser}
+        form={profileForm}
+        error={profileError}
+        saving={profileSaving}
+        theme={theme}
+        onFormChange={setProfileForm}
+        onSave={saveAdvisorProfile}
+        onLogout={logout}
+        onToggleTheme={toggleTheme}
+      />
+    );
+  }
+
   return (
     <>
       {dashboardReady ? children : null}
-      <OOSNavigation user={authUser} onLogout={logout} />
+      <OOSNavigation user={authUser} profile={profile} onLogout={logout} />
     </>
   );
 }
@@ -458,6 +560,132 @@ function AuthScreen({
           </div>
 
           <p className="mt-6 text-center text-xs text-slate-400">Private workspace for OOS advisors.</p>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function ProfileLoadingScreen({ theme, onToggleTheme }: { theme: ThemeMode; onToggleTheme: () => void }) {
+  return (
+    <ProfileShell theme={theme} onToggleTheme={onToggleTheme}>
+      <div className="text-center">
+        <div className="mx-auto mb-4 h-10 w-10 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+        <p className="text-sm font-medium text-slate-950 dark:text-slate-100">Profil hazırlanıyor...</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Danışman profiliniz kontrol ediliyor.</p>
+      </div>
+    </ProfileShell>
+  );
+}
+
+function ProfileCompletionScreen({
+  user,
+  form,
+  error,
+  saving,
+  theme,
+  onFormChange,
+  onSave,
+  onLogout,
+  onToggleTheme
+}: {
+  user: SupabaseAuthUser;
+  form: ProfileForm;
+  error: string;
+  saving: boolean;
+  theme: ThemeMode;
+  onFormChange: (form: ProfileForm) => void;
+  onSave: () => void;
+  onLogout: () => void;
+  onToggleTheme: () => void;
+}) {
+  function update(key: keyof ProfileForm, value: string) {
+    onFormChange({ ...form, [key]: value });
+  }
+
+  return (
+    <ProfileShell theme={theme} onToggleTheme={onToggleTheme}>
+      <div className="mb-6 text-center">
+        <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          O
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-3xl">
+          Danışman profilini tamamla
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          OOS çalışma alanına geçmeden önce profil bilgilerini tamamlayalım.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+          <p className="text-xs text-slate-400">E-posta</p>
+          <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">{user.email || "Supabase Auth"}</p>
+        </div>
+        <input
+          className="input !rounded-xl !px-4 !py-3"
+          placeholder="Ad Soyad"
+          value={form.fullName}
+          onChange={(event) => update("fullName", event.target.value)}
+        />
+        <input
+          className="input !rounded-xl !px-4 !py-3"
+          placeholder="Telefon"
+          value={form.phone}
+          onChange={(event) => update("phone", event.target.value)}
+        />
+        <input
+          className="input !rounded-xl !px-4 !py-3"
+          placeholder="Şirket"
+          value={form.company}
+          onChange={(event) => update("company", event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") onSave();
+          }}
+        />
+        <p className="text-xs leading-5 text-slate-400">
+          Rolünüz güvenlik nedeniyle uygulamadan değiştirilemez ve varsayılan olarak advisor atanır.
+        </p>
+        {error ? <p className="text-sm text-red-600 dark:text-red-300">{error}</p> : null}
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-100 dark:text-slate-950"
+        >
+          {saving ? "Kaydediliyor..." : "Profili Kaydet ve Devam Et"}
+        </button>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          Çıkış Yap
+        </button>
+      </div>
+    </ProfileShell>
+  );
+}
+
+function ProfileShell({
+  children,
+  theme,
+  onToggleTheme
+}: {
+  children: ReactNode;
+  theme: ThemeMode;
+  onToggleTheme: () => void;
+}) {
+  return (
+    <main className="relative min-h-dvh overflow-hidden bg-stone-50 px-3 text-slate-950 dark:bg-slate-950 dark:text-slate-100 sm:px-4">
+      <div className="relative mx-auto flex min-h-dvh max-w-md items-center justify-center py-6 sm:py-8">
+        <section className="w-full rounded-3xl border border-white/60 bg-white/95 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/90 sm:p-6">
+          <div className="mb-4 flex justify-end">
+            <button type="button" className="btn-secondary min-h-9 px-3 py-1 text-xs" onClick={onToggleTheme}>
+              {theme === "dark" ? "Koyu" : "Açık"}
+            </button>
+          </div>
+          {children}
         </section>
       </div>
     </main>

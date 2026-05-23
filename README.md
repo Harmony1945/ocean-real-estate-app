@@ -72,6 +72,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 Apply `supabase/migrations/202605230001_create_profiles.sql` in Supabase. It creates the `profiles` table, enables RLS, allows authenticated users to read/insert/update only their own profile, and creates a trigger for new Supabase Auth users.
 
+Then apply `supabase/migrations/202605230002_lock_profile_role_updates.sql`. It keeps `profiles.role` database-controlled so advisors can complete their own profile without promoting themselves.
+
 ### 4. Enable Google OAuth
 
 In Supabase Dashboard, go to Authentication → Providers → Google, then add the Google Client ID and Secret from Google Cloud Console. Do not hardcode Google credentials in this repo.
@@ -97,7 +99,18 @@ The mobile OOS shell uses four route-backed destinations:
 
 The rightmost mobile item is now Menü. The previous rightmost notification function is preserved inside the menu as Bildirimler.
 
-### 6. Free-Tier Sustainability Notes
+### 6. Production Auth Verification
+
+Use this checklist after deploying auth changes:
+
+1. In Supabase Dashboard, open Authentication → Users and confirm the new advisor appears after signup.
+2. If email confirmation is enabled, confirm the advisor receives the authorization email and can log in after confirming.
+3. Open Table Editor → profiles and confirm a row exists with the same `id` as the Supabase Auth user.
+4. If the profile row does not appear, confirm both profile migrations were applied, then log in again and complete the in-app profile card. The app also performs a best-effort profile upsert after login/signup.
+5. In Vercel Project Settings → Environment Variables, confirm `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` exist for the deployed environment, then redeploy if they were added after the latest deployment.
+6. Google OAuth is optional for now. Email/password auth can run first; configure Google later in Supabase Authentication → Providers → Google.
+
+### 7. Free-Tier Sustainability Notes
 
 This foundation intentionally stays lean:
 

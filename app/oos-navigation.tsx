@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { getUserDisplayName, type SupabaseAuthUser } from "@/lib/supabase/client";
+import { getUserDisplayName, type AdvisorProfile, type SupabaseAuthUser } from "@/lib/supabase/client";
 
 type OOSNavigationProps = {
   user: SupabaseAuthUser | null;
+  profile?: AdvisorProfile | null;
   onLogout: () => void;
 };
 
@@ -32,10 +33,11 @@ const menuItems = [
   { label: "Yardım ve Destek", href: "/menu#yardim", status: "Yakında" }
 ];
 
-export default function OOSNavigation({ user, onLogout }: OOSNavigationProps) {
+export default function OOSNavigation({ user, profile, onLogout }: OOSNavigationProps) {
   const pathname = usePathname();
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
-  const displayName = getUserDisplayName(user) || "OOS Advisor";
+  const displayName = getUserDisplayName(user, profile) || "OOS Advisor";
+  const role = profile?.role || "advisor";
   const initials = useMemo(
     () =>
       displayName
@@ -89,6 +91,7 @@ export default function OOSNavigation({ user, onLogout }: OOSNavigationProps) {
               displayName={displayName}
               email={user?.email || "Kurulum bekleniyor"}
               initials={initials}
+              role={role}
               onLogout={onLogout}
               onItemSelect={() => setDesktopMenuOpen(false)}
             />
@@ -125,8 +128,9 @@ export default function OOSNavigation({ user, onLogout }: OOSNavigationProps) {
   );
 }
 
-export function OOSMenuPageContent({ user, onLogout }: OOSNavigationProps) {
-  const displayName = getUserDisplayName(user) || "OOS Advisor";
+export function OOSMenuPageContent({ user, profile, onLogout }: OOSNavigationProps) {
+  const displayName = getUserDisplayName(user, profile) || "OOS Advisor";
+  const role = profile?.role || "advisor";
   const initials =
     displayName
       .split(" ")
@@ -154,6 +158,7 @@ export function OOSMenuPageContent({ user, onLogout }: OOSNavigationProps) {
             displayName={displayName}
             email={user?.email || "Kurulum bekleniyor"}
             initials={initials}
+            role={role}
             onLogout={onLogout}
           />
         </section>
@@ -166,12 +171,14 @@ function MenuPanelContent({
   displayName,
   email,
   initials,
+  role,
   onLogout,
   onItemSelect
 }: {
   displayName: string;
   email: string;
   initials: string;
+  role: string;
   onLogout: () => void;
   onItemSelect?: () => void;
 }) {
@@ -187,7 +194,7 @@ function MenuPanelContent({
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">{email}</p>
           </div>
           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
-            advisor
+            {role}
           </span>
         </div>
       </div>

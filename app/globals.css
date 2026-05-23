@@ -7,6 +7,11 @@
   background: #fafaf9;
 }
 
+:root.dark {
+  color-scheme: dark;
+  background: #050505;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -30,8 +35,8 @@ body {
 }
 
 .dark body {
-  background: #020617;
-  color: #f8fafc;
+  background: #050505;
+  color: #f5f5f5;
 }
 
 button,
@@ -51,40 +56,129 @@ button:disabled {
 }
 
 ::selection {
-  background: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.18);
 }
 
-/* The original in-page mobile nav remains for state preservation, while OOS owns route-backed navigation globally. */
-body > main > nav.pointer-events-none.fixed {
-  display: none !important;
+/* Hide the legacy in-page mobile nav. OOS route-backed Liquid Glass nav owns mobile navigation. */
+@media (max-width: 767px) {
+  body main nav.pointer-events-none.fixed {
+    display: none !important;
+  }
 }
 
 @layer components {
   .input {
-    @apply min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-600 dark:focus:ring-slate-700/40 sm:text-sm;
+    @apply min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200/50 dark:border-white/10 dark:bg-[#111111] dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-600 dark:focus:ring-neutral-700/40 sm:text-sm;
   }
 
   .btn-primary {
-    @apply inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white;
+    @apply inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white;
   }
 
   .btn-secondary {
-    @apply inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-800;
+    @apply inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-[#111111] dark:text-neutral-200 dark:hover:border-white/20 dark:hover:bg-[#171717];
   }
 
   .btn-danger {
-    @apply inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-slate-100;
+    @apply inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-950 dark:border-white/10 dark:bg-[#111111] dark:text-neutral-400 dark:hover:border-white/20 dark:hover:text-neutral-100;
   }
 
   .mini-action {
-    @apply inline-flex min-h-8 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800;
+    @apply inline-flex min-h-8 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-[#111111] dark:text-neutral-300 dark:hover:border-white/20 dark:hover:bg-[#171717];
   }
 
   .liquid-glass-nav {
-    @apply border border-white/50 bg-white/70 shadow-[0_18px_45px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/65 dark:shadow-[0_18px_45px_rgba(0,0,0,0.45)];
+    @apply border border-white/50 bg-white/70 shadow-[0_18px_45px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0a0a0a]/70 dark:shadow-[0_18px_45px_rgba(0,0,0,0.55)];
   }
 
   .liquid-glass-strong {
-    @apply border border-white/60 bg-white/80 shadow-[0_18px_45px_rgba(15,23,42,0.10)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[0_18px_45px_rgba(0,0,0,0.35)];
+    @apply border border-white/60 bg-white/80 shadow-[0_18px_45px_rgba(15,23,42,0.10)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0f0f0f]/82 dark:shadow-[0_18px_45px_rgba(0,0,0,0.48)];
   }
+}
+
+/* Keep legacy dashboard dark mode neutral black/charcoal instead of blue-tinted slate. */
+.dark main {
+  background-color: #050505;
+}
+
+.dark .bg-stone-50,
+.dark .bg-slate-50,
+.dark .dark\:bg-slate-950 {
+  background-color: #050505 !important;
+}
+
+.dark .bg-white,
+.dark .bg-white\/90,
+.dark .bg-white\/95,
+.dark .dark\:bg-slate-900 {
+  background-color: #111111 !important;
+}
+
+.dark .bg-slate-100,
+.dark .bg-slate-200,
+.dark .dark\:bg-slate-800,
+.dark .dark\:bg-indigo-950\/40 {
+  background-color: #171717 !important;
+}
+
+.dark .bg-slate-950\/20 {
+  background-color: rgb(5 5 5 / 0.72) !important;
+}
+
+.dark .bg-indigo-50,
+.dark .dark\:bg-indigo-50,
+.dark .dark\:bg-indigo-950\/40 {
+  background-color: #171717 !important;
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .dark\:border-slate-700,
+.dark .dark\:border-slate-800 {
+  border-color: rgb(255 255 255 / 0.1) !important;
+}
+
+.dark .text-slate-950,
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .dark\:text-slate-100,
+.dark .dark\:text-slate-200 {
+  color: #f5f5f5 !important;
+}
+
+.dark .text-slate-700,
+.dark .text-slate-600,
+.dark .dark\:text-slate-300 {
+  color: #d4d4d4 !important;
+}
+
+.dark .text-slate-500,
+.dark .text-slate-400,
+.dark .dark\:text-slate-400 {
+  color: #a3a3a3 !important;
+}
+
+.dark .text-indigo-700,
+.dark .dark\:text-indigo-300 {
+  color: #d4d4d4 !important;
+}
+
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .dark\:hover\:bg-slate-800:hover,
+.dark .dark\:hover\:bg-slate-900:hover,
+.dark .dark\:hover\:bg-white\/5:hover {
+  background-color: #1c1c1c !important;
+}
+
+.dark .dark\:focus\:ring-slate-700\/40:focus,
+.dark .focus\:ring-slate-200\/50:focus {
+  --tw-ring-color: rgb(64 64 64 / 0.4) !important;
+}
+
+.dark .dark\:shadow-\[inset_0_1px_0_rgba\(255\2c 255\2c 255\2c 0\.08\)\2c 0_10px_24px_rgba\(0\2c 0\2c 0\2c 0\.32\)\] {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 10px 24px rgb(0 0 0 / 0.42) !important;
 }

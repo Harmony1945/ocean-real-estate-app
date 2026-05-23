@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
+import OOSNavigation from "./oos-navigation";
 import {
   createSupabaseAuthClient,
   getUserDisplayName,
@@ -30,6 +31,39 @@ function getAuthMessage(message?: string) {
   if (message.includes("User already registered")) return "Bu e-posta adresiyle daha önce hesap oluşturulmuş.";
   if (message.includes("Password should be")) return "Şifre Supabase güvenlik koşullarını karşılamıyor.";
   return message;
+}
+
+function replaceLegacyBrandText() {
+  if (typeof document === "undefined") return;
+
+  const replacements: Array<[RegExp, string]> = [
+    [/OCEAN BrokerageOS/g, "OOS"],
+    [/Ocean BrokerageOS/g, "OOS"],
+    [/Ocean Real Estate/g, "OOS"],
+    [/OCEAN advisors/g, "OOS advisors"],
+    [/OCEAN danışman/g, "OOS danışman"],
+    [/BrokerageOS/g, "Ocean Operating System"]
+  ];
+
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  let current = walker.nextNode();
+
+  while (current) {
+    nodes.push(current as Text);
+    current = walker.nextNode();
+  }
+
+  nodes.forEach((node) => {
+    let nextValue = node.nodeValue || "";
+    replacements.forEach(([pattern, value]) => {
+      nextValue = nextValue.replace(pattern, value);
+    });
+
+    if (nextValue !== node.nodeValue) node.nodeValue = nextValue;
+  });
+
+  document.title = "OOS";
 }
 
 export default function AuthGate({ children }: { children: ReactNode }) {
@@ -129,6 +163,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       Storage.prototype.removeItem = originalRemoveItem;
     };
   }, [supabase]);
+
+  useEffect(() => {
+    if (!dashboardReady) return;
+
+    replaceLegacyBrandText();
+    const observer = new MutationObserver(() => replaceLegacyBrandText());
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, [dashboardReady]);
 
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -230,12 +274,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   return (
     <>
       {dashboardReady ? children : null}
-      <div className="fixed right-4 top-4 z-[60] hidden items-center gap-2 rounded-full border border-white/60 bg-white/85 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-300 md:flex">
-        <span className="max-w-44 truncate">{getUserDisplayName(authUser)}</span>
-        <button type="button" className="font-medium text-slate-950 dark:text-slate-100" onClick={logout}>
-          Çıkış
-        </button>
-      </div>
+      <OOSNavigation user={authUser} onLogout={logout} />
     </>
   );
 }
@@ -323,10 +362,10 @@ function AuthScreen({
               O
             </div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-3xl">
-              OCEAN BrokerageOS
+              OOS
             </h1>
             <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-              Brokerage operations, portfolios and commissions in one private workspace.
+              Ocean Operating System, portföyler ve komisyonlar için özel çalışma alanı.
             </p>
           </div>
 
@@ -418,7 +457,7 @@ function AuthScreen({
             </button>
           </div>
 
-          <p className="mt-6 text-center text-xs text-slate-400">Private workspace for OCEAN advisors.</p>
+          <p className="mt-6 text-center text-xs text-slate-400">Private workspace for OOS advisors.</p>
         </section>
       </div>
     </main>

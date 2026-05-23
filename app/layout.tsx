@@ -3,8 +3,8 @@ import AuthGate from "./auth-gate";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "OCEAN BrokerageOS",
-  description: "Gayrimenkul aracılık ekipleri için odaklı işletim sistemi."
+  title: "OOS",
+  description: "Ocean Operating System: gayrimenkul danışmanları için odaklı işletim sistemi."
 };
 
 export default function RootLayout({

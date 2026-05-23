@@ -2,7 +2,7 @@
   "name": "ocean-brokerage-os",
   "version": "1.0.0",
   "private": true,
-  "description": "OCEAN BrokerageOS real estate brokerage operating system.",
+  "description": "OOS, Ocean Operating System for real estate advisors.",
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=8.5.0"

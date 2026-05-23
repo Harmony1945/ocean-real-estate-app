@@ -20,3 +20,4 @@ jobs:
         run: gh workflow run materialize-dark-theme.yml --ref feature/dark-theme
         env:
           GH_TOKEN: ${{ github.token }}
+# trigger: 2026-05-23

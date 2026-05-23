@@ -1,0 +1,581 @@
+name: Materialize dark theme
+
+on:
+  push:
+    branches:
+      - feature/dark-theme
+    paths:
+      - ".github/workflows/materialize-dark-theme.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/dark-theme
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Update Tailwind, layout, globals, and page theme hooks
+        shell: bash
+        run: |
+          cat > tailwind.config.js <<'EOF'
+          /** @type {import('tailwindcss').Config} */
+          module.exports = {
+            darkMode: "class",
+            content: [
+              "./app/**/*.{js,ts,jsx,tsx,mdx}",
+              "./components/**/*.{js,ts,jsx,tsx,mdx}",
+              "./lib/**/*.{js,ts,jsx,tsx,mdx}"
+            ],
+            theme: {
+              extend: {
+                colors: {
+                  ocean: {
+                    50: "#eff9ff",
+                    100: "#dff2ff",
+                    500: "#177daa",
+                    600: "#116a91",
+                    900: "#102f42"
+                  },
+                  ink: {
+                    50: "#f7f8f8",
+                    100: "#ecf0f1",
+                    300: "#c5cfd3",
+                    600: "#52636c",
+                    800: "#25323a",
+                    950: "#0d171d"
+                  },
+                  coral: {
+                    100: "#ffe3dc",
+                    500: "#e7664f"
+                  },
+                  gold: {
+                    100: "#f7ead0",
+                    500: "#b88933"
+                  },
+                  sage: {
+                    100: "#dfeee7",
+                    500: "#478365"
+                  }
+                },
+                boxShadow: {
+                  panel: "0 18px 50px rgba(13, 23, 29, 0.08)"
+                }
+              }
+            },
+            plugins: []
+          };
+          EOF
+
+          cat > app/layout.tsx <<'EOF'
+          import type { Metadata } from "next";
+          import Script from "next/script";
+          import "./globals.css";
+
+          export const metadata: Metadata = {
+            title: "OCEAN BrokerageOS",
+            description: "Gayrimenkul aracılık ekipleri için odaklı işletim sistemi."
+          };
+
+          const themeScript = `
+          (() => {
+            try {
+              const savedTheme = window.localStorage.getItem("ocean-theme");
+              const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+              const theme = savedTheme === "dark" || savedTheme === "light"
+                ? savedTheme
+                : systemPrefersDark
+                  ? "dark"
+                  : "light";
+
+              document.documentElement.classList.toggle("dark", theme === "dark");
+              document.documentElement.style.colorScheme = theme;
+            } catch {
+              document.documentElement.style.colorScheme = "light";
+            }
+          })();
+          `;
+
+          export default function RootLayout({
+            children
+          }: Readonly<{
+            children: React.ReactNode;
+          }>) {
+            return (
+              <html lang="tr" suppressHydrationWarning>
+                <head>
+                  <Script
+                    id="ocean-theme-script"
+                    strategy="beforeInteractive"
+                    dangerouslySetInnerHTML={{ __html: themeScript }}
+                  />
+                </head>
+                <body>{children}</body>
+              </html>
+            );
+          }
+          EOF
+
+          cat > app/globals.css <<'EOF'
+          @tailwind base;
+          @tailwind components;
+          @tailwind utilities;
+
+          :root {
+            color-scheme: light;
+            background: #fafaf9;
+          }
+
+          :root.dark {
+            color-scheme: dark;
+            background: #020617;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          html {
+            min-width: 320px;
+            scroll-behavior: smooth;
+          }
+
+          body {
+            min-height: 100vh;
+            margin: 0;
+            background: #fafaf9;
+            color: #0f172a;
+            font-family:
+              "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+              "Segoe UI", sans-serif;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+          }
+
+          .dark body {
+            background: #020617;
+            color: #e2e8f0;
+          }
+
+          button,
+          input,
+          select,
+          textarea {
+            font: inherit;
+          }
+
+          button {
+            cursor: pointer;
+          }
+
+          button:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+          }
+
+          ::selection {
+            background: rgba(15, 23, 42, 0.12);
+          }
+
+          @layer components {
+            .input {
+              @apply min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200/50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700/40 sm:text-sm;
+            }
+
+            .btn-primary {
+              @apply inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white;
+            }
+
+            .btn-secondary {
+              @apply inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800;
+            }
+
+            .btn-danger {
+              @apply inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-100;
+            }
+
+            .mini-action {
+              @apply inline-flex min-h-8 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800;
+            }
+          }
+
+          @layer utilities {
+            .dark .bg-stone-50 {
+              background-color: #020617;
+            }
+
+            .dark .bg-white {
+              background-color: #0f172a;
+            }
+
+            .dark .bg-white\/90 {
+              background-color: rgb(15 23 42 / 0.9);
+            }
+
+            .dark .bg-white\/95 {
+              background-color: rgb(15 23 42 / 0.95);
+            }
+
+            .dark .bg-slate-50 {
+              background-color: #111827;
+            }
+
+            .dark .bg-slate-100 {
+              background-color: #1e293b;
+            }
+
+            .dark .bg-slate-200 {
+              background-color: #334155;
+            }
+
+            .dark .bg-slate-950 {
+              background-color: #e2e8f0;
+            }
+
+            .dark .bg-slate-950\/20 {
+              background-color: rgb(2 6 23 / 0.68);
+            }
+
+            .dark .text-slate-950 {
+              color: #f8fafc;
+            }
+
+            .dark .text-slate-900,
+            .dark .text-slate-800 {
+              color: #e2e8f0;
+            }
+
+            .dark .text-slate-700,
+            .dark .text-slate-600 {
+              color: #cbd5e1;
+            }
+
+            .dark .text-slate-500,
+            .dark .text-slate-400 {
+              color: #94a3b8;
+            }
+
+            .dark .text-white {
+              color: #020617;
+            }
+
+            .dark .border-slate-100,
+            .dark .border-slate-200 {
+              border-color: #1e293b;
+            }
+
+            .dark .border-slate-300 {
+              border-color: #334155;
+            }
+
+            .dark .border-white\/60 {
+              border-color: rgb(255 255 255 / 0.14);
+            }
+
+            .dark .bg-emerald-50 {
+              background-color: rgb(6 78 59 / 0.32);
+            }
+
+            .dark .text-emerald-700 {
+              color: #6ee7b7;
+            }
+
+            .dark .border-emerald-100,
+            .dark .border-emerald-200 {
+              border-color: rgb(16 185 129 / 0.28);
+            }
+
+            .dark .bg-red-50 {
+              background-color: rgb(127 29 29 / 0.28);
+            }
+
+            .dark .text-red-500,
+            .dark .text-red-600,
+            .dark .text-red-700 {
+              color: #fca5a5;
+            }
+
+            .dark .border-red-200,
+            .dark .border-red-300 {
+              border-color: rgb(248 113 113 / 0.32);
+            }
+
+            .dark .bg-indigo-50 {
+              background-color: rgb(49 46 129 / 0.32);
+            }
+
+            .dark .shadow-sm,
+            .dark .shadow-xl {
+              box-shadow: 0 20px 50px rgb(0 0 0 / 0.28);
+            }
+          }
+          EOF
+
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("app/page.tsx")
+          text = path.read_text()
+
+          text = text.replace(
+              'import { FormEvent, PointerEvent, useMemo, useState } from "react";',
+              'import { FormEvent, PointerEvent, useEffect, useMemo, useState } from "react";'
+          )
+
+          if 'type ThemeMode = "light" | "dark";' not in text:
+              text = text.replace(
+                  'type ActivePage = "dashboard" | "portfolios" | "searches" | "notifications";\n',
+                  'type ActivePage = "dashboard" | "portfolios" | "searches" | "notifications";\ntype ThemeMode = "light" | "dark";\n'
+              )
+
+          if 'function applyTheme(theme: ThemeMode)' not in text:
+              text = text.replace(
+                  '''function downloadContract(fileUrl: string) {
+            const link = document.createElement("a");
+            link.href = fileUrl;
+            link.download = "";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+
+          export default function Home() {''',
+                  '''function downloadContract(fileUrl: string) {
+            const link = document.createElement("a");
+            link.href = fileUrl;
+            link.download = "";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+
+          function applyTheme(theme: ThemeMode) {
+            if (typeof document === "undefined") return;
+
+            document.documentElement.classList.toggle("dark", theme === "dark");
+            document.documentElement.style.colorScheme = theme;
+          }
+
+          export default function Home() {'''
+              )
+
+          home_state = '''export default function Home() {
+            const [theme, setTheme] = useState<ThemeMode>("light");
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [authMode, setAuthMode] = useState<AuthMode>("login");
+            const [authForm, setAuthForm] = useState<AuthForm>({
+              name: "",
+              email: "",
+              password: "",
+              consultantId: String(defaultUser.id)
+            });
+            const [currentUser, setCurrentUser] = useState(defaultUser);
+            const [opportunities, setOpportunities] = useState(initialOpportunities);'''
+          text = re.sub(
+              r'export default function Home\(\) \{\n  const \[isAuthenticated[\s\S]*?  const \[opportunities, setOpportunities\] = useState\(initialOpportunities\);',
+              home_state,
+              text,
+              count=1
+          )
+
+          if 'function toggleTheme() {' not in text:
+              effects = '''
+
+            useEffect(() => {
+              const savedTheme = window.localStorage.getItem("ocean-theme");
+              const systemPrefersDark = window.matchMedia(
+                "(prefers-color-scheme: dark)"
+              );
+              const preferredTheme =
+                savedTheme === "dark" || savedTheme === "light"
+                  ? savedTheme
+                  : systemPrefersDark.matches
+                    ? "dark"
+                    : "light";
+
+              setTheme(preferredTheme);
+              applyTheme(preferredTheme);
+
+              function handleSystemThemeChange(event: MediaQueryListEvent) {
+                if (window.localStorage.getItem("ocean-theme")) return;
+
+                const nextTheme = event.matches ? "dark" : "light";
+                setTheme(nextTheme);
+                applyTheme(nextTheme);
+              }
+
+              systemPrefersDark.addEventListener("change", handleSystemThemeChange);
+
+              return () => {
+                systemPrefersDark.removeEventListener("change", handleSystemThemeChange);
+              };
+            }, []);
+
+            useEffect(() => {
+              const savedConsultantId =
+                window.localStorage.getItem("ocean-consultant-id") || String(defaultUser.id);
+              const savedConsultant = getConsultantById(savedConsultantId);
+
+              setCurrentUser(savedConsultant);
+              setAuthForm((current) => ({
+                ...current,
+                consultantId: String(savedConsultant.id)
+              }));
+              setIsAuthenticated(
+                window.localStorage.getItem("ocean-authenticated") === "true"
+              );
+            }, []);
+
+            function toggleTheme() {
+              const nextTheme = theme === "dark" ? "light" : "dark";
+
+              setTheme(nextTheme);
+              applyTheme(nextTheme);
+              window.localStorage.setItem("ocean-theme", nextTheme);
+            }
+'''
+              text = text.replace('\n\n  function openCreateForm() {', effects + '\n  function openCreateForm() {')
+
+          text = text.replace(
+              '''        form={authForm}
+                  onModeChange={setAuthMode}''',
+              '''        form={authForm}
+                  theme={theme}
+                  onModeChange={setAuthMode}'''
+          )
+          text = text.replace(
+              '''        onFormChange={setAuthForm}
+                  onLogin={(consultant) => {''',
+              '''        onFormChange={setAuthForm}
+                  onToggleTheme={toggleTheme}
+                  onLogin={(consultant) => {'''
+          )
+
+          if 'onToggle={toggleTheme}' not in text:
+              text = text.replace(
+                  '''            <button
+                      className="btn-secondary w-full sm:w-auto"
+                      type="button"
+                      onClick={() =>
+                        setActivePage((current) =>''',
+                  '''            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+                      <button
+                      className="btn-secondary w-full sm:w-auto"
+                      type="button"
+                      onClick={() =>
+                        setActivePage((current) =>'''
+              )
+
+          if 'function ThemeToggle({' not in text:
+              text = text.replace(
+                  '''function SearchStatusBadge({ status }: { status: SearchStatus }) {''',
+                  '''function ThemeToggle({
+            theme,
+            onToggle
+          }: {
+            theme: ThemeMode;
+            onToggle: () => void;
+          }) {
+            const isDark = theme === "dark";
+
+            return (
+              <button
+                type="button"
+                className="btn-secondary w-full gap-2 sm:w-auto"
+                onClick={onToggle}
+                aria-pressed={isDark}
+                aria-label={isDark ? "Açık temaya geç" : "Koyu temaya geç"}
+              >
+                <span aria-hidden="true">{isDark ? "☾" : "☼"}</span>
+                {isDark ? "Koyu" : "Açık"}
+              </button>
+            );
+          }
+
+          function SearchStatusBadge({ status }: { status: SearchStatus }) {'''
+              )
+
+          text = text.replace(
+              '''function AuthScreen({
+            consultants,
+            mode,
+            form,
+            onModeChange,
+            onFormChange,
+            onLogin
+          }: {
+            consultants: Consultant[];
+            mode: AuthMode;
+            form: AuthForm;
+            onModeChange: (mode: AuthMode) => void;
+            onFormChange: (form: AuthForm) => void;
+            onLogin: (consultant: Consultant) => void;
+          }) {''',
+              '''function AuthScreen({
+            consultants,
+            mode,
+            form,
+            theme,
+            onModeChange,
+            onFormChange,
+            onToggleTheme,
+            onLogin
+          }: {
+            consultants: Consultant[];
+            mode: AuthMode;
+            form: AuthForm;
+            theme: ThemeMode;
+            onModeChange: (mode: AuthMode) => void;
+            onFormChange: (form: AuthForm) => void;
+            onToggleTheme: () => void;
+            onLogin: (consultant: Consultant) => void;
+          }) {'''
+          )
+
+          text = text.replace(
+              '''        <section className="w-full rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur-xl sm:p-6">
+                    <div className="mb-6 text-center">''',
+              '''        <section className="w-full rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur-xl sm:p-6">
+                    <div className="mb-4 flex justify-end">
+                      <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+                    </div>
+                    <div className="mb-6 text-center">'''
+          )
+
+          path.write_text(text)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate
+        run: |
+          npm run check
+          npm run build
+
+      - name: Commit materialized dark theme
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.tsx app/globals.css app/layout.tsx tailwind.config.js
+          if git diff --cached --quiet; then
+            echo "No dark theme changes to commit."
+            exit 0
+          fi
+          git commit -m "Add dark theme support"
+          git push

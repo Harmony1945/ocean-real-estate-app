@@ -95,7 +95,7 @@ async function request<T>(path: string, options: RequestInit & { token?: string 
   return data as T;
 }
 
-export function createSupabaseAuthClient() {
+export function createSupabaseAuthClient(): any {
   if (!isSupabaseConfigured || !supabaseUrl) return null;
 
   async function refreshSession(refreshToken: string) {

@@ -1,6 +1,6 @@
-# ocean-real-estate-app
+# OOS
 
-Mobile-first real estate operating system for Ocean Real Estate advisors, portfolios, client requests, matching, CRM, and deal management.
+OOS means Ocean Operating System: a mobile-first real estate operating system for advisors, portfolios, client requests, matching, commissions, and deal management.
 
 ## Requirements
 
@@ -51,11 +51,11 @@ Do not commit real `.env` files or production secrets. Configure real environmen
 
 ## Free-Tier Supabase Auth Setup
 
-Ocean uses a free-tier-friendly foundation: Vercel free tier for hosting and Supabase free tier for Auth, Postgres, and advisor profile records. No paid auth, CRM, analytics, realtime, storage, or background job services are included in this stage.
+OOS uses a free-tier-friendly foundation: Vercel free tier for hosting and Supabase free tier for Auth, Postgres, and advisor profile records. No paid auth, CRM, analytics, realtime, storage, or background job services are included in this stage.
 
 ### 1. Create Supabase Project
 
-Create a project in Supabase and keep it on the free tier while the app is early-stage. This PR only uses Supabase Auth and a lean `profiles` table.
+Create a project in Supabase and keep it on the free tier while the product is early-stage. This setup only uses Supabase Auth and a lean `profiles` table.
 
 ### 2. Environment Variables
 
@@ -86,7 +86,18 @@ https://your-vercel-domain.vercel.app
 
 Also add the matching Supabase callback URL in Google Cloud Console.
 
-### 5. Free-Tier Sustainability Notes
+### 5. Route-Backed Navigation Foundation
+
+The mobile OOS shell uses four route-backed destinations:
+
+- `/` → Ana Sayfa
+- `/portfolios` → Portföyler
+- `/requests` → Arayışlar
+- `/menu` → Menü
+
+The rightmost mobile item is now Menü. The previous rightmost notification function is preserved inside the menu as Bildirimler.
+
+### 6. Free-Tier Sustainability Notes
 
 This foundation intentionally stays lean:
 
@@ -98,4 +109,4 @@ This foundation intentionally stays lean:
 - no paid services yet
 - no storage or file upload changes yet
 
-The auth gate is intentionally isolated so future paid growth can add role-based permissions, advisor profile management, and database-backed portfolios without rewriting the app shell.
+The auth and navigation shell are intentionally isolated so future growth can add role-based permissions, advisor profile management, and database-backed portfolios without rewriting the app shell.

@@ -29,6 +29,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+.dark body {
+  background: #020617;
+  color: #f8fafc;
+}
+
 button,
 input,
 select,
@@ -49,24 +54,37 @@ button:disabled {
   background: rgba(15, 23, 42, 0.12);
 }
 
+/* The original in-page mobile nav remains for state preservation, while OOS owns route-backed navigation globally. */
+body > main > nav.pointer-events-none.fixed {
+  display: none !important;
+}
+
 @layer components {
   .input {
-    @apply min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200/50 sm:text-sm;
+    @apply min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-600 dark:focus:ring-slate-700/40 sm:text-sm;
   }
 
   .btn-primary {
-    @apply inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800;
+    @apply inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white;
   }
 
   .btn-secondary {
-    @apply inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50;
+    @apply inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-800;
   }
 
   .btn-danger {
-    @apply inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-950;
+    @apply inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-slate-100;
   }
 
   .mini-action {
-    @apply inline-flex min-h-8 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50;
+    @apply inline-flex min-h-8 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800;
+  }
+
+  .liquid-glass-nav {
+    @apply border border-white/50 bg-white/70 shadow-[0_18px_45px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/65 dark:shadow-[0_18px_45px_rgba(0,0,0,0.45)];
+  }
+
+  .liquid-glass-strong {
+    @apply border border-white/60 bg-white/80 shadow-[0_18px_45px_rgba(15,23,42,0.10)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[0_18px_45px_rgba(0,0,0,0.35)];
   }
 }

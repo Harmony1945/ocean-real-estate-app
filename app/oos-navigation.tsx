@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { getPreferredTheme, saveTheme, type ThemeMode } from "./theme";
 import { getUserDisplayName, type AdvisorProfile, type SupabaseAuthUser } from "@/lib/supabase/client";
 
 type OOSNavigationProps = {
@@ -36,6 +37,7 @@ const menuItems = [
 export default function OOSNavigation({ user, profile, onLogout }: OOSNavigationProps) {
   const pathname = usePathname();
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<ThemeMode>("light");
   const displayName = getUserDisplayName(user, profile) || "OOS Advisor";
   const role = profile?.role || "advisor";
   const initials = useMemo(
@@ -50,6 +52,16 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
   );
 
   useEffect(() => {
+    setTheme(getPreferredTheme());
+  }, []);
+
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    saveTheme(nextTheme);
+  }
+
+  useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") setDesktopMenuOpen(false);
     }
@@ -61,6 +73,13 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
   return (
     <>
       <div className="fixed right-4 top-4 z-[70] hidden items-center gap-2 md:flex">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="rounded-full border border-white/60 bg-white/80 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm backdrop-blur-xl transition hover:bg-white dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:bg-slate-900"
+        >
+          {theme === "dark" ? "Açık tema" : "Koyu tema"}
+        </button>
         <Link
           href="/menu"
           className="rounded-full border border-white/60 bg-white/80 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm backdrop-blur-xl transition hover:bg-white dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:bg-slate-900"
@@ -77,6 +96,14 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
           <MenuIcon className="h-5 w-5" />
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className="fixed right-4 top-4 z-[70] rounded-full border border-white/60 bg-white/80 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm backdrop-blur-xl transition hover:bg-white dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:bg-slate-900 md:hidden"
+      >
+        {theme === "dark" ? "Açık" : "Koyu"}
+      </button>
 
       {desktopMenuOpen ? (
         <>

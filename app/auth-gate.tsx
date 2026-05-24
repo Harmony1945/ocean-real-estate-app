@@ -556,6 +556,16 @@ function AuthScreen({
               </div>
             </div>
           </div>
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+            OceanOS
+          </p>
+          <h1 className="mt-4 max-w-sm text-4xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100 sm:text-6xl">
+            OOS çalışma alanına hoş geldiniz.
+          </h1>
+          <p className="mt-4 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Portföyler, arayışlar ve danışman operasyonu için sade günlük merkez.
+          </p>
+        </section>
 
           <div className="hidden min-h-[34rem] rounded-[2.5rem] border border-slate-200 bg-white p-4 shadow-[0_30px_100px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-white/[0.04] lg:block">
             <div className="h-full rounded-[2rem] bg-stone-50 p-5 dark:bg-slate-950/70">

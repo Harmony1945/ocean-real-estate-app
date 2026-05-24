@@ -84,6 +84,7 @@ Add redirect URLs for local and production, for example:
 http://localhost:3000
 http://127.0.0.1:3030
 https://your-vercel-domain.vercel.app
+https://your-custom-domain.com
 ```
 
 Also add the matching Supabase callback URL in Google Cloud Console.
@@ -110,7 +111,18 @@ Use this checklist after deploying auth changes:
 5. In Vercel Project Settings → Environment Variables, confirm `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` exist for the deployed environment, then redeploy if they were added after the latest deployment.
 6. Google OAuth is optional for now. Email/password auth can run first; configure Google later in Supabase Authentication → Providers → Google.
 
-### 7. Free-Tier Sustainability Notes
+### 7. Production Domain Checklist
+
+Before switching the public domain to production:
+
+1. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel.
+2. Apply the Supabase profile migrations listed above.
+3. Merge the production PR into `main` and let Vercel deploy from `main`.
+4. Add the custom domain in Vercel Project Settings → Domains.
+5. Configure DNS with the records Vercel provides.
+6. Add the custom domain to Supabase Auth redirect URLs and any Google OAuth allowed redirect/origin settings.
+
+### 8. Free-Tier Sustainability Notes
 
 This foundation intentionally stays lean:
 

@@ -21,9 +21,19 @@ type AuthForm = {
 
 type ProfileForm = {
   fullName: string;
+  phoneCountryCode: string;
   phone: string;
   company: string;
 };
+
+const phoneCountries = [
+  { label: "Turkey", flag: "🇹🇷", code: "+90" },
+  { label: "United Kingdom", flag: "🇬🇧", code: "+44" },
+  { label: "Dubai / UAE", flag: "🇦🇪", code: "+971" },
+  { label: "Kazakhstan", flag: "🇰🇿", code: "+7" }
+];
+
+const defaultPhoneCountry = phoneCountries[0];
 
 function applyTheme(theme: ThemeMode) {
   if (typeof document === "undefined") return;
@@ -46,10 +56,38 @@ function isProfileComplete(profile: AdvisorProfile | null) {
   );
 }
 
+function parseStoredPhone(phone?: string | null) {
+  const trimmedPhone = phone?.trim() || "";
+  const country =
+    phoneCountries.find((item) => trimmedPhone.startsWith(item.code)) ||
+    defaultPhoneCountry;
+
+  return {
+    phoneCountryCode: country.code,
+    phone: trimmedPhone.startsWith(country.code)
+      ? trimmedPhone.slice(country.code.length)
+      : trimmedPhone
+  };
+}
+
+function formatInternationalPhone(countryCode: string, phone: string) {
+  const country = phoneCountries.find((item) => item.code === countryCode) || defaultPhoneCountry;
+  const countryDigits = country.code.replace(/\D/g, "");
+  const digits = phone.replace(/\D/g, "");
+  const localDigits = digits.startsWith(countryDigits)
+    ? digits.slice(countryDigits.length)
+    : digits.replace(/^0+/, "");
+
+  return `${country.code}${localDigits}`;
+}
+
 function getInitialProfileForm(user: SupabaseAuthUser | null, profile?: AdvisorProfile | null): ProfileForm {
+  const phone = parseStoredPhone(profile?.phone);
+
   return {
     fullName: profile?.full_name || getUserDisplayName(user, profile) || "",
-    phone: profile?.phone || "",
+    phoneCountryCode: phone.phoneCountryCode,
+    phone: phone.phone,
     company: profile?.company || ""
   };
 }
@@ -94,7 +132,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [authForm, setAuthForm] = useState<AuthForm>({ name: "", email: "", password: "" });
   const [authUser, setAuthUser] = useState<SupabaseAuthUser | null>(null);
   const [profile, setProfile] = useState<AdvisorProfile | null>(null);
-  const [profileForm, setProfileForm] = useState<ProfileForm>({ fullName: "", phone: "", company: "" });
+  const [profileForm, setProfileForm] = useState<ProfileForm>({
+    fullName: "",
+    phoneCountryCode: defaultPhoneCountry.code,
+    phone: "",
+    company: ""
+  });
   const [authLoading, setAuthLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -298,7 +341,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     setProfileError("");
 
     try {
-      const savedProfile = await supabase.saveProfile(authUser, profileForm);
+      const savedProfile = await supabase.saveProfile(authUser, {
+        ...profileForm,
+        phone: formatInternationalPhone(profileForm.phoneCountryCode, profileForm.phone)
+      });
       setProfile(savedProfile);
       setProfileForm(getInitialProfileForm(authUser, savedProfile));
     } catch (error) {
@@ -449,57 +495,81 @@ function AuthScreen({
 
   return (
     <main
-      className="relative min-h-dvh overflow-hidden bg-stone-50 px-3 text-slate-950 dark:bg-slate-950 dark:text-slate-100 sm:px-4"
-      style={{ backgroundImage: "url('/mandarin-2.jpeg')", backgroundPosition: "center", backgroundSize: "cover" }}
+      className="relative min-h-dvh overflow-hidden bg-stone-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100"
     >
-      <div className="relative mx-auto flex min-h-dvh max-w-md items-center justify-center py-6 sm:py-8">
-        <section className="w-full rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/85 sm:p-6">
-          <div className="mb-4 flex justify-end">
-            <button type="button" className="btn-secondary min-h-9 px-3 py-1 text-xs" onClick={onToggleTheme}>
+      <div className="relative mx-auto flex min-h-dvh max-w-lg flex-col justify-between px-4 pt-6 sm:max-w-xl sm:px-6 sm:py-8 lg:max-w-5xl lg:flex-row lg:items-center lg:gap-10">
+        <button type="button" className="btn-secondary absolute right-4 top-4 z-20 min-h-9 px-3 py-1 text-xs" onClick={onToggleTheme}>
               {theme === "dark" ? "Koyu" : "Açık"}
             </button>
-          </div>
-          <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold shadow-sm dark:border-slate-700 dark:bg-slate-900">
-              O
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-3xl">
-              OOS
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-              Ocean Operating System, portföyler ve komisyonlar için özel çalışma alanı.
-            </p>
-          </div>
 
-          <div className="mb-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
+        <section className="flex flex-1 flex-col items-center justify-center pb-8 pt-16 text-center lg:pb-16 lg:pt-8">
+          <div className="relative mb-8 flex h-44 w-44 items-center justify-center sm:h-56 sm:w-56">
+            <div className="absolute inset-4 animate-oos-liquid-ring rounded-full border border-slate-200/80 bg-white/50 shadow-[0_24px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]" />
+            <div className="animate-oos-liquid-float relative flex h-28 w-28 items-center justify-center border border-white/70 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_24px_70px_rgba(15,23,42,0.16)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)] sm:h-36 sm:w-36">
+              <span className="text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-5xl">
+                O
+              </span>
+            </div>
+          </div>
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+            OceanOS
+          </p>
+          <h1 className="mt-4 max-w-sm text-4xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100 sm:text-6xl">
+            OOS çalışma alanına hoş geldiniz.
+          </h1>
+          <p className="mt-4 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Portföyler, arayışlar ve danışman operasyonu için sade günlük merkez.
+          </p>
+        </section>
+
+        <section className="mx-[-1rem] rounded-t-[2.2rem] bg-slate-950 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-5 text-white shadow-[0_-24px_80px_rgba(15,23,42,0.20)] dark:bg-black sm:mx-0 sm:w-full sm:rounded-[2.2rem] sm:p-6 lg:max-w-md">
+          <div className="mb-4 grid gap-2">
             <button
               type="button"
-              onClick={() => onModeChange("login")}
-              className={`rounded-xl px-3 py-2 text-sm transition ${
-                mode === "login"
-                  ? "bg-white text-slate-950 shadow-sm dark:bg-slate-950 dark:text-slate-100"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-              }`}
+              disabled
+              className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 opacity-95 shadow-sm disabled:cursor-not-allowed"
             >
-              Login
+              Apple ile Devam Et
             </button>
+            <button
+              type="button"
+              onClick={continueWithGoogle}
+              disabled={loading || !isConfigured}
+              className="flex min-h-14 w-full items-center justify-center rounded-2xl border border-white/10 bg-white px-4 py-3 text-sm font-medium text-slate-950 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              Google ile devam et
+            </button>
+          </div>
+
+          <div className="mb-4 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => onModeChange("signup")}
-              className={`rounded-xl px-3 py-2 text-sm transition ${
+              className={`min-h-12 rounded-2xl px-3 py-2 text-sm font-medium transition ${
                 mode === "signup"
-                  ? "bg-white text-slate-950 shadow-sm dark:bg-slate-950 dark:text-slate-100"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  ? "bg-white text-slate-950"
+                  : "bg-white/10 text-white hover:bg-white/15"
               }`}
             >
-              Signup
+              Kaydol
+            </button>
+            <button
+              type="button"
+              onClick={() => onModeChange("login")}
+              className={`min-h-12 rounded-2xl px-3 py-2 text-sm font-medium transition ${
+                mode === "login"
+                  ? "bg-white text-slate-950"
+                  : "bg-white/10 text-white hover:bg-white/15"
+              }`}
+            >
+              Oturum aç
             </button>
           </div>
 
           <div className="space-y-3">
             {mode === "signup" ? (
               <input
-                className="input !rounded-xl !px-4 !py-3"
+                className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
                 placeholder="Ad Soyad"
                 value={form.name}
                 onChange={(event) => update("name", event.target.value)}
@@ -509,7 +579,7 @@ function AuthScreen({
               />
             ) : null}
             <input
-              className="input !rounded-xl !px-4 !py-3"
+              className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
               placeholder="Kullanıcı adı veya e-posta"
               value={form.email}
               onChange={(event) => update("email", event.target.value)}
@@ -518,7 +588,7 @@ function AuthScreen({
               }}
             />
             <input
-              className="input !rounded-xl !px-4 !py-3"
+              className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
               placeholder="Şifre"
               type="password"
               value={form.password}
@@ -528,38 +598,27 @@ function AuthScreen({
               }}
             />
             {!isConfigured ? (
-              <p className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-sm leading-6 text-slate-600 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+              <p className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-sm leading-6 text-white/70">
                 Supabase kurulumu bekleniyor. `NEXT_PUBLIC_SUPABASE_URL` ve `NEXT_PUBLIC_SUPABASE_ANON_KEY` eklenince gerçek giriş aktif olur.
               </p>
             ) : null}
             {notice ? (
-              <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <p className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-100">
                 {notice}
               </p>
             ) : null}
-            {localError || error ? <p className="text-sm text-red-600 dark:text-red-300">{localError || error}</p> : null}
+            {localError || error ? <p className="text-sm text-red-200">{localError || error}</p> : null}
             <button
               type="button"
               onClick={submit}
               disabled={loading || !isConfigured}
-              className="w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-100 dark:text-slate-950"
+              className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-55"
             >
-              {loading ? "Kontrol ediliyor..." : mode === "signup" ? "Hesap Oluştur" : "Giriş Yap"}
-            </button>
-            <button
-              type="button"
-              onClick={continueWithGoogle}
-              disabled={loading || !isConfigured}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-            >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 text-xs font-semibold dark:border-slate-700">
-                G
-              </span>
-              Continue with Google
+              {loading ? "Kontrol ediliyor..." : mode === "signup" ? "Kaydol" : "Oturum aç"}
             </button>
           </div>
 
-          <p className="mt-6 text-center text-xs text-slate-400">Private workspace for OOS advisors.</p>
+          <p className="mt-5 text-center text-xs leading-5 text-white/40">OOS advisors private workspace</p>
         </section>
       </div>
     </main>
@@ -599,6 +658,10 @@ function ProfileCompletionScreen({
   onLogout: () => void;
   onToggleTheme: () => void;
 }) {
+  const selectedPhoneCountry =
+    phoneCountries.find((country) => country.code === form.phoneCountryCode) ||
+    defaultPhoneCountry;
+
   function update(key: keyof ProfileForm, value: string) {
     onFormChange({ ...form, [key]: value });
   }
@@ -628,12 +691,32 @@ function ProfileCompletionScreen({
           value={form.fullName}
           onChange={(event) => update("fullName", event.target.value)}
         />
-        <input
-          className="input !rounded-xl !px-4 !py-3"
-          placeholder="Telefon"
-          value={form.phone}
-          onChange={(event) => update("phone", event.target.value)}
-        />
+        <div className="grid gap-2 sm:grid-cols-[160px_minmax(0,1fr)]">
+          <div className="relative">
+            <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-lg leading-none">
+              {selectedPhoneCountry.flag}
+            </span>
+            <select
+              className="input !rounded-xl !py-3 !pl-12 !pr-4"
+              aria-label="Telefon ülke kodu"
+              value={form.phoneCountryCode}
+              onChange={(event) => update("phoneCountryCode", event.target.value)}
+            >
+              {phoneCountries.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.flag} {country.code}
+                </option>
+              ))}
+            </select>
+          </div>
+          <input
+            className="input !rounded-xl !px-4 !py-3"
+            inputMode="tel"
+            placeholder="555 111 22 33"
+            value={form.phone}
+            onChange={(event) => update("phone", event.target.value)}
+          />
+        </div>
         <input
           className="input !rounded-xl !px-4 !py-3"
           placeholder="Şirket"

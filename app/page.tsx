@@ -18,6 +18,7 @@ type PortfolioStageFilter =
 type PortfolioSort = "En Yeni" | "En Yüksek Değer" | "En Yüksek Komisyon" | "A-Z";
 type SearchStatus = "Aktif" | "Acil" | "Beklemede" | "Kapatıldı" | "Eşleşme Bulundu";
 type SearchUrgency = "Acil" | "Normal" | "Düşük";
+type SearchCurrency = "TRY" | "USD" | "EUR" | "GBP";
 type SearchFilter =
   | "Tüm Arayışlar"
   | "Benim Arayışlarım"
@@ -84,6 +85,8 @@ type SearchRequest = {
   propertyType: string;
   minPrice: number;
   maxPrice: number;
+  currency: SearchCurrency;
+  minBedrooms: number;
   minArea: number;
   maxArea: number;
   rooms: string;
@@ -100,6 +103,8 @@ type SearchForm = {
   propertyType: string;
   minPrice: string;
   maxPrice: string;
+  currency: SearchCurrency;
+  minBedrooms: string;
   minArea: string;
   maxArea: string;
   rooms: string;
@@ -154,6 +159,7 @@ type SahibindenListing = {
 };
 
 const commissionRates = [1, 1.5, 2, 3, 4];
+const searchCurrencies: SearchCurrency[] = ["TRY", "USD", "EUR", "GBP"];
 
 const initialOpportunities: Opportunity[] = [
   {
@@ -287,6 +293,8 @@ const initialSearchRequests: SearchRequest[] = [
     propertyType: "Villa",
     minPrice: 0,
     maxPrice: 120000000,
+    currency: "TRY",
+    minBedrooms: 4,
     minArea: 350,
     maxArea: 800,
     rooms: "4+1",
@@ -305,6 +313,8 @@ const initialSearchRequests: SearchRequest[] = [
     propertyType: "Ticari",
     minPrice: 0,
     maxPrice: 15000000,
+    currency: "TRY",
+    minBedrooms: 0,
     minArea: 300,
     maxArea: 700,
     rooms: "",
@@ -406,6 +416,8 @@ function emptySearchForm(): SearchForm {
     propertyType: "Villa",
     minPrice: "",
     maxPrice: "",
+    currency: "TRY",
+    minBedrooms: "",
     minArea: "",
     maxArea: "",
     rooms: "",
@@ -438,6 +450,14 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function formatCurrencyAmount(value: number, currency: SearchCurrency = "TRY") {
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
 function money(value: number) {
   return formatCurrency(value);
 }
@@ -459,6 +479,12 @@ function parseArea(value?: string) {
   if (!value) return null;
   const number = String(value).replace(/[^0-9]/g, "");
   return number ? Number(number) : null;
+}
+
+function parseBedrooms(value?: string) {
+  if (!value) return null;
+  const match = String(value).match(/\d+/);
+  return match ? Number(match[0]) : null;
 }
 
 function today() {
@@ -503,7 +529,7 @@ function getSearchMatchDetails(search: SearchRequest, portfolio: Opportunity) {
   let score = 0;
   let maxScore = 0;
 
-  maxScore += 30;
+  maxScore += 35;
   if (
     portfolio.location &&
     search.location &&
@@ -511,32 +537,32 @@ function getSearchMatchDetails(search: SearchRequest, portfolio: Opportunity) {
       search.location.toLocaleLowerCase("tr-TR")
     )
   ) {
-    score += 30;
-    details.push({ label: "Lokasyon uyumlu", value: search.location, passed: true });
+    score += 35;
+    details.push({ label: "Lokasyon", value: search.location, passed: true });
   } else {
     details.push({
-      label: "Lokasyon doğrulanmalı",
+      label: "Lokasyon",
       value: search.location || "Belirtilmedi",
       passed: false
     });
   }
 
-  maxScore += 20;
+  maxScore += 25;
   if (
     portfolio.propertyType &&
     search.propertyType &&
     portfolio.propertyType.toLocaleLowerCase("tr-TR") ===
       search.propertyType.toLocaleLowerCase("tr-TR")
   ) {
-    score += 20;
+    score += 25;
     details.push({
-      label: "Portföy tipi uyumlu",
+      label: "Tip",
       value: search.propertyType,
       passed: true
     });
   } else {
     details.push({
-      label: "Portföy tipi doğrulanmalı",
+      label: "Tip",
       value: search.propertyType || "Belirtilmedi",
       passed: false
     });
@@ -548,46 +574,28 @@ function getSearchMatchDetails(search: SearchRequest, portfolio: Opportunity) {
   const maxPrice = Number(search.maxPrice || 0);
   if (price && (!minPrice || price >= minPrice) && (!maxPrice || price <= maxPrice)) {
     score += 25;
-    details.push({ label: "Fiyat aralığında", value: price, passed: true });
+    details.push({ label: "Fiyat aralığı", value: price, passed: true });
   } else {
     details.push({
-      label: "Fiyat uyumu doğrulanmalı",
+      label: "Fiyat aralığı",
       value: price || "Fiyat yok",
       passed: false
     });
   }
 
-  maxScore += 15;
-  const area = parseArea(portfolio.area);
-  const minArea = Number(search.minArea || 0);
-  const maxArea = Number(search.maxArea || 0);
-  if (area && (!minArea || area >= minArea) && (!maxArea || area <= maxArea)) {
-    score += 15;
-    details.push({ label: "m² kriterine uygun", value: area, passed: true });
-  } else {
-    details.push({
-      label: "m² bilgisi doğrulanmalı",
-      value: area || "m² yok",
-      passed: false
-    });
-  }
-
-  maxScore += 10;
-  if (
-    portfolio.rooms &&
-    search.rooms &&
-    String(portfolio.rooms)
-      .toLocaleLowerCase("tr-TR")
-      .includes(String(search.rooms).toLocaleLowerCase("tr-TR"))
-  ) {
-    score += 10;
-    details.push({ label: "Oda sayısı uyumlu", value: search.rooms, passed: true });
-  } else {
-    details.push({
-      label: "Oda bilgisi doğrulanmalı",
-      value: search.rooms || "Belirtilmedi",
-      passed: false
-    });
+  if (search.minBedrooms > 0) {
+    maxScore += 15;
+    const bedrooms = parseBedrooms(portfolio.rooms);
+    if (bedrooms !== null && bedrooms >= search.minBedrooms) {
+      score += 15;
+      details.push({ label: "Yatak odası", value: `${bedrooms}+`, passed: true });
+    } else {
+      details.push({
+        label: "Yatak odası",
+        value: bedrooms !== null ? `${bedrooms}+` : "Bilgi yok",
+        passed: false
+      });
+    }
   }
 
   return {
@@ -602,6 +610,16 @@ function calculateSearchMatch(search: SearchRequest, portfolio: Opportunity) {
 
 function getMatchBadge(score: number) {
   return score >= 85 ? "Güçlü Eşleşme" : "Eşleşme";
+}
+
+function getMatchReason(details: MatchDetail[]) {
+  const matched = details
+    .filter((detail) => detail.passed)
+    .map((detail) => detail.label.toLocaleLowerCase("tr-TR"));
+
+  if (!matched.length) return "temel kriterler doğrulanmalı";
+
+  return `${matched.join(", ")} uyumlu`;
 }
 
 function getSearchMatches(search: SearchRequest, portfolios: Opportunity[]) {
@@ -804,6 +822,35 @@ export default function Home() {
 
     return true;
   });
+  const myActivePortfolios = opportunities.filter(
+    (opportunity) =>
+      opportunity.ownerConsultantId === currentUser.id &&
+      opportunity.stage !== "Kapandı"
+  );
+  const myActiveSearchRequests = searchRequests.filter(
+    (request) => request.consultantId === currentUser.id && request.status !== "Kapatıldı"
+  );
+  const recentMatches = searchRequests
+    .flatMap((request) =>
+      getSearchMatches(request, opportunities).map((match) => ({
+        search: request,
+        ...match
+      }))
+    )
+    .filter(
+      (match) =>
+        match.search.consultantId === currentUser.id ||
+        match.portfolio.ownerConsultantId === currentUser.id
+    )
+    .slice(0, 3);
+  const profileCompletionItems = [
+    Boolean(currentUser.firstName.trim() && currentUser.lastName.trim()),
+    Boolean(currentUser.phone.trim()),
+    currentUser.portfolioCount > 0
+  ];
+  const profileCompletion = Math.round(
+    (profileCompletionItems.filter(Boolean).length / profileCompletionItems.length) * 100
+  );
   const activePageTitle: Record<ActivePage, string> = {
     dashboard: "OCEAN BrokerageOS",
     portfolios: "Tüm Portföyler",
@@ -922,6 +969,8 @@ export default function Home() {
       propertyType: searchForm.propertyType.trim() || "Portföy",
       minPrice: Number(searchForm.minPrice || 0),
       maxPrice: Number(searchForm.maxPrice || 0),
+      currency: searchForm.currency,
+      minBedrooms: Number(searchForm.minBedrooms || 0),
       minArea: Number(searchForm.minArea || 0),
       maxArea: Number(searchForm.maxArea || 0),
       rooms: searchForm.rooms.trim(),
@@ -960,6 +1009,8 @@ export default function Home() {
       propertyType: request.propertyType,
       minPrice: String(request.minPrice || ""),
       maxPrice: String(request.maxPrice || ""),
+      currency: request.currency,
+      minBedrooms: String(request.minBedrooms || ""),
       minArea: String(request.minArea || ""),
       maxArea: String(request.maxArea || ""),
       rooms: request.rooms,
@@ -1097,19 +1148,19 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-stone-50 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] text-slate-950 sm:px-6 sm:py-6 md:pb-8 lg:px-8">
+    <main className="min-h-screen overflow-x-hidden bg-stone-50 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] text-slate-950 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-6 md:pb-8 lg:px-8">
       <div className="mx-auto max-w-6xl min-w-0">
-        <header className="flex flex-col gap-5 border-b border-slate-200 pb-6 sm:gap-6 sm:pb-8 md:flex-row md:items-end md:justify-between">
+        <header className="flex flex-col gap-5 border-b border-slate-200 pb-6 dark:border-slate-800 sm:gap-6 sm:pb-8 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold shadow-sm">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 O
               </span>
               <span className="text-sm font-medium text-slate-500">
                 OCEAN BrokerageOS
               </span>
             </div>
-            <h1 className="mt-6 max-w-3xl break-words text-[2rem] font-semibold leading-tight tracking-tight text-slate-950 sm:mt-8 sm:text-5xl">
+            <h1 className="mt-6 max-w-3xl break-words text-[2rem] font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100 sm:mt-8 sm:text-5xl">
               {activePageTitle[activePage]}
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-slate-500">
@@ -1143,7 +1194,7 @@ export default function Home() {
             >
               Çıkış
             </button>
-            <span className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500 sm:w-auto">
+            <span className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:w-auto">
               {getConsultantName(currentUser)}
             </span>
             <button className="btn-primary w-full sm:w-auto" type="button" onClick={openCreateForm}>
@@ -1208,6 +1259,27 @@ export default function Home() {
           </section>
         ) : (
           <>
+            <AdvisorHomeScreen
+              currentUser={currentUser}
+              profileCompletion={profileCompletion}
+              activePortfolios={myActivePortfolios}
+              activeSearchRequests={myActiveSearchRequests}
+              recentMatches={recentMatches}
+              onAddPortfolio={openCreateForm}
+              onAddSearchRequest={() => {
+                setEditingSearchId(null);
+                setSearchForm(emptySearchForm());
+                setSearchFormOpen(true);
+                setSearchSuccess("");
+                setActivePage("searches");
+              }}
+              onOpenPortfolio={(id) => setSelectedId(id)}
+              onViewMatches={() => {
+                setSearchFilter("Güçlü Eşleşmeler");
+                setActivePage("searches");
+              }}
+            />
+
             <div className="mt-6 lg:hidden">
               <SearchRequestsCard
                 currentUser={currentUser}
@@ -1573,6 +1645,9 @@ export default function Home() {
             </Card>
           </aside>
         </section>
+            <footer className="pb-2 pt-8 text-center text-xs text-slate-400 dark:text-slate-600">
+              Star Girişim ve Yatırım A.Ş.
+            </footer>
           </>
         )}
       </div>
@@ -2150,8 +2225,8 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <h2 className="text-base font-semibold tracking-tight text-slate-950">
+    <section className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
+      <h2 className="text-base font-semibold tracking-tight text-slate-950 dark:text-slate-100">
         {title}
       </h2>
       <div className="mt-4 min-w-0">{children}</div>
@@ -2215,6 +2290,9 @@ function SearchMatchCard({
           <span className="text-sm font-semibold text-slate-950">%{match.score}</span>
         </div>
       </div>
+      <p className="mt-3 text-sm leading-6 text-slate-600">
+        %{match.score} eşleşme: {getMatchReason(match.details)}.
+      </p>
 
       <div className="mt-3 h-1.5 rounded-full bg-slate-100">
         <div
@@ -2362,9 +2440,14 @@ function SearchRequestsCard({
               <input className="input" placeholder="Başlık" value={form.title} onChange={(event) => update("title", event.target.value)} />
               <input className="input" placeholder="Lokasyon" value={form.location} onChange={(event) => update("location", event.target.value)} />
               <input className="input" placeholder="Portföy tipi" value={form.propertyType} onChange={(event) => update("propertyType", event.target.value)} />
-              <input className="input" placeholder="Oda" value={form.rooms} onChange={(event) => update("rooms", event.target.value)} />
               <input className="input" inputMode="numeric" placeholder="Min fiyat" value={form.minPrice} onChange={(event) => update("minPrice", event.target.value)} />
               <input className="input" inputMode="numeric" placeholder="Maks fiyat" value={form.maxPrice} onChange={(event) => update("maxPrice", event.target.value)} />
+              <select className="input" value={form.currency} onChange={(event) => update("currency", event.target.value)}>
+                {searchCurrencies.map((currency) => (
+                  <option key={currency}>{currency}</option>
+                ))}
+              </select>
+              <input className="input" inputMode="numeric" placeholder="Minimum yatak odası" value={form.minBedrooms} onChange={(event) => update("minBedrooms", event.target.value)} />
               <input className="input" inputMode="numeric" placeholder="Min m²" value={form.minArea} onChange={(event) => update("minArea", event.target.value)} />
               <input className="input" inputMode="numeric" placeholder="Maks m²" value={form.maxArea} onChange={(event) => update("maxArea", event.target.value)} />
               <input className="input" placeholder="Amaç" value={form.purpose} onChange={(event) => update("purpose", event.target.value)} />
@@ -2376,7 +2459,7 @@ function SearchRequestsCard({
             </div>
             <textarea
               className="input mt-3 min-h-24 resize-none"
-              placeholder="Hızlı Arayış Notu: Beykoz’da 4+1 villa, 100M TL’ye kadar, min 350 m²"
+              placeholder="Hızlı Arayış Notu: Beykoz’da villa, 3M-5M USD, 4+ yatak odası"
               value={form.quickNote}
               onChange={(event) => update("quickNote", event.target.value)}
             />
@@ -2426,9 +2509,12 @@ function SearchRequestsCard({
                   <div className="mt-4 grid gap-2 break-words text-sm text-slate-600 sm:grid-cols-2">
                     <p>Lokasyon: {request.location}</p>
                     <p>Tip: {request.propertyType}</p>
-                    <p>Maks: {request.maxPrice ? money(request.maxPrice) : "Belirtilmedi"}</p>
-                    <p>Min: {request.minArea || 0} m²</p>
-                    <p>Oda: {request.rooms || "Belirtilmedi"}</p>
+                    <p>
+                      Bütçe:{" "}
+                      {request.minPrice ? formatCurrencyAmount(request.minPrice, request.currency) : "Min yok"} -{" "}
+                      {request.maxPrice ? formatCurrencyAmount(request.maxPrice, request.currency) : "Maks yok"}
+                    </p>
+                    <p>Minimum yatak odası: {request.minBedrooms || "Belirtilmedi"}</p>
                     <p>Tarih: {request.createdAt}</p>
                   </div>
                   <p className="mt-3 break-words text-sm leading-6 text-slate-500">{request.notes}</p>
@@ -2448,6 +2534,9 @@ function SearchRequestsCard({
                         </p>
                         <p className="mt-1 truncate text-xs text-slate-500">
                           En güçlü eşleşme · {bestMatch.portfolio.location}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-slate-500">
+                          {getMatchReason(bestMatch.details)}
                         </p>
                       </div>
                       <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
@@ -2786,6 +2875,191 @@ function AuthScreen({
   );
 }
 
+function AdvisorHomeScreen({
+  currentUser,
+  profileCompletion,
+  activePortfolios,
+  activeSearchRequests,
+  recentMatches,
+  onAddPortfolio,
+  onAddSearchRequest,
+  onOpenPortfolio,
+  onViewMatches
+}: {
+  currentUser: Consultant;
+  profileCompletion: number;
+  activePortfolios: Opportunity[];
+  activeSearchRequests: SearchRequest[];
+  recentMatches: Array<ReturnType<typeof getSearchMatches>[number] & { search: SearchRequest }>;
+  onAddPortfolio: () => void;
+  onAddSearchRequest: () => void;
+  onOpenPortfolio: (id: number) => void;
+  onViewMatches: () => void;
+}) {
+  return (
+    <section className="mt-6 grid min-w-0 gap-4 sm:mt-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Bugünkü çalışma ekranı
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+              {getConsultantName(currentUser)}
+            </h2>
+          </div>
+          <div className="oos-card-muted rounded-3xl p-3 sm:min-w-48">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Profil
+              </span>
+              <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                %{profileCompletion}
+              </span>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-slate-200 dark:bg-slate-800">
+              <div
+                className="h-2 rounded-full bg-emerald-500"
+                style={{ width: `${profileCompletion}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              {profileCompletion === 100 ? "Profil tamamlandı" : "Profil bilgileri eksik"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <DashboardMetric label="Aktif portföyüm" value={activePortfolios.length} />
+          <DashboardMetric label="Aktif arayışım" value={activeSearchRequests.length} />
+          <DashboardMetric label="Son eşleşme" value={recentMatches.length} />
+        </div>
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-3">
+          <button className="btn-primary" type="button" onClick={onAddPortfolio}>
+            Portföy Ekle
+          </button>
+          <button className="btn-secondary" type="button" onClick={onAddSearchRequest}>
+            Arayış Ekle
+          </button>
+          <button className="btn-secondary" type="button" onClick={onViewMatches}>
+            Eşleşmeleri Gör
+          </button>
+        </div>
+      </div>
+
+      <div className="grid min-w-0 gap-4">
+        <DashboardList
+          title="Aktif Portföylerim"
+          empty="Aktif portföy yok."
+          items={activePortfolios.slice(0, 3).map((portfolio) => ({
+            id: portfolio.id,
+            title: portfolio.title,
+            meta: `${portfolio.location} · ${money(portfolio.value)}`,
+            badge: portfolio.stage
+          }))}
+          onSelect={(id) => onOpenPortfolio(Number(id))}
+        />
+
+        <DashboardList
+          title="Aktif Arayışlarım"
+          empty="Aktif arayış yok."
+          items={activeSearchRequests.slice(0, 3).map((request) => ({
+            id: request.id,
+            title: request.title,
+            meta: `${request.location} · ${request.purpose}`,
+            badge: request.urgency
+          }))}
+        />
+
+        <DashboardList
+          title="Son Eşleşmeler"
+          empty="Henüz eşleşme yok."
+          items={recentMatches.map((match) => ({
+            id: `${match.search.id}-${match.portfolio.id}`,
+            title: match.portfolio.title,
+            meta: `${match.search.title} · ${match.portfolio.location}`,
+            badge: `%${match.score}`
+          }))}
+          onSelect={(id) => onOpenPortfolio(Number(String(id).split("-").at(-1)))}
+        />
+      </div>
+    </section>
+  );
+}
+
+function DashboardMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="oos-card-muted rounded-3xl p-4">
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function DashboardList({
+  title,
+  empty,
+  items,
+  onSelect
+}: {
+  title: string;
+  empty: string;
+  items: Array<{ id: number | string; title: string; meta: string; badge: string }>;
+  onSelect?: (id: number | string) => void;
+}) {
+  return (
+    <section className="oos-card min-w-0 rounded-3xl p-4">
+      <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-100">{title}</h3>
+      {items.length ? (
+        <div className="mt-3 space-y-2">
+          {items.map((item) => {
+            const content = (
+              <>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-950 dark:text-slate-100">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                    {item.meta}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  {item.badge}
+                </span>
+              </>
+            );
+
+            return onSelect ? (
+              <button
+                key={item.id}
+                className="flex w-full items-center justify-between gap-3 rounded-2xl bg-stone-50 px-3 py-3 text-left transition hover:bg-slate-100 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
+                type="button"
+                onClick={() => onSelect(item.id)}
+              >
+                {content}
+              </button>
+            ) : (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-3 rounded-2xl bg-stone-50 px-3 py-3 dark:bg-white/[0.04]"
+              >
+                {content}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
+          {empty}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function SummaryCards({ deals }: { deals: Opportunity[] }) {
   const totalPortfolioValue = deals.reduce(
     (sum, deal) => sum + Number(deal.value || 0),
@@ -2803,23 +3077,23 @@ function SummaryCards({ deals }: { deals: Opportunity[] }) {
 
   return (
     <section className="mt-5 grid min-w-0 gap-3 sm:mt-6 md:grid-cols-3">
-      <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
         <p className="text-sm text-slate-500">Toplam Portföy Değeri</p>
-        <p className="mt-2 break-words text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+        <p className="mt-2 break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-2xl">
           {money(totalPortfolioValue)}
         </p>
       </div>
 
-      <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
         <p className="text-sm text-slate-500">Toplam Komisyon</p>
         <p className="mt-2 break-words text-xl font-semibold tracking-tight text-emerald-700 sm:text-2xl">
           {money(totalCommission)}
         </p>
       </div>
 
-      <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
         <p className="text-sm text-slate-500">Potansiyel Komisyon</p>
-        <p className="mt-2 break-words text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+        <p className="mt-2 break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-2xl">
           {money(potentialCommission)}
         </p>
       </div>

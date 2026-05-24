@@ -87,4 +87,44 @@ body > main > nav.pointer-events-none.fixed {
   .liquid-glass-strong {
     @apply border border-white/60 bg-white/80 shadow-[0_18px_45px_rgba(15,23,42,0.10)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[0_18px_45px_rgba(0,0,0,0.35)];
   }
+
+  .oos-card {
+    @apply border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-950/80 dark:shadow-[0_18px_45px_rgba(0,0,0,0.22)];
+  }
+
+  .oos-card-muted {
+    @apply border border-slate-200 bg-stone-50 dark:border-white/10 dark:bg-white/[0.04];
+  }
+}
+
+@keyframes oos-liquid-float {
+  0%, 100% {
+    border-radius: 42% 58% 56% 44% / 48% 42% 58% 52%;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    border-radius: 58% 42% 46% 54% / 42% 58% 42% 58%;
+    transform: translate3d(0, -10px, 0) rotate(6deg);
+  }
+}
+
+@keyframes oos-liquid-ring {
+  0%, 100% {
+    transform: scale(0.92);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.78;
+  }
+}
+
+@layer utilities {
+  .animate-oos-liquid-float {
+    animation: oos-liquid-float 7s ease-in-out infinite;
+  }
+
+  .animate-oos-liquid-ring {
+    animation: oos-liquid-ring 5s ease-in-out infinite;
+  }
 }

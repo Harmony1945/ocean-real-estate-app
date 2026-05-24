@@ -59,6 +59,20 @@ body > main > nav.pointer-events-none.fixed {
   display: none !important;
 }
 
+body > main > div.mx-auto.max-w-6xl::after {
+  content: "Star Girişim ve Yatırım A.Ş.";
+  display: block;
+  padding: 2rem 0 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #94a3b8;
+}
+
+.dark body > main > div.mx-auto.max-w-6xl::after {
+  color: #475569;
+}
+
 @layer components {
   .input {
     @apply min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-600 dark:focus:ring-slate-700/40 sm:text-sm;
@@ -86,5 +100,45 @@ body > main > nav.pointer-events-none.fixed {
 
   .liquid-glass-strong {
     @apply border border-white/60 bg-white/80 shadow-[0_18px_45px_rgba(15,23,42,0.10)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[0_18px_45px_rgba(0,0,0,0.35)];
+  }
+
+  .oos-card {
+    @apply border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-950/80 dark:shadow-[0_18px_45px_rgba(0,0,0,0.22)];
+  }
+
+  .oos-card-muted {
+    @apply border border-slate-200 bg-stone-50 dark:border-white/10 dark:bg-white/[0.04];
+  }
+}
+
+@keyframes oos-liquid-float {
+  0%, 100% {
+    border-radius: 42% 58% 56% 44% / 48% 42% 58% 52%;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    border-radius: 58% 42% 46% 54% / 42% 58% 42% 58%;
+    transform: translate3d(0, -10px, 0) rotate(6deg);
+  }
+}
+
+@keyframes oos-liquid-ring {
+  0%, 100% {
+    transform: scale(0.92);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.78;
+  }
+}
+
+@layer utilities {
+  .animate-oos-liquid-float {
+    animation: oos-liquid-float 7s ease-in-out infinite;
+  }
+
+  .animate-oos-liquid-ring {
+    animation: oos-liquid-ring 5s ease-in-out infinite;
   }
 }

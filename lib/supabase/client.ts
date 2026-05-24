@@ -191,13 +191,23 @@ export function createSupabaseAuthClient(): any {
       return stored;
     },
 
-    async signUp({ email, password, fullName }: { email: string; password: string; fullName: string }) {
+    async signUp({
+      email,
+      password,
+      fullName,
+      phone
+    }: {
+      email: string;
+      password: string;
+      fullName: string;
+      phone?: string;
+    }) {
       const data = await request<AuthResponse>("/auth/v1/signup", {
         method: "POST",
         body: JSON.stringify({
           email,
           password,
-          data: { full_name: fullName }
+          data: { full_name: fullName, phone }
         })
       });
       const session = normalizeSession(data);
@@ -236,7 +246,7 @@ export function createSupabaseAuthClient(): any {
       saveSession(null);
     },
 
-    async upsertProfile(user: SupabaseAuthUser, fullName?: string) {
+    async upsertProfile(user: SupabaseAuthUser, fullName?: string, phone?: string) {
       const stored = readStoredSession();
       if (!stored?.access_token) return;
 
@@ -249,7 +259,8 @@ export function createSupabaseAuthClient(): any {
         body: JSON.stringify({
           id: user.id,
           email: user.email,
-          full_name: fullName || getUserDisplayName(user)
+          full_name: fullName || getUserDisplayName(user),
+          phone
         })
       }).catch(() => null);
     },

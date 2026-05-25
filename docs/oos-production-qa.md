@@ -11,6 +11,8 @@
 - Confirm the Supabase setup card appears only when env vars or tables are missing.
 - Confirm real users with no rows see zero metrics and empty states.
 - Confirm demo data appears only when Supabase is not configured.
+- Confirm demo mode shows 10 fictional showcase portfolios.
+- Confirm the arayış/eşleşme card is the top dashboard priority.
 
 ## Portfolios
 
@@ -55,6 +57,14 @@
 
 - Confirm bottom navigation remains Ana Sayfa, Portföyler, Arayışlar, Menü.
 - Confirm menu routes open real pages.
+
+## Landing And Footer
+
+- Confirm desktop landing sections render below the hero/auth area.
+- Confirm mobile landing sections stack without horizontal overflow.
+- Confirm App Store and Google Play badges remain desktop-only.
+- Confirm the corporate footer columns and contact information render cleanly.
+- Confirm no Midas text, branding, assets, or exact layout are copied.
 
 ## Supabase Setup
 

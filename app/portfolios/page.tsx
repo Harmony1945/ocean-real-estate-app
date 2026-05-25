@@ -10,6 +10,7 @@ import {
   type AdvisorPortfolioRow,
   type PortfolioInput
 } from "@/lib/supabase/client";
+import { demoShowcasePortfolios } from "@/lib/oos/demo-data";
 
 type PortfolioCard = {
   id: string;
@@ -22,28 +23,16 @@ type PortfolioCard = {
   description: string;
 };
 
-const demoPortfolios: PortfolioCard[] = [
-  {
-    id: "demo-1",
-    title: "Bebek yalı dairesi",
-    location: "Beşiktaş / Bebek",
-    owner: "Özel Malik",
-    value: 92000000,
-    stage: "Aktif",
-    propertyType: "Daire",
-    description: "Boğaz hattı, 3+1, yüksek bütçe arayışları için güçlü aday portföy."
-  },
-  {
-    id: "demo-2",
-    title: "Levent aile konutu",
-    location: "Şişli / Levent",
-    owner: "Aile portföyü",
-    value: 38000000,
-    stage: "Kontrol",
-    propertyType: "Konut",
-    description: "Okul, ulaşım ve güvenlik kriterleri güçlü olan satış portföyü."
-  }
-];
+const demoPortfolios: PortfolioCard[] = demoShowcasePortfolios.map((portfolio) => ({
+  id: portfolio.id,
+  title: portfolio.title,
+  location: portfolio.location,
+  owner: portfolio.owner,
+  value: portfolio.value,
+  stage: portfolio.stage,
+  propertyType: portfolio.propertyType,
+  description: portfolio.description
+}));
 
 const emptyForm = {
   title: "",

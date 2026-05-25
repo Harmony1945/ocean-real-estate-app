@@ -14,6 +14,7 @@ import {
   type AdvisorTaskRow
 } from "@/lib/supabase/client";
 import { createCheckoutSession } from "@/lib/oos/payments";
+import { demoShowcasePortfolios } from "@/lib/oos/demo-data";
 
 const mapLocations = [
   { district: "Sarıyer", title: "Yeniköy yalı dairesi", price: "₺92M", top: "22%", left: "42%" },
@@ -30,55 +31,33 @@ const districtCoordinates: Record<string, [number, number]> = {
   "Kadıköy": [40.9819, 29.0576],
   "Beyoğlu": [41.0369, 28.9851],
   "Şişli": [41.0605, 28.9872],
-  "Beykoz": [41.1323, 29.0924]
+  "Beykoz": [41.1323, 29.0924],
+  "Ataşehir": [40.9927, 29.1244],
+  "Üsküdar": [41.0214, 29.0427]
 };
 
-const demoPortfolios: AdvisorPortfolioRow[] = [
-  {
-    id: "demo-sariyer",
-    owner_user_id: "demo",
-    title: "Yeniköy yalı dairesi",
-    location: "Sarıyer / Yeniköy",
-    district: "Sarıyer",
-    owner: "Özel Malik",
-    value: 92000000,
-    stage: "Aktif",
-    contract_type: "Satışa Aracılık",
-    next_move: null,
-    risk: null,
-    commission_rate: 2,
-    commission: 1840000,
-    listing_id: null,
-    property_type: "Daire",
-    area: "240",
-    rooms: "3+1",
-    description: null,
-    latitude: 41.1242,
-    longitude: 29.0702
-  },
-  {
-    id: "demo-kadikoy",
-    owner_user_id: "demo",
-    title: "Moda yatırım dairesi",
-    location: "Kadıköy / Moda",
-    district: "Kadıköy",
-    owner: "OOS Advisor",
-    value: 21000000,
-    stage: "Yeni",
-    contract_type: "Danışmanlık",
-    next_move: null,
-    risk: null,
-    commission_rate: 2,
-    commission: 420000,
-    listing_id: null,
-    property_type: "Daire",
-    area: "95",
-    rooms: "2+1",
-    description: null,
-    latitude: null,
-    longitude: null
-  }
-];
+const demoPortfolios: AdvisorPortfolioRow[] = demoShowcasePortfolios.map((portfolio) => ({
+  id: portfolio.id,
+  owner_user_id: "demo",
+  title: portfolio.title,
+  location: portfolio.location,
+  district: portfolio.district,
+  owner: portfolio.owner,
+  value: portfolio.value,
+  stage: portfolio.stage,
+  contract_type: portfolio.contractType,
+  next_move: portfolio.nextMove,
+  risk: portfolio.risk,
+  commission_rate: portfolio.commissionRate,
+  commission: portfolio.commission,
+  listing_id: portfolio.listingId,
+  property_type: portfolio.propertyType,
+  area: portfolio.area,
+  rooms: portfolio.rooms,
+  description: portfolio.description,
+  latitude: portfolio.latitude,
+  longitude: portfolio.longitude
+}));
 
 export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   const { user, profile } = useAuthContext();

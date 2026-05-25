@@ -511,7 +511,7 @@ function AuthScreen({
     defaultPhoneCountry;
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-stone-50 text-slate-950 dark:bg-black dark:text-neutral-50">
+    <main className="relative min-h-dvh overflow-x-hidden bg-stone-50 text-slate-950 dark:bg-black dark:text-neutral-50">
       <div className="relative mx-auto flex min-h-dvh max-w-7xl flex-col px-4 pt-5 sm:px-6 sm:py-7 lg:px-8">
         <header className="relative z-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -689,6 +689,8 @@ function AuthScreen({
           </section>
         </section>
       </div>
+      <LandingShowcaseSections />
+      <OceanCorporateFooter />
     </main>
   );
 }
@@ -744,6 +746,183 @@ function StoreBadges() {
         </span>
       </a>
     </div>
+  );
+}
+
+function LandingShowcaseSections() {
+  const flow = ["Portföy", "Arayış", "Eşleşme", "Komisyon"];
+  const trustItems = ["Kurumsal yapı", "Rol bazlı erişim", "Kayıtlı süreç", "Yasal metinler"];
+
+  return (
+    <section className="border-t border-slate-200 bg-white px-4 py-14 dark:border-white/10 dark:bg-black sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-8">
+        <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+          <article className="oos-card rounded-[2rem] p-6 sm:p-8">
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Hızlı başlangıç</p>
+            <h2 className="mt-4 max-w-2xl text-3xl font-semibold tracking-tight sm:text-5xl">
+              Dakikalar içinde danışman operasyonunu başlat.
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+              Portföylerini, arayışlarını ve görevlerini tek panelde topla. Dağınık WhatsApp notlarından sistemli deal flow’a geç.
+            </p>
+            <div className="mt-7 grid gap-3 sm:grid-cols-4">
+              {flow.map((item, index) => (
+                <div key={item} className="rounded-2xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-[#111111]">
+                  <span className="text-xs text-slate-400">0{index + 1}</span>
+                  <p className="mt-2 font-semibold">{item}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="oos-card rounded-[2rem] p-6 sm:p-8">
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Tek sistem</p>
+            <h2 className="text-2xl font-semibold tracking-tight">Portföy ve arayışlar tek sistemde.</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              Danışmanlar ne aradığını yükler, portföy sahipleri güçlü eşleşmeleri görür. Ofis içi bilgi doğru zamanda doğru danışmana ulaşır.
+            </p>
+            <div className="mt-6 grid gap-3">
+              <MetricChip label="10 aktif portföy" />
+              <MetricChip label="5 aktif arayış" />
+              <MetricChip label="%92 güçlü eşleşme" />
+            </div>
+          </article>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-3">
+          <article className="oos-card rounded-[2rem] p-6">
+            <h2 className="text-2xl font-semibold tracking-tight">Komisyon ve işlem görünürlüğü</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              Brüt komisyon, danışman payı, vergi etkisi ve ödeme süreçleri görünür hale gelir. OOS, kapanışa giden süreci ölçülebilir yapar.
+            </p>
+            <div className="mt-6 space-y-3">
+              {["Yetki", "Teklif", "Kapanış"].map((item, index) => (
+                <div key={item}>
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>{item}</span>
+                    <span>{[74, 58, 36][index]}%</span>
+                  </div>
+                  <div className="mt-2 h-2 rounded-full bg-slate-100 dark:bg-[#111111]">
+                    <div className="h-2 rounded-full bg-slate-950 dark:bg-white animate-oos-bar" style={{ width: `${[74, 58, 36][index]}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="oos-card rounded-[2rem] p-6">
+            <h2 className="text-2xl font-semibold tracking-tight">Harita ve lokasyon zekası</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              İstanbul portföylerini harita üzerinde gör, bölge bazlı fırsatları yakala. Konumu eksik portföyleri sistem otomatik öne çıkarır.
+            </p>
+            <div className="relative mt-6 h-56 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-stone-50 dark:border-white/10 dark:bg-[#111111]">
+              {["Beykoz", "Beşiktaş", "Kadıköy"].map((district, index) => (
+                <span
+                  key={district}
+                  className="absolute rounded-full bg-slate-950 px-3 py-1 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-slate-950"
+                  style={{ left: `${[18, 52, 64][index]}%`, top: `${[24, 42, 68][index]}%` }}
+                >
+                  <span className="mr-1 inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                  {district}
+                </span>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-[2rem] border border-white/10 bg-black p-6 text-white shadow-[0_24px_90px_rgba(0,0,0,0.35)]">
+            <p className="text-xs uppercase tracking-[0.24em] text-white/45">Ocean Elite</p>
+            <h2 className="mt-4 text-3xl font-semibold">Profesyonel çalışma alanı</h2>
+            <p className="mt-3 text-sm leading-6 text-white/55">
+              Aylık operasyon, ödeme ve sistem erişimi tek yerde takip edilir.
+            </p>
+            <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-[#080808] p-5">
+              <p className="text-sm text-white/50">Ocean Elite</p>
+              <p className="mt-2 text-3xl font-semibold">6.000 TL + KDV</p>
+              <p className="mt-2 text-sm text-white/70">Toplam 7.200 TL</p>
+            </div>
+          </article>
+        </div>
+
+        <article className="oos-card rounded-[2rem] p-6 sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Güven ve disiplin</p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+                OceanOS, kurumsal standartla çalışan danışman operasyonu kurar.
+              </h2>
+              <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                OceanOS, Star Girişim ve Yatırım A.Ş. çatısı altında yetki, görev, portföy, arayış ve işlem süreçlerini kayıt altına alan dijital operasyon sistemidir.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {trustItems.map((item) => (
+                <div key={item} className="rounded-2xl border border-slate-200 bg-stone-50 p-5 dark:border-white/10 dark:bg-[#111111]">
+                  <p className="font-semibold">{item}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Danışman ofisi için sade, takip edilebilir süreç.</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function MetricChip({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-stone-50 px-4 py-3 dark:border-white/10 dark:bg-[#111111]">
+      <span className="text-sm font-medium">{label}</span>
+      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+    </div>
+  );
+}
+
+function OceanCorporateFooter() {
+  const columns = [
+    ["OceanOS", "Dashboard", "Portföyler", "Arayışlar", "Eşleşmeler", "Harita", "Ödemeler"],
+    ["Danışman Araçları", "Vergi Hesaplayıcı", "İşlem ve Komisyonlar", "Raporlar", "Görevler", "Yardım ve Destek"],
+    ["Kurumsal", "Hakkımızda", "Ocean Elite", "Star Girişim ve Yatırım A.Ş.", "İletişim", "Kariyer"],
+    ["Yasal", "KVKK Aydınlatma Metni", "Gizlilik Politikası", "Çerez Politikası", "Kullanım Koşulları", "Üyelik ve Ödeme Koşulları", "Açık Rıza Metni"]
+  ];
+
+  return (
+    <footer className="border-t border-white/10 bg-black px-4 py-12 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_1.9fr]">
+          <div>
+            <p className="text-2xl font-semibold tracking-tight">Ocean Real Estate</p>
+            <p className="mt-2 text-sm font-medium text-white/55">Star Girişim ve Yatırım A.Ş.</p>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-white/55">
+              Ofis değil, sistem. OceanOS, gayrimenkul danışmanlarının portföy, arayış, eşleşme ve işlem süreçlerini yönetmesi için geliştirilmiş dijital operasyon sistemidir.
+            </p>
+            <div className="mt-6 space-y-2 text-sm text-white/65">
+              <p>+90 (216) 280 01 00</p>
+              <p>info@oceanrealestate.com.tr</p>
+              <p>Acarlar Mahallesi, Acarkent Sitesi 9. Cadde, Coliseum 5. Kat, Archerson, 34820</p>
+            </div>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {columns.map(([title, ...items]) => (
+              <div key={title}>
+                <h3 className="text-sm font-semibold">{title}</h3>
+                <ul className="mt-4 space-y-3 text-sm text-white/55">
+                  {items.map((item) => (
+                    <li key={item}>
+                      <a href="#" className="transition hover:text-white">{item}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-10 border-t border-white/10 pt-6 text-xs leading-5 text-white/40">
+          <p>Yasal metinler taslak niteliğindedir; yayına alınmadan önce hukuk danışmanı tarafından onaylanmalıdır.</p>
+          <p className="mt-2">Sosyal kanallar: Yakında</p>
+        </div>
+      </div>
+    </footer>
   );
 }
 

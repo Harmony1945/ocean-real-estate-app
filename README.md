@@ -74,6 +74,8 @@ Apply `supabase/migrations/202605230001_create_profiles.sql` in Supabase. It cre
 
 Then apply `supabase/migrations/202605230002_lock_profile_role_updates.sql`. It keeps `profiles.role` database-controlled so advisors can complete their own profile without promoting themselves.
 
+Then apply `supabase/migrations/202605250001_create_advisor_operations.sql`. It creates `portfolios`, `search_requests`, and `tasks` with RLS so authenticated advisors can only read, create, update, and delete their own rows.
+
 ### 4. Enable Google OAuth
 
 In Supabase Dashboard, go to Authentication → Providers → Google, then add the Google Client ID and Secret from Google Cloud Console. Do not hardcode Google credentials in this repo.
@@ -122,11 +124,19 @@ Before switching the public domain to production:
 5. Configure DNS with the records Vercel provides.
 6. Add the custom domain to Supabase Auth redirect URLs and any Google OAuth allowed redirect/origin settings.
 
-### 8. Free-Tier Sustainability Notes
+### 8. OOS Operations Modules
+
+- Portfolios, client requests, and tasks persist in Supabase when the public Supabase env vars are configured and the operation migration has been applied.
+- If Supabase is not configured, the app keeps a mock-safe demo mode for local UI review.
+- If Supabase is configured but the operation tables are missing, the UI shows a setup message instead of crashing.
+- `/menu/payments` contains a mock-safe Ocean Elite card payment UI. It does not process or store card data; iyzico checkout integration is pending.
+- `/menu/map` uses Leaflet with OpenStreetMap tiles as the free map foundation and falls back to approximate Istanbul district coordinates when exact portfolio coordinates are missing.
+- Vercel must define `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`; no secrets should be committed.
+
+### 9. Free-Tier Sustainability Notes
 
 This foundation intentionally stays lean:
 
-- no portfolio database yet
 - no matching engine database yet
 - no CRM database yet
 - no admin panel yet

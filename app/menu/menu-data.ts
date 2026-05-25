@@ -78,7 +78,7 @@ export const menuPages: MenuPageData[] = [
     eyebrow: "Katılım modülü",
     description: "Aylık ofis ve profesyonel katılım ödeme durumunu takip etmek için üretime güvenli panel.",
     cards: [
-      { title: "Aylık katılım", body: "7.500 TL + KDV danışman profesyonel katılım bedeli.", meta: "Planlanan" },
+      { title: "Ocean Elite Aylık Fee", body: "6.000 TL + %20 KDV ile toplam 7.200 TL.", meta: "Hazır alan" },
       { title: "Fatura durumu", body: "Fatura ve dekont bağlantıları ödeme entegrasyonu sonrası burada listelenir.", meta: "Hazır alan" },
       { title: "Ödeme yöntemi", body: "Kart veya banka transferi entegrasyonu eklenmeden manuel takip korunur.", meta: "Güvenli" }
     ]
@@ -97,7 +97,7 @@ export const menuPages: MenuPageData[] = [
     slug: "map",
     title: "Harita",
     eyebrow: "İstanbul portföy haritası",
-    description: "Harita sağlayıcısı eklemeden İstanbul portföylerini bölge çipleri ve hafif konum alanıyla inceleyin.",
+    description: "Leaflet ve OpenStreetMap temeliyle İstanbul portföylerini hafif, ücretsiz ve üretime güvenli harita üzerinde inceleyin.",
     cards: [
       { title: "Sarıyer", body: "Boğaz hattı ve üst segment konut portföyleri.", meta: "4 portföy" },
       { title: "Beşiktaş", body: "Merkezi konut ve ticari fırsatlar.", meta: "3 portföy" },

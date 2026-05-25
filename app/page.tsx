@@ -4,6 +4,7 @@ import { FormEvent, PointerEvent, useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "./auth-context";
 import {
   createSupabaseAuthClient,
+  getDataSetupMessage,
   isSupabaseConfigured,
   type AdvisorPortfolioRow,
   type AdvisorSearchRequestRow,
@@ -873,6 +874,7 @@ export default function Home() {
     useState<SahibindenListing | null>(null);
   const [dataError, setDataError] = useState("");
   const [dataLoading, setDataLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState("");
 
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
@@ -907,12 +909,13 @@ export default function Home() {
       })
       .catch((error: Error) => {
         if (!mounted) return;
+        console.error(error);
         setOpportunities([]);
         setSearchRequests([]);
         setTasks([]);
         setNotifications([]);
         setSelectedId("");
-        setDataError(error.message || "Supabase verileri alınamadı.");
+        setDataError(getDataSetupMessage(error.message));
       })
       .finally(() => {
         if (mounted) setDataLoading(false);
@@ -1038,6 +1041,10 @@ export default function Home() {
 
   async function saveOpportunity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!form.title.trim()) {
+      setDataError("Portföy başlığı zorunlu.");
+      return;
+    }
 
     const value = Math.max(Number(form.value) || 0, 0);
     const existingOpportunity = editingId
@@ -1063,6 +1070,7 @@ export default function Home() {
         existingOpportunity?.ownerConsultantName || getConsultantName(currentUser)
     };
 
+    setActionLoading("portfolio-save");
     if (persistentMode && supabase) {
       try {
         const row = editingId
@@ -1071,7 +1079,9 @@ export default function Home() {
         if (row) savedOpportunity = fromPortfolioRow(row, currentUser);
         setDataError("");
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : "Portföy kaydedilemedi.");
+        console.error(error);
+        setDataError(error instanceof Error ? getDataSetupMessage(error.message) : "Portföy kaydedilemedi.");
+        setActionLoading("");
         return;
       }
     }
@@ -1085,9 +1095,11 @@ export default function Home() {
     );
     setSelectedId(savedOpportunity.id);
     setFormOpen(false);
+    setActionLoading("");
   }
 
   async function deleteOpportunity(id: EntityId) {
+    setActionLoading(`portfolio-delete-${id}`);
     if (persistentMode && supabase) {
       try {
         await supabase.deletePortfolio(String(id));
@@ -1098,7 +1110,9 @@ export default function Home() {
         );
         setDataError("");
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : "Portföy silinemedi.");
+        console.error(error);
+        setDataError(error instanceof Error ? getDataSetupMessage(error.message) : "Portföy silinemedi.");
+        setActionLoading("");
         return;
       }
     }
@@ -1109,11 +1123,17 @@ export default function Home() {
     setNotifications((current) =>
       current.filter((notification) => notification.portfolioId !== id)
     );
-    setSelectedId(remaining[0]?.id ?? 0);
+    setSelectedId(remaining[0]?.id ?? "");
+    if (editingId === id) {
+      setEditingId(null);
+      setFormOpen(false);
+    }
+    setActionLoading("");
   }
 
   async function addTask() {
     if (!selectedOpportunity || !taskTitle.trim()) {
+      if (!taskTitle.trim()) setDataError("Görev başlığı zorunlu.");
       return;
     }
 
@@ -1124,6 +1144,7 @@ export default function Home() {
       done: false
     };
 
+    setActionLoading("task-save");
     if (persistentMode && supabase) {
       try {
         const row = await supabase.createTask({
@@ -1134,23 +1155,29 @@ export default function Home() {
         if (row) savedTask = fromTaskRow(row);
         setDataError("");
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : "Görev kaydedilemedi.");
+        console.error(error);
+        setDataError(error instanceof Error ? getDataSetupMessage(error.message) : "Görev kaydedilemedi.");
+        setActionLoading("");
         return;
       }
     }
 
     setTasks((current) => [savedTask, ...current]);
     setTaskTitle("");
+    setActionLoading("");
   }
 
   async function toggleTask(id: EntityId) {
     const task = tasks.find((item) => item.id === id);
+    setActionLoading(`task-toggle-${id}`);
     if (persistentMode && supabase && task && typeof id === "string") {
       try {
         await supabase.updateTask(id, { done: !task.done });
         setDataError("");
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : "Görev güncellenemedi.");
+        console.error(error);
+        setDataError(error instanceof Error ? getDataSetupMessage(error.message) : "Görev güncellenemedi.");
+        setActionLoading("");
         return;
       }
     }
@@ -1160,24 +1187,30 @@ export default function Home() {
         task.id === id ? { ...task, done: !task.done } : task
       )
     );
+    setActionLoading("");
   }
 
   async function deleteTask(id: EntityId) {
+    setActionLoading(`task-delete-${id}`);
     if (persistentMode && supabase && typeof id === "string") {
       try {
         await supabase.deleteTask(id);
         setDataError("");
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : "Görev silinemedi.");
+        console.error(error);
+        setDataError(error instanceof Error ? getDataSetupMessage(error.message) : "Görev silinemedi.");
+        setActionLoading("");
         return;
       }
     }
 
     setTasks((current) => current.filter((task) => task.id !== id));
+    setActionLoading("");
   }
 
   async function saveSearchRequest() {
     if (!searchForm.title.trim() || !searchForm.location.trim()) {
+      setDataError("Arayış başlığı ve lokasyon zorunlu.");
       return;
     }
 
@@ -1202,6 +1235,7 @@ export default function Home() {
       createdAt: today()
     };
 
+    setActionLoading("search-save");
     if (persistentMode && supabase) {
       try {
         const row = editingSearchId
@@ -1210,7 +1244,9 @@ export default function Home() {
         if (row) savedSearch = fromSearchRequestRow(row, currentUser);
         setDataError("");
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : "Arayış kaydedilemedi.");
+        console.error(error);
+        setDataError(error instanceof Error ? getDataSetupMessage(error.message) : "Arayış kaydedilemedi.");
+        setActionLoading("");
         return;
       }
     }
@@ -1233,6 +1269,7 @@ export default function Home() {
     setEditingSearchId(null);
     setSearchFormOpen(false);
     setSearchSuccess("Arayış eklendi ve sistem portföy eşleşmelerini kontrol etti.");
+    setActionLoading("");
   }
 
   function editSearchRequest(request: SearchRequest) {
@@ -1258,12 +1295,15 @@ export default function Home() {
   }
 
   async function closeSearchRequest(id: EntityId) {
+    setActionLoading(`search-close-${id}`);
     if (persistentMode && supabase && typeof id === "string") {
       try {
         await supabase.updateSearchRequest(id, { status: "Kapatıldı" });
         setDataError("");
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : "Arayış güncellenemedi.");
+        console.error(error);
+        setDataError(error instanceof Error ? getDataSetupMessage(error.message) : "Arayış güncellenemedi.");
+        setActionLoading("");
         return;
       }
     }
@@ -1273,6 +1313,7 @@ export default function Home() {
         request.id === id ? { ...request, status: "Kapatıldı" } : request
       )
     );
+    setActionLoading("");
   }
 
   function markNotificationRead(id: EntityId) {
@@ -1306,7 +1347,8 @@ export default function Home() {
         if (row) savedTask = fromTaskRow(row);
         setDataError("");
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : "Görev kaydedilemedi.");
+        console.error(error);
+        setDataError(error instanceof Error ? getDataSetupMessage(error.message) : "Görev kaydedilemedi.");
         return;
       }
     }
@@ -1394,7 +1436,8 @@ export default function Home() {
         }
         setDataError("");
       } catch (error) {
-        setDataError(error instanceof Error ? error.message : "Sahibinden portföyü kaydedilemedi.");
+        console.error(error);
+        setDataError(error instanceof Error ? getDataSetupMessage(error.message) : "Sahibinden portföyü kaydedilemedi.");
         return;
       }
     }
@@ -1484,6 +1527,12 @@ export default function Home() {
           </div>
         ) : null}
 
+        {!isSupabaseConfigured ? (
+          <div className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
+            {getDataSetupMessage()}
+          </div>
+        ) : null}
+
         {dataLoading ? (
           <div className="mt-5 rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
             Supabase verileri yükleniyor...
@@ -1512,6 +1561,7 @@ export default function Home() {
               opportunities={opportunities}
               searchRequests={filteredSearchRequests}
               successMessage={searchSuccess}
+              saving={actionLoading === "search-save"}
               onCloseSearch={closeSearchRequest}
               onCreateTask={createMatchTask}
               onEditSearch={editSearchRequest}
@@ -1575,6 +1625,7 @@ export default function Home() {
                 opportunities={opportunities}
                 searchRequests={filteredSearchRequests}
                 successMessage={searchSuccess}
+                saving={actionLoading === "search-save"}
                 onCloseSearch={closeSearchRequest}
                 onCreateTask={createMatchTask}
                 onEditSearch={editSearchRequest}
@@ -1605,6 +1656,7 @@ export default function Home() {
                 opportunities={opportunities}
                 searchRequests={filteredSearchRequests}
                 successMessage={searchSuccess}
+                saving={actionLoading === "search-save"}
                 onCloseSearch={closeSearchRequest}
                 onCreateTask={createMatchTask}
                 onEditSearch={editSearchRequest}
@@ -1641,7 +1693,10 @@ export default function Home() {
                   ))
                 ) : (
                   <div className="rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-5 text-center text-sm text-slate-500">
-                    İlk portföyünü ekle.
+                    <p>İlk portföyünü ekle.</p>
+                    <button className="btn-primary mt-4" type="button" onClick={openCreateForm}>
+                      Portföy ekle
+                    </button>
                   </div>
                 )}
               </div>
@@ -1669,9 +1724,10 @@ export default function Home() {
                     <button
                       className="btn-danger !border-red-200 !text-red-600 hover:!border-red-300 hover:!text-red-700"
                       type="button"
+                      disabled={actionLoading === `portfolio-delete-${selectedOpportunity.id}`}
                       onClick={() => deleteOpportunity(selectedOpportunity.id)}
                     >
-                      Sil
+                      {actionLoading === `portfolio-delete-${selectedOpportunity.id}` ? "Siliniyor..." : "Sil"}
                     </button>
                   </div>
                 </div>
@@ -1748,9 +1804,10 @@ export default function Home() {
                 <button
                   className="btn-primary w-full sm:w-auto"
                   type="button"
+                  disabled={actionLoading === "task-save"}
                   onClick={addTask}
                 >
-                  Ekle
+                  {actionLoading === "task-save" ? "Ekleniyor..." : "Ekle"}
                 </button>
               </div>
               <div className="mt-4 space-y-2">
@@ -1764,6 +1821,7 @@ export default function Home() {
                         type="checkbox"
                         className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
                         checked={task.done}
+                        disabled={actionLoading === `task-toggle-${task.id}`}
                         onChange={() => toggleTask(task.id)}
                       />
                       <span
@@ -1778,15 +1836,16 @@ export default function Home() {
                       <button
                         className="shrink-0 text-sm text-red-500 transition hover:text-red-700"
                         type="button"
+                        disabled={actionLoading === `task-delete-${task.id}`}
                         onClick={() => deleteTask(task.id)}
                       >
-                        Sil
+                        {actionLoading === `task-delete-${task.id}` ? "Siliniyor..." : "Sil"}
                       </button>
                     </div>
                   ))
                 ) : (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-center text-sm text-slate-500">
-                    Henüz görev yok.
+                    Bugünün ilk görevini ekle.
                   </div>
                 )}
               </div>
@@ -2104,8 +2163,8 @@ export default function Home() {
               >
                 Vazgeç
               </button>
-              <button className="btn-primary w-full sm:w-auto" type="submit">
-                Kaydet
+              <button className="btn-primary w-full sm:w-auto" type="submit" disabled={actionLoading === "portfolio-save"}>
+                {actionLoading === "portfolio-save" ? "Kaydediliyor..." : "Kaydet"}
               </button>
             </div>
           </form>
@@ -2600,6 +2659,7 @@ function SearchRequestsCard({
   opportunities,
   searchRequests,
   successMessage,
+  saving,
   onCloseSearch,
   onCreateTask,
   onEditSearch,
@@ -2617,6 +2677,7 @@ function SearchRequestsCard({
   opportunities: Opportunity[];
   searchRequests: SearchRequest[];
   successMessage: string;
+  saving: boolean;
   onCloseSearch: (id: EntityId) => void;
   onCreateTask: (searchRequest: SearchRequest, portfolio: Opportunity) => void;
   onEditSearch: (searchRequest: SearchRequest) => void;
@@ -2714,8 +2775,8 @@ function SearchRequestsCard({
               <button className="btn-secondary" type="button" onClick={onToggleForm}>
                 Vazgeç
               </button>
-              <button className="btn-primary" type="button" onClick={onSave}>
-                Kaydet
+              <button className="btn-primary" type="button" disabled={saving} onClick={onSave}>
+                {saving ? "Kaydediliyor..." : "Kaydet"}
               </button>
             </div>
           </div>

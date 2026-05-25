@@ -536,6 +536,7 @@ function AuthScreen({
             <p className="mt-5 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400 sm:text-base">
               Portföyleri, arayışları, eşleşmeleri ve danışman süreçlerini tek sade merkezde yönetin.
             </p>
+            <StoreBadges />
             <div className="relative mt-10 flex h-44 w-44 items-center justify-center sm:h-56 sm:w-56 lg:hidden">
               <div className="absolute inset-4 animate-oos-liquid-ring rounded-full border border-slate-200/80 bg-white/50 shadow-[0_24px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]" />
               <div className="animate-oos-liquid-float relative flex h-28 w-28 items-center justify-center border border-white/70 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_24px_70px_rgba(15,23,42,0.16)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)] sm:h-36 sm:w-36">
@@ -562,10 +563,10 @@ function AuthScreen({
                 <button
                   type="button"
                   disabled
-                  className="flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 opacity-95 shadow-sm disabled:cursor-not-allowed"
+                  className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 opacity-95 shadow-sm disabled:cursor-not-allowed"
                 >
-                  <span className="flex-1 text-center">Apple ile Devam Et</span>
                   <AppleIcon />
+                  Apple ile Devam Et
                 </button>
                 <button
                   type="button"
@@ -708,6 +709,41 @@ function AppleIcon() {
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
       <path d="M16.7 12.7c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.7-1.3-.1-2.5.8-3.1.8-.7 0-1.7-.8-2.8-.7-1.4 0-2.7.8-3.5 2.1-1.5 2.7-.4 6.7 1.1 8.9.7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 2.9-.7 1.4 0 1.8.7 3 .7 1.2 0 2-1.1 2.8-2.2.8-1.2 1.2-2.4 1.2-2.4 0-.1-2.2-.9-2.2-3.8ZM14.6 6.4c.6-.8 1.1-1.8 1-2.9-1 .1-2 .7-2.7 1.5-.6.7-1.1 1.8-1 2.8 1 .1 2-.5 2.7-1.4Z" />
     </svg>
+  );
+}
+
+function StoreBadges() {
+  return (
+    <div className="mt-8 hidden items-center gap-3 lg:flex">
+      {/* Real App Store / Google Play URLs will be added later. */}
+      <a
+        href="#"
+        aria-label="App Store’dan indir"
+        className="inline-flex min-h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-950 px-4 py-2 text-white shadow-sm transition hover:bg-slate-800 dark:border-white/10 dark:bg-[#080808] dark:hover:bg-[#111111]"
+      >
+        <AppleIcon />
+        <span className="leading-none">
+          <span className="block text-[10px] text-white/65">Download on the</span>
+          <span className="block text-sm font-semibold">App Store</span>
+        </span>
+      </a>
+      <a
+        href="#"
+        aria-label="Google Play’den indir"
+        className="inline-flex min-h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-950 px-4 py-2 text-white shadow-sm transition hover:bg-slate-800 dark:border-white/10 dark:bg-[#080808] dark:hover:bg-[#111111]"
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+          <path fill="#34A853" d="M4 2.7v18.6l9.7-9.3L4 2.7Z" />
+          <path fill="#FBBC05" d="m13.7 12 2.7-2.6L5.3 2.4 13.7 12Z" />
+          <path fill="#4285F4" d="M5.3 21.6 16.4 14l-2.7-2L5.3 21.6Z" />
+          <path fill="#EA4335" d="m16.4 14 3.1-1.8c.7-.4.7-1.4 0-1.8l-3.1-1.8-2.7 3.4 2.7 2Z" />
+        </svg>
+        <span className="leading-none">
+          <span className="block text-[10px] text-white/65">Get it on</span>
+          <span className="block text-sm font-semibold">Google Play</span>
+        </span>
+      </a>
+    </div>
   );
 }
 

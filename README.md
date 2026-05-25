@@ -145,3 +145,16 @@ This foundation intentionally stays lean:
 - no storage or file upload changes yet
 
 The auth and navigation shell are intentionally isolated so future growth can add role-based permissions, advisor profile management, and database-backed portfolios without rewriting the app shell.
+
+## Production Activation Checklist
+
+1. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel.
+2. Apply all Supabase migrations, including portfolios, search_requests, and tasks.
+3. Confirm RLS policies only allow advisors to access their own operation rows.
+4. Redeploy the Vercel project after env vars or migrations are ready.
+5. Test signup and login.
+6. Test portfolio create, edit, and delete.
+7. Test request create, edit, close, and delete.
+8. Test task create, toggle, and delete.
+9. Test `/menu/map` with and without coordinates.
+10. Test `/menu/payments` and confirm no real card processing occurs before iyzico integration.

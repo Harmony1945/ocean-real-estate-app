@@ -10,6 +10,7 @@ import {
   type AdvisorSearchRequestRow,
   type AdvisorTaskRow
 } from "@/lib/supabase/client";
+import { demoSearchRequests, demoShowcasePortfolios } from "@/lib/oos/demo-data";
 
 type Stage = "Lead" | "Yeni" | "Görüşme" | "Sözleşme" | "Kapanış" | "Kapandı";
 type Risk = "Düşük" | "Orta" | "Yüksek" | string;
@@ -174,68 +175,29 @@ type SahibindenListing = {
 const commissionRates = [1, 1.5, 2, 3, 4];
 const searchCurrencies: SearchCurrency[] = ["TRY", "USD", "EUR", "GBP"];
 
-const initialOpportunities: Opportunity[] = [
-  {
-    id: 1,
-    title: "Acarkent B-Tip Yenilenmiş Villa",
-    listingId: "1308132512",
-    location: "Beykoz / Acarkent",
-    owner: "Özel Malik",
-    value: 89000000,
-    stage: "Kapandı",
-    contractType: "Satışa Aracılık",
-    nextMove: "Alıcı tarafı ile ikinci gösterimi planla",
-    risk: "Orta",
-    commissionRate: 4,
-    commission: 3560000,
-    createdAt: "2026-05-22",
-    propertyType: "Villa",
-    area: "420",
-    rooms: "4+1",
-    ownerConsultantId: 1,
-    ownerConsultantName: "Melih Yıldız"
-  },
-  {
-    id: 2,
-    title: "Şişli Merkez Ticari Dükkan",
-    listingId: "1308134498",
-    location: "Şişli / Merkez",
-    owner: "Mavi Yapı",
-    value: 12500000,
-    stage: "Görüşme",
-    contractType: "Danışmanlık",
-    nextMove: "Yatırımcıya kira çarpanı analizini gönder",
-    risk: "Düşük",
-    commissionRate: 1.5,
-    commission: 187500,
-    createdAt: "2026-05-22",
-    propertyType: "Ticari",
-    area: "480",
-    rooms: "",
-    ownerConsultantId: 1,
-    ownerConsultantName: "Melih Yıldız"
-  },
-  {
-    id: 3,
-    title: "Bodrum Deniz Manzaralı Rezidans",
-    listingId: "1308190021",
-    location: "Bodrum / Yalıkavak",
-    owner: "Linden & Rose",
-    value: 28100000,
-    stage: "Yeni",
-    contractType: "Proje Geliştirme",
-    nextMove: "Emsal setini güncelle",
-    risk: "Yüksek",
-    commissionRate: 3,
-    commission: 843000,
-    createdAt: "2026-05-22",
-    propertyType: "Rezidans",
-    area: "260",
-    rooms: "3+1",
-    ownerConsultantId: 3,
-    ownerConsultantName: "Selin Arslan"
-  }
-];
+const initialOpportunities: Opportunity[] = demoShowcasePortfolios.map((portfolio, index) => ({
+  id: index + 1,
+  title: portfolio.title,
+  listingId: portfolio.listingId,
+  location: portfolio.location,
+  owner: portfolio.owner,
+  value: portfolio.value,
+  stage: portfolio.stage as Stage,
+  contractType: portfolio.contractType,
+  nextMove: portfolio.nextMove,
+  risk: portfolio.risk,
+  commissionRate: portfolio.commissionRate,
+  commission: portfolio.commission,
+  createdAt: "2026-05-25",
+  propertyType: portfolio.propertyType,
+  area: portfolio.area,
+  rooms: portfolio.rooms,
+  description: portfolio.description,
+  latitude: portfolio.latitude,
+  longitude: portfolio.longitude,
+  ownerConsultantId: (index % 3) + 1,
+  ownerConsultantName: portfolio.ownerConsultantName
+}));
 
 const initialTasks: Task[] = [
   { id: 1, opportunityId: 1, title: "PSA yorumlarını yükle", done: false },
@@ -296,48 +258,26 @@ const consultants: Consultant[] = [
 
 const defaultUser = consultants[0];
 
-const initialSearchRequests: SearchRequest[] = [
-  {
-    id: 1,
-    consultantId: 2,
-    consultantName: "Mert Yılmaz",
-    title: "Beykoz Villa Arayışı",
-    location: "Beykoz",
-    propertyType: "Villa",
-    minPrice: 0,
-    maxPrice: 120000000,
-    currency: "TRY",
-    minBedrooms: 4,
-    minArea: 350,
-    maxArea: 800,
-    rooms: "4+1",
-    purpose: "Satın Alma",
-    urgency: "Acil",
-    notes: "Yabancı alıcı için Acarkent veya çevresi tercih ediliyor.",
-    status: "Aktif",
-    createdAt: "2026-05-22"
-  },
-  {
-    id: 2,
-    consultantId: 3,
-    consultantName: "Selin Arslan",
-    title: "Şişli Ticari Arayış",
-    location: "Şişli",
-    propertyType: "Ticari",
-    minPrice: 0,
-    maxPrice: 15000000,
-    currency: "TRY",
-    minBedrooms: 0,
-    minArea: 300,
-    maxArea: 700,
-    rooms: "",
-    purpose: "Yatırım",
-    urgency: "Normal",
-    notes: "Depo, dükkan veya dönüşüm potansiyeli olan ticari portföy aranıyor.",
-    status: "Aktif",
-    createdAt: "2026-05-22"
-  }
-];
+const initialSearchRequests: SearchRequest[] = demoSearchRequests.map((request, index) => ({
+  id: index + 1,
+  consultantId: ((index + 1) % 3) + 1,
+  consultantName: request.consultantName,
+  title: request.title,
+  location: request.location,
+  propertyType: request.propertyType,
+  minPrice: request.minPrice,
+  maxPrice: request.maxPrice,
+  currency: "TRY",
+  minBedrooms: request.minBedrooms,
+  minArea: request.minArea,
+  maxArea: request.maxArea,
+  rooms: request.rooms,
+  purpose: request.purpose,
+  urgency: request.urgency,
+  notes: request.notes,
+  status: "Aktif",
+  createdAt: "2026-05-25"
+}));
 
 const advisorPerformance = [
   {
@@ -1011,7 +951,7 @@ export default function Home() {
         match.search.consultantId === currentUser.id ||
         match.portfolio.ownerConsultantId === currentUser.id
     )
-    .slice(0, 3);
+    .slice(0, 5);
   const activePageTitle: Record<ActivePage, string> = {
     dashboard: "OCEAN BrokerageOS",
     portfolios: "Tüm Portföyler",
@@ -3198,6 +3138,25 @@ function AdvisorHomeScreen({
 }) {
   return (
     <section className="mt-6 grid min-w-0 gap-4 sm:mt-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <div className="grid min-w-0 gap-4">
+        <DashboardMatchList
+          demoMode={!isSupabaseConfigured}
+          matches={recentMatches}
+          onOpenPortfolio={onOpenPortfolio}
+        />
+
+        <DashboardList
+          title="Aktif Arayışlarım"
+          empty="Aktif arayış yok."
+          items={activeSearchRequests.slice(0, 3).map((request) => ({
+            id: request.id,
+            title: request.title,
+            meta: `${request.location} · ${request.purpose}`,
+            badge: request.urgency
+          }))}
+        />
+      </div>
+
       <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -3241,31 +3200,69 @@ function AdvisorHomeScreen({
           }))}
           onSelect={onOpenPortfolio}
         />
-
-        <DashboardList
-          title="Aktif Arayışlarım"
-          empty="Aktif arayış yok."
-          items={activeSearchRequests.slice(0, 3).map((request) => ({
-            id: request.id,
-            title: request.title,
-            meta: `${request.location} · ${request.purpose}`,
-            badge: request.urgency
-          }))}
-        />
-
-        <DashboardList
-          title="Son Eşleşmeler"
-          empty="Henüz eşleşme yok."
-          items={recentMatches.map((match) => ({
-            id: `${match.search.id}-${match.portfolio.id}`,
-            title: match.portfolio.title,
-            meta: `${match.search.title} · ${match.portfolio.location}`,
-            badge: `%${match.score}`
-          }))}
-          onSelect={(id) => onOpenPortfolio(String(id).split("-").at(-1) || id)}
-        />
       </div>
     </section>
+  );
+}
+
+function DashboardMatchList({
+  demoMode,
+  matches,
+  onOpenPortfolio
+}: {
+  demoMode: boolean;
+  matches: Array<ReturnType<typeof getSearchMatches>[number] & { search: SearchRequest }>;
+  onOpenPortfolio: (id: EntityId) => void;
+}) {
+  return (
+    <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            {demoMode ? "Örnek eşleşmeler" : "Arayışlar ve eşleşmeler"}
+          </p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+            Para kazandırabilecek deal flow
+          </h2>
+        </div>
+        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200">
+          {matches.length} fırsat
+        </span>
+      </div>
+      <div className="mt-4 space-y-3">
+        {matches.length ? (
+          matches.map((match) => (
+            <button
+              key={`${match.search.id}-${match.portfolio.id}`}
+              type="button"
+              onClick={() => onOpenPortfolio(match.portfolio.id)}
+              className="w-full rounded-2xl border border-slate-200 bg-stone-50 p-4 text-left transition hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-[#111111] dark:hover:bg-[#161616]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                    {match.search.title} → {match.portfolio.title}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                    {match.search.consultantName} · {getMatchReason(match.details)}
+                  </p>
+                  <p className="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Sonraki aksiyon: danışmanla portföy uygunluğunu teyit et.
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full bg-slate-950 px-2.5 py-1 text-xs font-semibold text-white dark:bg-white dark:text-slate-950">
+                  %{match.score}
+                </span>
+              </div>
+            </button>
+          ))
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
+            Henüz eşleşme yok. İlk arayışı oluşturup portföylerle karşılaştır.
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

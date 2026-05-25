@@ -831,14 +831,20 @@ function LandingShowcaseSections() {
 
           <article className="rounded-[2rem] border border-white/10 bg-black p-6 text-white shadow-[0_24px_90px_rgba(0,0,0,0.35)]">
             <p className="text-xs uppercase tracking-[0.24em] text-white/45">Ocean Elite</p>
-            <h2 className="mt-4 text-3xl font-semibold">Profesyonel çalışma alanı</h2>
+            <h2 className="mt-4 text-3xl font-semibold">Premium danışman operasyonu</h2>
             <p className="mt-3 text-sm leading-6 text-white/55">
-              Aylık operasyon, ödeme ve sistem erişimi tek yerde takip edilir.
+              Portföy, arayış, eşleşme, ödeme ve işlem disiplinini tek sistemde yönetin.
             </p>
             <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-[#080808] p-5">
               <p className="text-sm text-white/50">Ocean Elite</p>
-              <p className="mt-2 text-3xl font-semibold">6.000 TL + KDV</p>
-              <p className="mt-2 text-sm text-white/70">Toplam 7.200 TL</p>
+              <p className="mt-2 text-2xl font-semibold">Kurumsal çalışma alanı</p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {["Öncelikli operasyon", "Sistemli deal flow", "İşlem disiplini"].map((item) => (
+                  <span key={item} className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/70">
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
           </article>
         </div>

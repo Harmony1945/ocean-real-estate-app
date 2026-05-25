@@ -23,4 +23,8 @@ export function saveTheme(theme: ThemeMode) {
   }
 
   applyTheme(theme);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("oos-theme-change", { detail: theme }));
+  }
 }

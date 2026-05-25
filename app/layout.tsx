@@ -14,6 +14,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => {
+try {
+  const key = "ocean-theme";
+  const saved = window.localStorage.getItem(key);
+  const theme = saved === "dark" || saved === "light"
+    ? saved
+    : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  document.documentElement.style.colorScheme = theme;
+} catch (_) {}
+})();`
+          }}
+        />
+      </head>
       <body>
         <AuthGate>{children}</AuthGate>
       </body>

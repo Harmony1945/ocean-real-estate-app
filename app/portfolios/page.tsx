@@ -2,14 +2,19 @@ import Link from "next/link";
 
 const portfolioCards = [
   {
-    title: "Tüm Portföyler",
-    description: "Portföy listesini, değerleri ve aşamaları ayrı bir route üzerinde geliştirmek için foundation.",
-    status: "Aktif foundation"
+    title: "Bebek yalı dairesi",
+    description: "Boğaz hattı, 3+1, yüksek bütçe arayışları için güçlü aday portföy.",
+    status: "Aktif"
   },
   {
-    title: "Portföylerim",
-    description: "Danışmanın kendi portföylerini filtreleyeceği bölüm. Veri modeli ileride Supabase ile bağlanacak.",
-    status: "Yakında derinleşecek"
+    title: "Levent aile konutu",
+    description: "Okul, ulaşım ve güvenlik kriterleri güçlü olan satış portföyü.",
+    status: "Kontrol"
+  },
+  {
+    title: "Moda yatırım dairesi",
+    description: "Kira getirisi ve değer artışı odağında takip edilen yatırım portföyü.",
+    status: "Yeni"
   }
 ];
 
@@ -24,11 +29,26 @@ export default function PortfoliosRoutePage() {
             </span>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Ocean Operating System</p>
           </div>
-          <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-5xl">Portföyler</h1>
+          <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-5xl">Portföylerim</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Tüm portföyler için route-backed sayfa temeli. Mevcut tam liste ve düzenleme akışı Ana Sayfa içinde korunur.
+            Danışmanın aktif portföyleri, eksik bilgi kontrolleri ve hızlı takip notları için gerçek route.
           </p>
         </header>
+
+        <section className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="oos-card-muted rounded-2xl p-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Aktif portföy</p>
+            <p className="mt-2 text-3xl font-semibold">12</p>
+          </div>
+          <div className="oos-card-muted rounded-2xl p-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Eksik bilgi</p>
+            <p className="mt-2 text-3xl font-semibold">2</p>
+          </div>
+          <div className="oos-card-muted rounded-2xl p-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Güçlü eşleşme</p>
+            <p className="mt-2 text-3xl font-semibold">8</p>
+          </div>
+        </section>
 
         <section className="mt-6 grid gap-4 md:grid-cols-2">
           {portfolioCards.map((item) => (
@@ -49,6 +69,7 @@ export default function PortfoliosRoutePage() {
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link href="/" className="btn-primary">Ana Sayfa’ya Dön</Link>
           <Link href="/menu" className="btn-secondary">Menüyü Aç</Link>
+          <Link href="/menu/map" className="btn-secondary">Haritada Gör</Link>
         </div>
       </div>
     </main>

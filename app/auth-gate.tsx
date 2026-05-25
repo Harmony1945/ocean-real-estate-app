@@ -12,6 +12,7 @@ import {
   type AdvisorProfile,
   type SupabaseAuthUser
 } from "@/lib/supabase/client";
+import { legalPages } from "@/lib/oos/legal-pages";
 
 type AuthMode = "login" | "signup";
 
@@ -886,10 +887,41 @@ function MetricChip({ label }: { label: string }) {
 
 function OceanCorporateFooter() {
   const columns = [
-    ["OceanOS", "Dashboard", "Portföyler", "Arayışlar", "Eşleşmeler", "Harita", "Ödemeler"],
-    ["Danışman Araçları", "Vergi Hesaplayıcı", "İşlem ve Komisyonlar", "Raporlar", "Görevler", "Yardım ve Destek"],
-    ["Kurumsal", "Hakkımızda", "Ocean Elite", "Star Girişim ve Yatırım A.Ş.", "İletişim", "Kariyer"],
-    ["Yasal", "KVKK Aydınlatma Metni", "Gizlilik Politikası", "Çerez Politikası", "Kullanım Koşulları", "Üyelik ve Ödeme Koşulları", "Açık Rıza Metni"]
+    {
+      title: "OceanOS",
+      links: [
+        { label: "Dashboard", href: "/" },
+        { label: "Portföyler", href: "/portfolios" },
+        { label: "Arayışlar", href: "/requests" },
+        { label: "Eşleşmeler", href: "/menu/matches" },
+        { label: "Harita", href: "/menu/map" },
+        { label: "Ödemeler", href: "/menu/payments" }
+      ]
+    },
+    {
+      title: "Danışman Araçları",
+      links: [
+        { label: "Vergi Hesaplayıcı", href: "/menu/tax-calculator" },
+        { label: "İşlem ve Komisyonlar", href: "/menu/commissions" },
+        { label: "Raporlar", href: "/menu/reports" },
+        { label: "Görevler", href: "/menu/tasks" },
+        { label: "Yardım ve Destek", href: "/menu/support" }
+      ]
+    },
+    {
+      title: "Kurumsal",
+      links: [
+        { label: "Hakkımızda", href: "/legal/yasal-bilgilendirme" },
+        { label: "Ocean Elite", href: "/menu/payments" },
+        { label: "Star Girişim ve Yatırım A.Ş.", href: "/legal/yasal-bilgilendirme" },
+        { label: "İletişim", href: "/legal/basvuru-ve-iletisim" },
+        { label: "Kariyer", href: "/legal/basvuru-ve-iletisim" }
+      ]
+    },
+    {
+      title: "Yasal",
+      links: legalPages.map((page) => ({ label: page.title, href: `/legal/${page.slug}` }))
+    }
   ];
 
   return (
@@ -909,13 +941,13 @@ function OceanCorporateFooter() {
             </div>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {columns.map(([title, ...items]) => (
-              <div key={title}>
-                <h3 className="text-sm font-semibold">{title}</h3>
+            {columns.map((column) => (
+              <div key={column.title}>
+                <h3 className="text-sm font-semibold">{column.title}</h3>
                 <ul className="mt-4 space-y-3 text-sm text-white/55">
-                  {items.map((item) => (
-                    <li key={item}>
-                      <a href="#" className="transition hover:text-white">{item}</a>
+                  {column.links.map((item) => (
+                    <li key={item.href}>
+                      <a href={item.href} className="transition hover:text-white">{item.label}</a>
                     </li>
                   ))}
                 </ul>
@@ -924,7 +956,7 @@ function OceanCorporateFooter() {
           </div>
         </div>
         <div className="mt-10 border-t border-white/10 pt-6 text-xs leading-5 text-white/40">
-          <p>Yasal metinler taslak niteliğindedir; yayına alınmadan önce hukuk danışmanı tarafından onaylanmalıdır.</p>
+          <p>OceanOS, Ocean Real Estate markası altında gayrimenkul danışmanlarının portföy, arayış, eşleşme ve işlem süreçlerini yönetmesi için geliştirilmiş dijital operasyon sistemidir.</p>
           <p className="mt-2">Sosyal kanallar: Yakında</p>
         </div>
       </div>

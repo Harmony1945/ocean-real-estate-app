@@ -39,7 +39,7 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
       aria-label={isDark ? "Açık temaya geç" : "Koyu temaya geç"}
       title={isDark ? "Açık tema" : "Koyu tema"}
       onClick={toggleTheme}
-      className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-white/85 text-slate-800 shadow-sm backdrop-blur-xl transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900 ${className}`}
+      className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-white/85 text-slate-800 shadow-sm backdrop-blur-xl transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:border-white/10 dark:bg-black/75 dark:text-neutral-100 dark:hover:bg-[#111111] ${className}`}
     >
       {isDark ? <SunIcon /> : <MoonIcon />}
     </button>

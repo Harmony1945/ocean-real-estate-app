@@ -2,14 +2,19 @@ import Link from "next/link";
 
 const requestFoundations = [
   {
-    title: "Aktif Arayışlar",
-    description: "Danışman taleplerinin route-backed görünümü. Mevcut eşleşme ve form akışı Ana Sayfa içinde korunur.",
-    status: "Aktif foundation"
+    title: "Boğaz hattı aile konutu",
+    description: "3+1 veya 4+1, otoparklı, Sarıyer-Beşiktaş hattında yüksek bütçeli arayış.",
+    status: "Sıcak"
   },
   {
-    title: "Eşleşmeler",
-    description: "Portföy-arayış eşleşmelerini ileride bu route altında bağımsızlaştırmak için hazır alan.",
-    status: "Yakında derinleşecek"
+    title: "Kadıköy yatırım dairesi",
+    description: "Kira getirisi yüksek, merkezi lokasyonda 1+1 veya 2+1 yatırım arayışı.",
+    status: "Aktif"
+  },
+  {
+    title: "Levent ofis",
+    description: "Ulaşım erişimi güçlü, taşınmaya hazır küçük ölçekli ticari alan arayışı.",
+    status: "Takip"
   }
 ];
 
@@ -24,11 +29,26 @@ export default function RequestsRoutePage() {
             </span>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Ocean Operating System</p>
           </div>
-          <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-5xl">Arayışlar</h1>
+          <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-5xl">Arayışlarım</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Danışman taleplerini bağımsız route olarak büyütmek için sade sayfa temeli.
+            Aktif müşteri talepleri, takip öncelikleri ve eşleşme bağlantıları için gerçek route.
           </p>
         </header>
+
+        <section className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="oos-card-muted rounded-2xl p-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Aktif arayış</p>
+            <p className="mt-2 text-3xl font-semibold">9</p>
+          </div>
+          <div className="oos-card-muted rounded-2xl p-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Yeni eşleşme</p>
+            <p className="mt-2 text-3xl font-semibold">5</p>
+          </div>
+          <div className="oos-card-muted rounded-2xl p-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Bugünkü takip</p>
+            <p className="mt-2 text-3xl font-semibold">3</p>
+          </div>
+        </section>
 
         <section className="mt-6 grid gap-4 md:grid-cols-2">
           {requestFoundations.map((item) => (
@@ -49,6 +69,7 @@ export default function RequestsRoutePage() {
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link href="/" className="btn-primary">Ana Sayfa’ya Dön</Link>
           <Link href="/menu" className="btn-secondary">Menüyü Aç</Link>
+          <Link href="/menu/matches" className="btn-secondary">Eşleşmeleri Gör</Link>
         </div>
       </div>
     </main>

@@ -48,37 +48,37 @@ const menuGroups: Array<{ title: string; items: MenuItem[] }> = [
   {
     title: "Operasyon",
     items: [
-      { label: "Profilim", href: "/menu#profilim", icon: "user" },
+      { label: "Profilim", href: "/menu/profile", icon: "user" },
       { label: "Portföylerim", href: "/portfolios", icon: "portfolio" },
       { label: "Arayışlarım", href: "/requests", icon: "search" },
-      { label: "Eşleşmeler", href: "/menu#eslesmeler", icon: "match" }
+      { label: "Eşleşmeler", href: "/menu/matches", icon: "match" }
     ]
   },
   {
     title: "İş araçları",
     items: [
-      { label: "Ödemeler", href: "/menu#odemeler", icon: "payment" },
-      { label: "Vergi Hesaplayıcı", href: "/menu#vergi-hesaplayici", icon: "tax" },
-      { label: "İşlem ve Komisyonlar", href: "/menu#islem-ve-komisyonlar", icon: "commission" },
-      { label: "Raporlar", href: "/menu#raporlar", icon: "report" }
+      { label: "Ödemeler", href: "/menu/payments", icon: "payment" },
+      { label: "Vergi Hesaplayıcı", href: "/menu/tax-calculator", icon: "tax" },
+      { label: "İşlem ve Komisyonlar", href: "/menu/commissions", icon: "commission" },
+      { label: "Raporlar", href: "/menu/reports", icon: "report" }
     ]
   },
   {
     title: "Platform",
     items: [
-      { label: "Harita", href: "/menu#harita", icon: "map" },
-      { label: "Bildirimler", href: "/menu#bildirimler", icon: "bell" },
-      { label: "Görevlerim", href: "/menu#gorevlerim", icon: "task" },
-      { label: "Hesap ve Güvenlik", href: "/menu#hesap-ve-guvenlik", icon: "shield" },
-      { label: "Ayarlar", href: "/menu#ayarlar", icon: "settings" }
+      { label: "Harita", href: "/menu/map", icon: "map" },
+      { label: "Bildirimler", href: "/menu/notifications", icon: "bell" },
+      { label: "Görevlerim", href: "/menu/tasks", icon: "task" },
+      { label: "Hesap ve Güvenlik", href: "/menu/security", icon: "shield" },
+      { label: "Ayarlar", href: "/menu/settings", icon: "settings" }
     ]
   },
   {
     title: "Destek ve kurumsal",
     items: [
-      { label: "Yardım ve Destek", href: "/menu#yardim-ve-destek", icon: "support" },
-      { label: "Sıkça Sorulan Sorular", href: "/menu#sss", icon: "faq" },
-      { label: "Yasal ve Kurumsal", href: "/menu#yasal-ve-kurumsal", icon: "legal" }
+      { label: "Yardım ve Destek", href: "/menu/support", icon: "support" },
+      { label: "Sıkça Sorulan Sorular", href: "/menu/faq", icon: "faq" },
+      { label: "Yasal ve Kurumsal", href: "/menu/legal-corporate", icon: "legal" }
     ]
   }
 ];

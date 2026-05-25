@@ -1,8 +1,10 @@
 "use client";
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
+import { AuthProvider } from "./auth-context";
 import OOSNavigation from "./oos-navigation";
 import { applyTheme, getPreferredTheme, saveTheme, themeStorageKey, type ThemeMode } from "./theme";
+import ThemeToggle from "./theme-toggle";
 import {
   createSupabaseAuthClient,
   getUserDisplayName,
@@ -431,10 +433,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <>
+    <AuthProvider value={{ user: authUser, profile, onLogout: logout }}>
       {dashboardReady ? children : null}
       <OOSNavigation user={authUser} profile={profile} onLogout={logout} />
-    </>
+    </AuthProvider>
   );
 }
 
@@ -522,9 +524,7 @@ function AuthScreen({
               OceanOS
             </span>
           </div>
-          <button type="button" className="btn-secondary min-h-9 px-3 py-1 text-xs" onClick={onToggleTheme}>
-            {theme === "dark" ? "Açık tema" : "Koyu tema"}
-          </button>
+          <ThemeToggle />
         </header>
 
         <section className="grid flex-1 items-center gap-8 pb-0 pt-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)] lg:pb-10 lg:pt-10">
@@ -601,16 +601,18 @@ function AuthScreen({
             <button
               type="button"
               disabled
-              className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 opacity-95 shadow-sm disabled:cursor-not-allowed"
+              className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 opacity-95 shadow-sm disabled:cursor-not-allowed"
             >
+              <AppleIcon />
               Apple ile Devam Et
             </button>
             <button
               type="button"
               onClick={continueWithGoogle}
               disabled={loading || !isConfigured}
-              className="flex min-h-14 w-full items-center justify-center rounded-2xl border border-white/10 bg-white px-4 py-3 text-sm font-medium text-slate-950 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-55"
+              className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white px-4 py-3 text-sm font-medium text-slate-950 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-55"
             >
+              <GoogleIcon />
               Google ile devam et
             </button>
           </div>
@@ -725,6 +727,25 @@ function AuthScreen({
         </section>
       </div>
     </main>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+      <path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2.1-1.9 3.4-4.7 3.4-8Z" />
+      <path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .6-2.2 1-3.8 1-2.9 0-5.3-1.9-6.2-4.6H2.2v2.8A11 11 0 0 0 12 23Z" />
+      <path fill="#FBBC05" d="M5.8 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.2H2.2a11 11 0 0 0 0 9.6L5.8 14Z" />
+      <path fill="#EA4335" d="M12 5.4c1.6 0 3 .6 4.2 1.6l3.1-3.1A10.5 10.5 0 0 0 12 1 11 11 0 0 0 2.2 7.2L5.8 10C6.7 7.3 9.1 5.4 12 5.4Z" />
+    </svg>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
+      <path d="M16.7 12.7c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.7-1.3-.1-2.5.8-3.1.8-.7 0-1.7-.8-2.8-.7-1.4 0-2.7.8-3.5 2.1-1.5 2.7-.4 6.7 1.1 8.9.7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 2.9-.7 1.4 0 1.8.7 3 .7 1.2 0 2-1.1 2.8-2.2.8-1.2 1.2-2.4 1.2-2.4 0-.1-2.2-.9-2.2-3.8ZM14.6 6.4c.6-.8 1.1-1.8 1-2.9-1 .1-2 .7-2.7 1.5-.6.7-1.1 1.8-1 2.8 1 .1 2-.5 2.7-1.4Z" />
+    </svg>
   );
 }
 
@@ -867,9 +888,7 @@ function ProfileShell({
       <div className="relative mx-auto flex min-h-dvh max-w-md items-center justify-center py-6 sm:py-8">
         <section className="w-full rounded-3xl border border-white/60 bg-white/95 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/90 sm:p-6">
           <div className="mb-4 flex justify-end">
-            <button type="button" className="btn-secondary min-h-9 px-3 py-1 text-xs" onClick={onToggleTheme}>
-              {theme === "dark" ? "Koyu" : "Açık"}
-            </button>
+            <ThemeToggle />
           </div>
           {children}
         </section>

@@ -843,14 +843,6 @@ export default function Home() {
         match.portfolio.ownerConsultantId === currentUser.id
     )
     .slice(0, 3);
-  const profileCompletionItems = [
-    Boolean(currentUser.firstName.trim() && currentUser.lastName.trim()),
-    Boolean(currentUser.phone.trim()),
-    currentUser.portfolioCount > 0
-  ];
-  const profileCompletion = Math.round(
-    (profileCompletionItems.filter(Boolean).length / profileCompletionItems.length) * 100
-  );
   const activePageTitle: Record<ActivePage, string> = {
     dashboard: "OCEAN BrokerageOS",
     portfolios: "Tüm Portföyler",
@@ -1261,7 +1253,6 @@ export default function Home() {
           <>
             <AdvisorHomeScreen
               currentUser={currentUser}
-              profileCompletion={profileCompletion}
               activePortfolios={myActivePortfolios}
               activeSearchRequests={myActiveSearchRequests}
               recentMatches={recentMatches}
@@ -1645,18 +1636,12 @@ export default function Home() {
             </Card>
           </aside>
         </section>
-            <footer className="pb-2 pt-8 text-center text-xs text-slate-400 dark:text-slate-600">
-              Star Girişim ve Yatırım A.Ş.
+            <footer className="pb-2 pt-8 text-center text-xs leading-5 text-slate-400 dark:text-slate-600">
+              Star Girişim ve Yatırım A.Ş. · OOS danışman çalışma alanı · Kurumsal ve yasal bilgiler Menü içinde yer alır.
             </footer>
           </>
         )}
       </div>
-
-      <MobileBottomNav
-        activePage={activePage}
-        onPageChange={setActivePage}
-        unreadCount={unreadNotifications.length}
-      />
 
       {formOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/20 px-3 py-3 backdrop-blur-sm sm:items-center sm:px-4 sm:py-4">
@@ -2163,57 +2148,6 @@ function PortfolioListPage({
         )}
       </section>
     </section>
-  );
-}
-
-function MobileBottomNav({
-  activePage,
-  onPageChange,
-  unreadCount = 0
-}: {
-  activePage: ActivePage;
-  onPageChange: (page: ActivePage) => void;
-  unreadCount?: number;
-}) {
-  const items: { id: ActivePage; label: string; icon: string }[] = [
-    { id: "dashboard", label: "Ana Sayfa", icon: "⌂" },
-    { id: "portfolios", label: "Portföyler", icon: "□" },
-    { id: "searches", label: "Arayışlar", icon: "⌕" },
-    { id: "notifications", label: "Bildirimler", icon: "●" }
-  ];
-
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 px-3 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur md:hidden">
-      <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
-        {items.map((item) => {
-          const active = activePage === item.id;
-
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onPageChange(item.id)}
-              className={`relative flex min-h-[56px] flex-col items-center justify-center rounded-2xl text-xs transition ${
-                active
-                  ? "bg-slate-100 text-slate-950"
-                  : "text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-              }`}
-            >
-              <span className="text-lg leading-none">{item.icon}</span>
-              <span className={`mt-1 ${active ? "font-medium" : ""}`}>
-                {item.label}
-              </span>
-
-              {item.id === "notifications" && unreadCount > 0 ? (
-                <span className="absolute right-5 top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold leading-none text-white">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-    </nav>
   );
 }
 
@@ -2877,7 +2811,6 @@ function AuthScreen({
 
 function AdvisorHomeScreen({
   currentUser,
-  profileCompletion,
   activePortfolios,
   activeSearchRequests,
   recentMatches,
@@ -2887,7 +2820,6 @@ function AdvisorHomeScreen({
   onViewMatches
 }: {
   currentUser: Consultant;
-  profileCompletion: number;
   activePortfolios: Opportunity[];
   activeSearchRequests: SearchRequest[];
   recentMatches: Array<ReturnType<typeof getSearchMatches>[number] & { search: SearchRequest }>;
@@ -2899,7 +2831,7 @@ function AdvisorHomeScreen({
   return (
     <section className="mt-6 grid min-w-0 gap-4 sm:mt-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
       <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
               Bugünkü çalışma ekranı
@@ -2907,25 +2839,6 @@ function AdvisorHomeScreen({
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
               {getConsultantName(currentUser)}
             </h2>
-          </div>
-          <div className="oos-card-muted rounded-3xl p-3 sm:min-w-48">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                Profil
-              </span>
-              <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                %{profileCompletion}
-              </span>
-            </div>
-            <div className="mt-2 h-2 rounded-full bg-slate-200 dark:bg-slate-800">
-              <div
-                className="h-2 rounded-full bg-emerald-500"
-                style={{ width: `${profileCompletion}%` }}
-              />
-            </div>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-              {profileCompletion === 100 ? "Profil tamamlandı" : "Profil bilgileri eksik"}
-            </p>
           </div>
         </div>
 

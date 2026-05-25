@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "../auth-context";
 import {
   createSupabaseAuthClient,
+  getDataSetupMessage,
   isSupabaseConfigured,
   type AdvisorSearchRequestRow,
   type SearchRequestInput
@@ -74,6 +75,8 @@ export default function RequestsRoutePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
   useEffect(() => {
@@ -83,14 +86,18 @@ export default function RequestsRoutePage() {
     supabase.getSearchRequests()
       .then((rows: AdvisorSearchRequestRow[]) => setItems(rows.map(fromRow)))
       .catch((error: Error) => {
+        console.error(error);
         setItems([]);
-        setMessage(error.message);
+        setMessage(getDataSetupMessage(error.message));
       })
       .finally(() => setLoading(false));
   }, [persistentMode, supabase]);
 
   async function saveRequest() {
-    if (!form.title.trim() || !form.location.trim()) return;
+    if (!form.title.trim() || !form.location.trim()) {
+      setMessage("Arayış başlığı ve lokasyon zorunlu.");
+      return;
+    }
 
     const payload: SearchRequestInput = {
       title: form.title.trim(),
@@ -105,6 +112,7 @@ export default function RequestsRoutePage() {
       status: form.status
     };
 
+    setSaving(true);
     if (persistentMode && supabase) {
       try {
         const row = editingId
@@ -119,7 +127,9 @@ export default function RequestsRoutePage() {
         }
         setMessage("");
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Arayış kaydedilemedi.");
+        console.error(error);
+        setMessage(error instanceof Error ? getDataSetupMessage(error.message) : "Arayış kaydedilemedi.");
+        setSaving(false);
         return;
       }
     } else {
@@ -131,19 +141,45 @@ export default function RequestsRoutePage() {
 
     setForm(emptyForm);
     setEditingId(null);
+    setSaving(false);
   }
 
   async function closeRequest(id: string) {
+    setBusyId(id);
     if (persistentMode && supabase) {
       try {
         await supabase.updateSearchRequest(id, { status: "Kapatıldı" });
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Arayış güncellenemedi.");
+        console.error(error);
+        setMessage(error instanceof Error ? getDataSetupMessage(error.message) : "Arayış güncellenemedi.");
+        setBusyId(null);
         return;
       }
     }
 
     setItems((current) => current.map((item) => (item.id === id ? { ...item, status: "Kapatıldı" } : item)));
+    setBusyId(null);
+  }
+
+  async function deleteRequest(id: string) {
+    setBusyId(id);
+    if (persistentMode && supabase) {
+      try {
+        await supabase.deleteSearchRequest(id);
+      } catch (error) {
+        console.error(error);
+        setMessage(error instanceof Error ? getDataSetupMessage(error.message) : "Arayış silinemedi.");
+        setBusyId(null);
+        return;
+      }
+    }
+
+    setItems((current) => current.filter((item) => item.id !== id));
+    if (editingId === id) {
+      setEditingId(null);
+      setForm(emptyForm);
+    }
+    setBusyId(null);
   }
 
   function editRequest(item: RequestCard) {
@@ -178,7 +214,7 @@ export default function RequestsRoutePage() {
           </p>
         </header>
 
-        {message ? <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">{message}</p> : null}
+        {getDataSetupMessage(message) ? <SetupNotice message={getDataSetupMessage(message)} /> : null}
         {loading ? <p className="mt-5 text-sm text-slate-500 dark:text-slate-400">Arayışlar yükleniyor...</p> : null}
 
         <section className="mt-6 grid gap-4 md:grid-cols-3">
@@ -201,8 +237,8 @@ export default function RequestsRoutePage() {
           </div>
           <textarea className="input mt-3 min-h-24 resize-none" placeholder="Notlar" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            {editingId ? <button className="btn-secondary" type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }}>Vazgeç</button> : null}
-            <button className="btn-primary" type="button" onClick={saveRequest}>Kaydet</button>
+            {editingId ? <button className="btn-secondary" type="button" disabled={saving} onClick={() => { setEditingId(null); setForm(emptyForm); }}>Vazgeç</button> : null}
+            <button className="btn-primary" type="button" disabled={saving} onClick={saveRequest}>{saving ? "Kaydediliyor..." : "Kaydet"}</button>
           </div>
         </section>
 
@@ -221,12 +257,16 @@ export default function RequestsRoutePage() {
               </div>
               <div className="mt-4 flex gap-2">
                 <button className="mini-action" type="button" onClick={() => editRequest(item)}>Düzenle</button>
-                <button className="mini-action" type="button" onClick={() => closeRequest(item.id)}>Kapat</button>
+                <button className="mini-action" type="button" disabled={busyId === item.id} onClick={() => closeRequest(item.id)}>{busyId === item.id ? "İşleniyor..." : "Kapat"}</button>
+                <button className="mini-action !text-red-600" type="button" disabled={busyId === item.id} onClick={() => deleteRequest(item.id)}>Sil</button>
               </div>
             </article>
           )) : (
             <article className="rounded-[2rem] border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 md:col-span-2">
-              İlk arayışını oluştur.
+              <p>İlk arayışını oluştur.</p>
+              <button className="btn-primary mt-4" type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+                Arayış oluştur
+              </button>
             </article>
           )}
         </section>
@@ -238,6 +278,14 @@ export default function RequestsRoutePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function SetupNotice({ message }: { message: string }) {
+  return (
+    <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
+      {message}
+    </p>
   );
 }
 

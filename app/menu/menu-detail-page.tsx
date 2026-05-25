@@ -7,6 +7,7 @@ import ThemeToggle from "../theme-toggle";
 import type { MenuPageData } from "./menu-data";
 import {
   createSupabaseAuthClient,
+  getDataSetupMessage,
   getUserDisplayName,
   isSupabaseConfigured,
   type AdvisorPortfolioRow,
@@ -113,9 +114,10 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         if (page.slug === "tasks") setTasks(taskRows);
       })
       .catch((error: Error) => {
+        console.error(error);
         setPortfolioRows([]);
         setTasks([]);
-        setModuleMessage(error.message);
+        setModuleMessage(getDataSetupMessage(error.message));
       });
   }, [page.slug, persistentMode, supabase]);
 
@@ -213,9 +215,9 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
           />
         ) : null}
 
-        {moduleMessage ? (
+        {(moduleMessage || (!isSupabaseConfigured && ["map", "tasks"].includes(page.slug))) ? (
           <p className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
-            {moduleMessage}
+            {moduleMessage || getDataSetupMessage()}
           </p>
         ) : null}
 
@@ -331,6 +333,7 @@ function MapPanel({
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerLayerRef = useRef<any>(null);
+  const [mapError, setMapError] = useState("");
   const markers = portfolios
     .map((portfolio) => ({ portfolio, coordinates: getPortfolioCoordinates(portfolio) }))
     .filter((item): item is { portfolio: AdvisorPortfolioRow; coordinates: [number, number] } => Boolean(item.coordinates));
@@ -344,7 +347,12 @@ function MapPanel({
 
     async function mountMap() {
       if (!mapElementRef.current || mapInstanceRef.current) return;
-      const leaflet = await import("leaflet");
+      const leaflet = await import("leaflet").catch((error) => {
+        console.error(error);
+        setMapError("Harita sağlayıcısı yüklenemedi. Portföyleri liste görünümünde gösteriyoruz.");
+        return null;
+      });
+      if (!leaflet) return;
       if (!mounted || !mapElementRef.current) return;
 
       mapInstanceRef.current = leaflet.map(mapElementRef.current, {
@@ -369,7 +377,12 @@ function MapPanel({
   useEffect(() => {
     async function syncMarkers() {
       if (!mapInstanceRef.current || !markerLayerRef.current) return;
-      const leaflet = await import("leaflet");
+      const leaflet = await import("leaflet").catch((error) => {
+        console.error(error);
+        setMapError("Harita sağlayıcısı yüklenemedi. Portföyleri liste görünümünde gösteriyoruz.");
+        return null;
+      });
+      if (!leaflet) return;
       markerLayerRef.current.clearLayers();
 
       markers.forEach(({ portfolio, coordinates }) => {
@@ -393,11 +406,17 @@ function MapPanel({
   }, [markers]);
 
   return (
-    <section className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-      <article className="oos-card overflow-hidden rounded-[1.75rem] p-5">
-        <div ref={mapElementRef} className="min-h-[22rem] rounded-[1.5rem] border border-slate-200 dark:border-white/10" />
+    <section className="mt-6 space-y-4">
+      <article className="oos-card overflow-hidden rounded-[2rem] p-5">
+        {mapError ? (
+          <div className="flex min-h-[30rem] items-center justify-center rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-5 text-center text-sm leading-6 text-slate-500 dark:border-white/10 dark:bg-[#111111] dark:text-slate-400">
+            {mapError}
+          </div>
+        ) : (
+          <div ref={mapElementRef} className="min-h-[30rem] rounded-[1.5rem] border border-slate-200 dark:border-white/10 lg:min-h-[42rem]" />
+        )}
         <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
-          Leaflet ve OpenStreetMap ile ücretsiz, API anahtarsız İstanbul harita temeli. Koordinat yoksa yalnızca ilçe merkezi yaklaşık gösterilir.
+          Leaflet ve OpenStreetMap ile ücretsiz, API anahtarsız İstanbul harita temeli. İlçe merkezinden gösterilen kayıtlar yaklaşık konum olarak etiketlenir.
         </p>
       </article>
 
@@ -415,13 +434,16 @@ function MapPanel({
             </button>
           ))}
         </div>
-        <div className="mt-4 grid gap-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           {(selectedRows.length ? selectedRows : portfolios).slice(0, 5).map((portfolio) => (
             <div key={portfolio.id} className="rounded-2xl bg-slate-50 p-4 dark:bg-white/[0.04]">
               <p className="font-medium">{portfolio.title}</p>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 {portfolio.location || "Konum bekleniyor"} · {formatCurrency(Number(portfolio.value || 0))}
               </p>
+              {!portfolio.latitude || !portfolio.longitude ? (
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">Yaklaşık ilçe konumu</p>
+              ) : null}
             </div>
           ))}
           {!portfolios.length ? <p className="text-sm text-slate-500 dark:text-slate-400">Haritada gösterilecek portföy yok.</p> : null}

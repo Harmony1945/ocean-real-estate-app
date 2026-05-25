@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "../auth-context";
 import {
   createSupabaseAuthClient,
+  getDataSetupMessage,
   isSupabaseConfigured,
   type AdvisorPortfolioRow,
   type PortfolioInput
@@ -62,6 +63,8 @@ export default function PortfoliosRoutePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
   useEffect(() => {
@@ -71,14 +74,18 @@ export default function PortfoliosRoutePage() {
     supabase.getPortfolios()
       .then((rows: AdvisorPortfolioRow[]) => setItems(rows.map(fromRow)))
       .catch((error: Error) => {
+        console.error(error);
         setItems([]);
-        setMessage(error.message);
+        setMessage(getDataSetupMessage(error.message));
       })
       .finally(() => setLoading(false));
   }, [persistentMode, supabase]);
 
   async function savePortfolio() {
-    if (!form.title.trim()) return;
+    if (!form.title.trim()) {
+      setMessage("Portföy başlığı zorunlu.");
+      return;
+    }
 
     const payload: PortfolioInput = {
       title: form.title.trim(),
@@ -91,6 +98,7 @@ export default function PortfoliosRoutePage() {
       description: form.description.trim()
     };
 
+    setSaving(true);
     if (persistentMode && supabase) {
       try {
         const row = editingId
@@ -105,7 +113,9 @@ export default function PortfoliosRoutePage() {
         }
         setMessage("");
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Portföy kaydedilemedi.");
+        console.error(error);
+        setMessage(error instanceof Error ? getDataSetupMessage(error.message) : "Portföy kaydedilemedi.");
+        setSaving(false);
         return;
       }
     } else {
@@ -117,19 +127,28 @@ export default function PortfoliosRoutePage() {
 
     setForm(emptyForm);
     setEditingId(null);
+    setSaving(false);
   }
 
   async function deletePortfolio(id: string) {
+    setDeletingId(id);
     if (persistentMode && supabase) {
       try {
         await supabase.deletePortfolio(id);
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Portföy silinemedi.");
+        console.error(error);
+        setMessage(error instanceof Error ? getDataSetupMessage(error.message) : "Portföy silinemedi.");
+        setDeletingId(null);
         return;
       }
     }
 
     setItems((current) => current.filter((item) => item.id !== id));
+    if (editingId === id) {
+      setEditingId(null);
+      setForm(emptyForm);
+    }
+    setDeletingId(null);
   }
 
   function editPortfolio(item: PortfolioCard) {
@@ -164,7 +183,7 @@ export default function PortfoliosRoutePage() {
           </p>
         </header>
 
-        {message ? <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">{message}</p> : null}
+        {getDataSetupMessage(message) ? <SetupNotice message={getDataSetupMessage(message)} /> : null}
         {loading ? <p className="mt-5 text-sm text-slate-500 dark:text-slate-400">Portföyler yükleniyor...</p> : null}
 
         <section className="mt-6 grid gap-4 md:grid-cols-3">
@@ -185,8 +204,8 @@ export default function PortfoliosRoutePage() {
           </div>
           <textarea className="input mt-3 min-h-24 resize-none" placeholder="Kısa açıklama" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            {editingId ? <button className="btn-secondary" type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }}>Vazgeç</button> : null}
-            <button className="btn-primary" type="button" onClick={savePortfolio}>Kaydet</button>
+            {editingId ? <button className="btn-secondary" type="button" disabled={saving} onClick={() => { setEditingId(null); setForm(emptyForm); }}>Vazgeç</button> : null}
+            <button className="btn-primary" type="button" disabled={saving} onClick={savePortfolio}>{saving ? "Kaydediliyor..." : "Kaydet"}</button>
           </div>
         </section>
 
@@ -205,12 +224,15 @@ export default function PortfoliosRoutePage() {
               </div>
               <div className="mt-4 flex gap-2">
                 <button className="mini-action" type="button" onClick={() => editPortfolio(item)}>Düzenle</button>
-                <button className="mini-action !text-red-600" type="button" onClick={() => deletePortfolio(item.id)}>Sil</button>
+                <button className="mini-action !text-red-600" type="button" disabled={deletingId === item.id} onClick={() => deletePortfolio(item.id)}>{deletingId === item.id ? "Siliniyor..." : "Sil"}</button>
               </div>
             </article>
           )) : (
             <article className="rounded-[2rem] border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 md:col-span-2">
-              İlk portföyünü ekle.
+              <p>İlk portföyünü ekle.</p>
+              <button className="btn-primary mt-4" type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+                Portföy ekle
+              </button>
             </article>
           )}
         </section>
@@ -222,6 +244,14 @@ export default function PortfoliosRoutePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function SetupNotice({ message }: { message: string }) {
+  return (
+    <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
+      {message}
+    </p>
   );
 }
 

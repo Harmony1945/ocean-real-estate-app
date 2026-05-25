@@ -121,10 +121,22 @@ function dataError(error: unknown) {
     message.includes("does not exist") ||
     message.includes("PGRST")
   ) {
-    return "Supabase tablo kurulumu eksik. Lütfen yeni OOS migration dosyasını uygulayın.";
+    return "Veritabanı tabloları bekleniyor. Supabase migration uygulanmalı.";
   }
 
   return message || "Supabase veri işlemi tamamlanamadı.";
+}
+
+export function getDataSetupMessage(errorMessage = "") {
+  if (!isSupabaseConfigured) {
+    return "Supabase bağlantısı bekleniyor. Demo verilerle devam ediyorsunuz.";
+  }
+
+  if (errorMessage.includes("migration") || errorMessage.includes("tablo")) {
+    return "Veritabanı tabloları bekleniyor. Supabase migration uygulanmalı.";
+  }
+
+  return errorMessage;
 }
 
 function saveSession(session: SupabaseSession | null) {

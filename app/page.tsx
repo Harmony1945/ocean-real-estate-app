@@ -1,6 +1,14 @@
 "use client";
 
-import { FormEvent, PointerEvent, useMemo, useState } from "react";
+import { FormEvent, PointerEvent, useEffect, useMemo, useState } from "react";
+import { useAuthContext } from "./auth-context";
+import {
+  createSupabaseAuthClient,
+  isSupabaseConfigured,
+  type AdvisorPortfolioRow,
+  type AdvisorSearchRequestRow,
+  type AdvisorTaskRow
+} from "@/lib/supabase/client";
 
 type Stage = "Lead" | "Yeni" | "Görüşme" | "Sözleşme" | "Kapanış" | "Kapandı";
 type Risk = "Düşük" | "Orta" | "Yüksek" | string;
@@ -26,6 +34,8 @@ type SearchFilter =
   | "Acil"
   | "Kapananlar";
 
+type EntityId = number | string;
+
 type AuthForm = {
   name: string;
   email: string;
@@ -34,7 +44,7 @@ type AuthForm = {
 };
 
 type Opportunity = {
-  id: number;
+  id: EntityId;
   title: string;
   location: string;
   owner: string;
@@ -52,6 +62,8 @@ type Opportunity = {
   area?: string;
   rooms?: string;
   description?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   commission?: number;
   ownerConsultantId?: number;
   ownerConsultantName?: string;
@@ -70,14 +82,14 @@ type OpportunityForm = {
 };
 
 type Task = {
-  id: number;
-  opportunityId: number;
+  id: EntityId;
+  opportunityId: EntityId;
   title: string;
   done: boolean;
 };
 
 type SearchRequest = {
-  id: number;
+  id: EntityId;
   consultantId: number;
   consultantName: string;
   title: string;
@@ -121,12 +133,12 @@ type MatchDetail = {
 };
 
 type SearchNotification = {
-  id: number;
+  id: EntityId;
   recipientConsultantId: number;
   recipientConsultantName: string;
   message: string;
-  searchRequestId: number;
-  portfolioId: number;
+  searchRequestId: EntityId;
+  portfolioId: EntityId;
   matchScore: number;
   createdAt: string;
   read: boolean;
@@ -491,6 +503,106 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function toPortfolioRow(opportunity: Opportunity) {
+  return {
+    title: opportunity.title,
+    location: opportunity.location,
+    district: opportunity.location?.split("/")[0]?.trim() || null,
+    owner: opportunity.owner,
+    value: opportunity.value,
+    stage: opportunity.stage,
+    contract_type: opportunity.contractType,
+    next_move: opportunity.nextMove,
+    risk: opportunity.risk,
+    commission_rate: opportunity.commissionRate,
+    commission: getOpportunityCommission(opportunity),
+    listing_id: opportunity.listingId || null,
+    property_type: opportunity.propertyType || null,
+    area: opportunity.area || null,
+    rooms: opportunity.rooms || null,
+    description: opportunity.description || null,
+    latitude: opportunity.latitude ?? null,
+    longitude: opportunity.longitude ?? null
+  };
+}
+
+function fromPortfolioRow(row: AdvisorPortfolioRow, consultant: Consultant): Opportunity {
+  return {
+    id: row.id,
+    title: row.title,
+    listingId: row.listing_id || undefined,
+    location: row.location || "Konum bekleniyor",
+    owner: row.owner || "Müşteri bekleniyor",
+    value: Number(row.value || 0),
+    stage: (row.stage || "Yeni") as Stage,
+    contractType: row.contract_type || "Satışa Aracılık",
+    nextMove: row.next_move || "Sonraki adım belirlenmedi",
+    risk: row.risk || "Düşük",
+    commissionRate: Number(row.commission_rate || 2),
+    commission: Number(row.commission || 0),
+    createdAt: row.created_at?.slice(0, 10) || today(),
+    propertyType: row.property_type || "Konut",
+    area: row.area || "",
+    rooms: row.rooms || "",
+    description: row.description || "",
+    latitude: row.latitude,
+    longitude: row.longitude,
+    ownerConsultantId: consultant.id,
+    ownerConsultantName: getConsultantName(consultant)
+  };
+}
+
+function toSearchRequestRow(request: SearchRequest) {
+  return {
+    title: request.title,
+    location: request.location,
+    property_type: request.propertyType,
+    min_price: request.minPrice,
+    max_price: request.maxPrice,
+    currency: request.currency,
+    min_bedrooms: request.minBedrooms,
+    min_area: request.minArea,
+    max_area: request.maxArea,
+    rooms: request.rooms,
+    purpose: request.purpose,
+    urgency: request.urgency,
+    notes: request.notes,
+    status: request.status
+  };
+}
+
+function fromSearchRequestRow(row: AdvisorSearchRequestRow, consultant: Consultant): SearchRequest {
+  return {
+    id: row.id,
+    consultantId: consultant.id,
+    consultantName: getConsultantName(consultant),
+    title: row.title,
+    location: row.location || "Konum bekleniyor",
+    propertyType: row.property_type || "Portföy",
+    minPrice: Number(row.min_price || 0),
+    maxPrice: Number(row.max_price || 0),
+    currency: (row.currency || "TRY") as SearchCurrency,
+    minBedrooms: Number(row.min_bedrooms || 0),
+    minArea: Number(row.min_area || 0),
+    maxArea: Number(row.max_area || 0),
+    rooms: row.rooms || "",
+    purpose: row.purpose || "Satın Alma",
+    urgency: (row.urgency || "Normal") as SearchUrgency,
+    notes: row.notes || "",
+    status: (row.status || "Aktif") as SearchStatus,
+    createdAt: row.created_at?.slice(0, 10) || today()
+  };
+}
+
+function fromTaskRow(row: AdvisorTaskRow): Task {
+  return {
+    id: row.id,
+    opportunityId: row.portfolio_id || "",
+    title: row.title,
+    done: Boolean(row.done)
+  };
+}
+
 function getConsultantName(consultant: Consultant) {
   return `${consultant.firstName} ${consultant.lastName}`;
 }
@@ -661,7 +773,7 @@ function createSearchNotifications(
       const portfolioLabel = match.portfolio.listingId || match.portfolio.title;
 
       return {
-        id: Date.now() + search.id + match.portfolio.id,
+        id: `${Date.now()}-${search.id}-${match.portfolio.id}`,
         recipientConsultantId: match.portfolio.ownerConsultantId || defaultUser.id,
         recipientConsultantName:
           match.portfolio.ownerConsultantName || getConsultantName(defaultUser),
@@ -710,6 +822,8 @@ function downloadContract(fileUrl: string) {
 }
 
 export default function Home() {
+  const { user } = useAuthContext();
+  const supabase = useMemo(() => createSupabaseAuthClient(), []);
   const [isAuthenticated, setIsAuthenticated] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -746,21 +860,73 @@ export default function Home() {
   const [searchFilter, setSearchFilter] = useState<SearchFilter>("Tüm Arayışlar");
   const [searchFormOpen, setSearchFormOpen] = useState(false);
   const [searchForm, setSearchForm] = useState<SearchForm>(emptySearchForm());
-  const [editingSearchId, setEditingSearchId] = useState<number | null>(null);
+  const [editingSearchId, setEditingSearchId] = useState<EntityId | null>(null);
   const [searchSuccess, setSearchSuccess] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<EntityId | null>(null);
   const [form, setForm] = useState<OpportunityForm>(emptyForm());
   const [sahibindenUrl, setSahibindenUrl] = useState("");
   const [sahibindenLoading, setSahibindenLoading] = useState(false);
   const [sahibindenError, setSahibindenError] = useState("");
   const [sahibindenListing, setSahibindenListing] =
     useState<SahibindenListing | null>(null);
+  const [dataError, setDataError] = useState("");
+  const [dataLoading, setDataLoading] = useState(false);
+
+  const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
+
+  useEffect(() => {
+    if (!persistentMode || !supabase) return;
+
+    let mounted = true;
+    setDataLoading(true);
+    setDataError("");
+
+    Promise.all([
+      supabase.getPortfolios(),
+      supabase.getSearchRequests(),
+      supabase.getTasks()
+    ])
+      .then(([portfolioRows, requestRows, taskRows]) => {
+        if (!mounted) return;
+        const nextPortfolios: Opportunity[] = portfolioRows.map((row: AdvisorPortfolioRow) =>
+          fromPortfolioRow(row, currentUser)
+        );
+        const nextRequests: SearchRequest[] = requestRows.map((row: AdvisorSearchRequestRow) =>
+          fromSearchRequestRow(row, currentUser)
+        );
+
+        setOpportunities(nextPortfolios);
+        setSearchRequests(nextRequests);
+        setTasks(taskRows.map(fromTaskRow));
+        setNotifications(nextRequests.flatMap((request) =>
+          createSearchNotifications(request, nextPortfolios, [])
+        ));
+        setSelectedId(nextPortfolios[0]?.id ?? "");
+      })
+      .catch((error: Error) => {
+        if (!mounted) return;
+        setOpportunities([]);
+        setSearchRequests([]);
+        setTasks([]);
+        setNotifications([]);
+        setSelectedId("");
+        setDataError(error.message || "Supabase verileri alınamadı.");
+      })
+      .finally(() => {
+        if (mounted) setDataLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser, persistentMode, supabase]);
 
   const selectedOpportunity =
     opportunities.find((opportunity) => opportunity.id === selectedId) ??
-    opportunities[0];
+    opportunities[0] ??
+    null;
 
   const filteredOpportunities = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("tr-TR");
@@ -870,14 +1036,14 @@ export default function Home() {
     setFormOpen(true);
   }
 
-  function saveOpportunity(event: FormEvent<HTMLFormElement>) {
+  async function saveOpportunity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const value = Math.max(Number(form.value) || 0, 0);
     const existingOpportunity = editingId
       ? opportunities.find((opportunity) => opportunity.id === editingId)
       : null;
-    const savedOpportunity: Opportunity = {
+    let savedOpportunity: Opportunity = {
       ...existingOpportunity,
       id: existingOpportunity?.id ?? Date.now(),
       title: form.title.trim() || "İsimsiz Fırsat",
@@ -897,6 +1063,19 @@ export default function Home() {
         existingOpportunity?.ownerConsultantName || getConsultantName(currentUser)
     };
 
+    if (persistentMode && supabase) {
+      try {
+        const row = editingId
+          ? await supabase.updatePortfolio(String(editingId), toPortfolioRow(savedOpportunity))
+          : await supabase.createPortfolio(toPortfolioRow(savedOpportunity));
+        if (row) savedOpportunity = fromPortfolioRow(row, currentUser);
+        setDataError("");
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : "Portföy kaydedilemedi.");
+        return;
+      }
+    }
+
     setOpportunities((current) =>
       editingId
         ? current.map((opportunity) =>
@@ -908,7 +1087,22 @@ export default function Home() {
     setFormOpen(false);
   }
 
-  function deleteOpportunity(id: number) {
+  async function deleteOpportunity(id: EntityId) {
+    if (persistentMode && supabase) {
+      try {
+        await supabase.deletePortfolio(String(id));
+        await Promise.all(
+          tasks
+            .filter((task) => task.opportunityId === id && typeof task.id === "string")
+            .map((task) => supabase.deleteTask(String(task.id)))
+        );
+        setDataError("");
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : "Portföy silinemedi.");
+        return;
+      }
+    }
+
     const remaining = opportunities.filter((opportunity) => opportunity.id !== id);
     setOpportunities(remaining);
     setTasks((current) => current.filter((task) => task.opportunityId !== id));
@@ -918,24 +1112,49 @@ export default function Home() {
     setSelectedId(remaining[0]?.id ?? 0);
   }
 
-  function addTask() {
+  async function addTask() {
     if (!selectedOpportunity || !taskTitle.trim()) {
       return;
     }
 
-    setTasks((current) => [
-      {
-        id: Date.now(),
-        opportunityId: selectedOpportunity.id,
-        title: taskTitle.trim(),
-        done: false
-      },
-      ...current
-    ]);
+    let savedTask: Task = {
+      id: Date.now(),
+      opportunityId: selectedOpportunity.id,
+      title: taskTitle.trim(),
+      done: false
+    };
+
+    if (persistentMode && supabase) {
+      try {
+        const row = await supabase.createTask({
+          portfolio_id: typeof selectedOpportunity.id === "string" ? selectedOpportunity.id : null,
+          title: savedTask.title,
+          done: false
+        });
+        if (row) savedTask = fromTaskRow(row);
+        setDataError("");
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : "Görev kaydedilemedi.");
+        return;
+      }
+    }
+
+    setTasks((current) => [savedTask, ...current]);
     setTaskTitle("");
   }
 
-  function toggleTask(id: number) {
+  async function toggleTask(id: EntityId) {
+    const task = tasks.find((item) => item.id === id);
+    if (persistentMode && supabase && task && typeof id === "string") {
+      try {
+        await supabase.updateTask(id, { done: !task.done });
+        setDataError("");
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : "Görev güncellenemedi.");
+        return;
+      }
+    }
+
     setTasks((current) =>
       current.map((task) =>
         task.id === id ? { ...task, done: !task.done } : task
@@ -943,16 +1162,26 @@ export default function Home() {
     );
   }
 
-  function deleteTask(id: number) {
+  async function deleteTask(id: EntityId) {
+    if (persistentMode && supabase && typeof id === "string") {
+      try {
+        await supabase.deleteTask(id);
+        setDataError("");
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : "Görev silinemedi.");
+        return;
+      }
+    }
+
     setTasks((current) => current.filter((task) => task.id !== id));
   }
 
-  function saveSearchRequest() {
+  async function saveSearchRequest() {
     if (!searchForm.title.trim() || !searchForm.location.trim()) {
       return;
     }
 
-    const savedSearch: SearchRequest = {
+    let savedSearch: SearchRequest = {
       id: editingSearchId ?? Date.now(),
       consultantId: currentUser.id,
       consultantName: getConsultantName(currentUser),
@@ -972,6 +1201,19 @@ export default function Home() {
       status: "Aktif",
       createdAt: today()
     };
+
+    if (persistentMode && supabase) {
+      try {
+        const row = editingSearchId
+          ? await supabase.updateSearchRequest(String(editingSearchId), toSearchRequestRow(savedSearch))
+          : await supabase.createSearchRequest(toSearchRequestRow(savedSearch));
+        if (row) savedSearch = fromSearchRequestRow(row, currentUser);
+        setDataError("");
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : "Arayış kaydedilemedi.");
+        return;
+      }
+    }
 
     const nextNotifications = createSearchNotifications(
       savedSearch,
@@ -1015,7 +1257,17 @@ export default function Home() {
     setSearchFormOpen(true);
   }
 
-  function closeSearchRequest(id: number) {
+  async function closeSearchRequest(id: EntityId) {
+    if (persistentMode && supabase && typeof id === "string") {
+      try {
+        await supabase.updateSearchRequest(id, { status: "Kapatıldı" });
+        setDataError("");
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : "Arayış güncellenemedi.");
+        return;
+      }
+    }
+
     setSearchRequests((current) =>
       current.map((request) =>
         request.id === id ? { ...request, status: "Kapatıldı" } : request
@@ -1023,7 +1275,7 @@ export default function Home() {
     );
   }
 
-  function markNotificationRead(id: number) {
+  function markNotificationRead(id: EntityId) {
     setNotifications((current) =>
       current.map((notification) =>
         notification.id === id ? { ...notification, read: true } : notification
@@ -1036,16 +1288,30 @@ export default function Home() {
     markNotificationRead(notification.id);
   }
 
-  function createMatchTask(searchRequest: SearchRequest, portfolio: Opportunity) {
-    setTasks((current) => [
-      {
-        id: Date.now(),
-        opportunityId: portfolio.id,
-        title: `${searchRequest.title} için ${portfolio.title} eşleşmesini değerlendir`,
-        done: false
-      },
-      ...current
-    ]);
+  async function createMatchTask(searchRequest: SearchRequest, portfolio: Opportunity) {
+    let savedTask: Task = {
+      id: Date.now(),
+      opportunityId: portfolio.id,
+      title: `${searchRequest.title} için ${portfolio.title} eşleşmesini değerlendir`,
+      done: false
+    };
+
+    if (persistentMode && supabase) {
+      try {
+        const row = await supabase.createTask({
+          portfolio_id: typeof portfolio.id === "string" ? portfolio.id : null,
+          title: savedTask.title,
+          done: false
+        });
+        if (row) savedTask = fromTaskRow(row);
+        setDataError("");
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : "Görev kaydedilemedi.");
+        return;
+      }
+    }
+
+    setTasks((current) => [savedTask, ...current]);
   }
 
   async function handleSahibindenAnalysis() {
@@ -1074,7 +1340,7 @@ export default function Home() {
     }
   }
 
-  function saveSahibindenOpportunity() {
+  async function saveSahibindenOpportunity() {
     if (!sahibindenListing) {
       return;
     }
@@ -1082,7 +1348,7 @@ export default function Home() {
     const title = sahibindenListing.title || "Sahibinden fırsatı";
     const value = sahibindenListing.value || 0;
     const id = Date.now();
-    const savedOpportunity: Opportunity = {
+    let savedOpportunity: Opportunity = {
       id,
       title,
       location: sahibindenListing.location || "Lokasyon doğrulanmalı",
@@ -1107,18 +1373,35 @@ export default function Home() {
       ownerConsultantId: currentUser.id,
       ownerConsultantName: getConsultantName(currentUser)
     };
+    let savedTask: Task = {
+      id: Date.now() + 1,
+      opportunityId: id,
+      title: `${title} için Sahibinden bilgilerini doğrula`,
+      done: false
+    };
+
+    if (persistentMode && supabase) {
+      try {
+        const row = await supabase.createPortfolio(toPortfolioRow(savedOpportunity));
+        if (row) {
+          savedOpportunity = fromPortfolioRow(row, currentUser);
+          const taskRow = await supabase.createTask({
+            portfolio_id: row.id,
+            title: savedTask.title,
+            done: false
+          });
+          if (taskRow) savedTask = fromTaskRow(taskRow);
+        }
+        setDataError("");
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : "Sahibinden portföyü kaydedilemedi.");
+        return;
+      }
+    }
 
     setOpportunities((current) => [savedOpportunity, ...current]);
-    setTasks((current) => [
-      {
-        id: Date.now() + 1,
-        opportunityId: id,
-        title: `${title} için Sahibinden bilgilerini doğrula`,
-        done: false
-      },
-      ...current
-    ]);
-    setSelectedId(id);
+    setTasks((current) => [savedTask, ...current]);
+    setSelectedId(savedOpportunity.id);
   }
 
   if (!isAuthenticated) {
@@ -1140,7 +1423,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-stone-50 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] text-slate-950 dark:bg-slate-950 dark:text-slate-100 sm:px-6 sm:py-6 md:pb-8 lg:px-8">
+    <main className="min-h-screen overflow-x-hidden bg-stone-50 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] text-slate-950 dark:bg-black dark:text-neutral-50 sm:px-6 sm:py-6 md:pb-8 lg:px-8">
       <div className="mx-auto max-w-6xl min-w-0">
         <header className="flex flex-col gap-5 border-b border-slate-200 pb-6 dark:border-slate-800 sm:gap-6 sm:pb-8 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
@@ -1194,6 +1477,18 @@ export default function Home() {
             </button>
           </div>
         </header>
+
+        {dataError ? (
+          <div className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
+            {dataError}
+          </div>
+        ) : null}
+
+        {dataLoading ? (
+          <div className="mt-5 rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
+            Supabase verileri yükleniyor...
+          </div>
+        ) : null}
 
         {activePage === "portfolios" ? (
           <PortfolioListPage
@@ -1335,14 +1630,20 @@ export default function Home() {
                 placeholder="Başlık, konum, müşteri veya sözleşme ara"
               />
               <div className="mt-4 space-y-3">
-                {filteredOpportunities.map((opportunity) => (
-                  <OpportunityCard
-                    key={opportunity.id}
-                    opportunity={opportunity}
-                    active={opportunity.id === selectedOpportunity?.id}
-                    onSelect={() => setSelectedId(opportunity.id)}
-                  />
-                ))}
+                {filteredOpportunities.length ? (
+                  filteredOpportunities.map((opportunity) => (
+                    <OpportunityCard
+                      key={opportunity.id}
+                      opportunity={opportunity}
+                      active={opportunity.id === selectedOpportunity?.id}
+                      onSelect={() => setSelectedId(opportunity.id)}
+                    />
+                  ))
+                ) : (
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-5 text-center text-sm text-slate-500">
+                    İlk portföyünü ekle.
+                  </div>
+                )}
               </div>
             </Card>
 
@@ -1453,35 +1754,41 @@ export default function Home() {
                 </button>
               </div>
               <div className="mt-4 space-y-2">
-                {selectedTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3"
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
-                      checked={task.done}
-                      onChange={() => toggleTask(task.id)}
-                    />
-                    <span
-                      className={`min-w-0 flex-1 text-sm ${
-                        task.done
-                          ? "text-emerald-700 line-through"
-                          : "text-slate-800"
-                      }`}
+                {selectedTasks.length ? (
+                  selectedTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3"
                     >
-                      {task.title}
-                    </span>
-                    <button
-                      className="shrink-0 text-sm text-red-500 transition hover:text-red-700"
-                      type="button"
-                      onClick={() => deleteTask(task.id)}
-                    >
-                      Sil
-                    </button>
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
+                        checked={task.done}
+                        onChange={() => toggleTask(task.id)}
+                      />
+                      <span
+                        className={`min-w-0 flex-1 text-sm ${
+                          task.done
+                            ? "text-emerald-700 line-through"
+                            : "text-slate-800"
+                        }`}
+                      >
+                        {task.title}
+                      </span>
+                      <button
+                        className="shrink-0 text-sm text-red-500 transition hover:text-red-700"
+                        type="button"
+                        onClick={() => deleteTask(task.id)}
+                      >
+                        Sil
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-center text-sm text-slate-500">
+                    Henüz görev yok.
                   </div>
-                ))}
+                )}
               </div>
             </Card>
 
@@ -1819,9 +2126,9 @@ function PortfolioListPage({
   opportunities: Opportunity[];
   onBack: () => void;
   onCreate: () => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: EntityId) => void;
   onEdit: (opportunity: Opportunity) => void;
-  onOpen: (id: number) => void;
+  onOpen: (id: EntityId) => void;
 }) {
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState<PortfolioStageFilter>("Tümü");
@@ -2136,7 +2443,7 @@ function PortfolioListPage({
         ) : (
           <div className="mt-5 rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-6 text-center">
             <p className="text-sm font-medium text-slate-950">
-              Henüz portföy bulunmuyor.
+              İlk portföyünü ekle.
             </p>
             <p className="mt-2 text-sm leading-6 text-slate-500">
               Yeni fırsat ekleyerek portföy listenizi oluşturmaya başlayabilirsiniz.
@@ -2205,7 +2512,7 @@ function SearchMatchCard({
   match: ReturnType<typeof getSearchMatches>[number];
   search: SearchRequest;
   onCreateTask: (searchRequest: SearchRequest, portfolio: Opportunity) => void;
-  onSelectPortfolio: (id: number) => void;
+  onSelectPortfolio: (id: EntityId) => void;
 }) {
   return (
     <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-3 sm:p-4">
@@ -2310,17 +2617,17 @@ function SearchRequestsCard({
   opportunities: Opportunity[];
   searchRequests: SearchRequest[];
   successMessage: string;
-  onCloseSearch: (id: number) => void;
+  onCloseSearch: (id: EntityId) => void;
   onCreateTask: (searchRequest: SearchRequest, portfolio: Opportunity) => void;
   onEditSearch: (searchRequest: SearchRequest) => void;
   onFilterChange: (filter: SearchFilter) => void;
   onFormChange: (form: SearchForm) => void;
   onOpenForm: () => void;
   onSave: () => void;
-  onSelectPortfolio: (id: number) => void;
+  onSelectPortfolio: (id: EntityId) => void;
   onToggleForm: () => void;
 }) {
-  const [expandedSearchId, setExpandedSearchId] = useState<number | null>(null);
+  const [expandedSearchId, setExpandedSearchId] = useState<EntityId | null>(null);
   const filters: SearchFilter[] = [
     "Tüm Arayışlar",
     "Benim Arayışlarım",
@@ -2521,7 +2828,7 @@ function SearchRequestsCard({
         ) : (
           <div className="rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-5 text-center">
             <p className="text-sm font-medium text-slate-950">
-              Henüz aktif arayış yok.
+              İlk arayışını oluştur.
             </p>
             <p className="mt-2 text-sm leading-6 text-slate-500">
               Danışmanların müşteri taleplerini buraya ekleyerek portföylerle
@@ -2547,7 +2854,7 @@ function NotificationsCard({
   notifications: SearchNotification[];
   opportunities: Opportunity[];
   searchRequests: SearchRequest[];
-  onMarkRead: (id: number) => void;
+  onMarkRead: (id: EntityId) => void;
   onOpenPortfolio: (notification: SearchNotification) => void;
 }) {
   return (
@@ -2825,7 +3132,7 @@ function AdvisorHomeScreen({
   recentMatches: Array<ReturnType<typeof getSearchMatches>[number] & { search: SearchRequest }>;
   onAddPortfolio: () => void;
   onAddSearchRequest: () => void;
-  onOpenPortfolio: (id: number) => void;
+  onOpenPortfolio: (id: EntityId) => void;
   onViewMatches: () => void;
 }) {
   return (
@@ -2871,7 +3178,7 @@ function AdvisorHomeScreen({
             meta: `${portfolio.location} · ${money(portfolio.value)}`,
             badge: portfolio.stage
           }))}
-          onSelect={(id) => onOpenPortfolio(Number(id))}
+          onSelect={onOpenPortfolio}
         />
 
         <DashboardList
@@ -2894,7 +3201,7 @@ function AdvisorHomeScreen({
             meta: `${match.search.title} · ${match.portfolio.location}`,
             badge: `%${match.score}`
           }))}
-          onSelect={(id) => onOpenPortfolio(Number(String(id).split("-").at(-1)))}
+          onSelect={(id) => onOpenPortfolio(String(id).split("-").at(-1) || id)}
         />
       </div>
     </section>

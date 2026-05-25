@@ -30,6 +30,74 @@ export type AdvisorProfile = {
   updated_at?: string;
 };
 
+export type AdvisorPortfolioRow = {
+  id: string;
+  owner_user_id: string;
+  title: string;
+  location: string | null;
+  district: string | null;
+  owner: string | null;
+  value: number | null;
+  stage: string | null;
+  contract_type: string | null;
+  next_move: string | null;
+  risk: string | null;
+  commission_rate: number | null;
+  commission: number | null;
+  listing_id: string | null;
+  property_type: string | null;
+  area: string | null;
+  rooms: string | null;
+  description: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AdvisorSearchRequestRow = {
+  id: string;
+  owner_user_id: string;
+  title: string;
+  location: string | null;
+  property_type: string | null;
+  min_price: number | null;
+  max_price: number | null;
+  currency: string | null;
+  min_bedrooms: number | null;
+  min_area: number | null;
+  max_area: number | null;
+  rooms: string | null;
+  purpose: string | null;
+  urgency: string | null;
+  notes: string | null;
+  status: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AdvisorTaskRow = {
+  id: string;
+  owner_user_id: string;
+  portfolio_id: string | null;
+  title: string;
+  done: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type PortfolioInput = Partial<Omit<AdvisorPortfolioRow, "id" | "owner_user_id" | "created_at" | "updated_at">> & {
+  title: string;
+};
+
+export type SearchRequestInput = Partial<Omit<AdvisorSearchRequestRow, "id" | "owner_user_id" | "created_at" | "updated_at">> & {
+  title: string;
+};
+
+export type TaskInput = Partial<Omit<AdvisorTaskRow, "id" | "owner_user_id" | "created_at" | "updated_at">> & {
+  title: string;
+};
+
 type AuthResponse = {
   access_token?: string;
   refresh_token?: string;
@@ -43,6 +111,20 @@ type AuthResponse = {
 
 function authError(data: AuthResponse, fallback: string) {
   return data.error_description || data.message || data.msg || data.error || fallback;
+}
+
+function dataError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (
+    message.includes("relation") ||
+    message.includes("schema cache") ||
+    message.includes("does not exist") ||
+    message.includes("PGRST")
+  ) {
+    return "Supabase tablo kurulumu eksik. Lütfen yeni OOS migration dosyasını uygulayın.";
+  }
+
+  return message || "Supabase veri işlemi tamamlanamadı.";
 }
 
 function saveSession(session: SupabaseSession | null) {
@@ -175,6 +257,207 @@ export function createSupabaseAuthClient(): any {
     return rows[0] ?? null;
   }
 
+  async function getPortfolios() {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<AdvisorPortfolioRow[]>(
+        "/rest/v1/portfolios?select=*&order=created_at.desc",
+        { method: "GET", token }
+      );
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function createPortfolio(portfolio: PortfolioInput) {
+    const stored = readStoredSession();
+    if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<AdvisorPortfolioRow[]>("/rest/v1/portfolios", {
+        method: "POST",
+        token: stored.access_token,
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ ...portfolio, owner_user_id: stored.user.id })
+      });
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function updatePortfolio(id: string, portfolio: Partial<PortfolioInput>) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<AdvisorPortfolioRow[]>(
+        `/rest/v1/portfolios?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          token,
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ ...portfolio, updated_at: new Date().toISOString() })
+        }
+      );
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function deletePortfolio(id: string) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      await request(`/rest/v1/portfolios?id=eq.${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        token
+      });
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function getSearchRequests() {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<AdvisorSearchRequestRow[]>(
+        "/rest/v1/search_requests?select=*&order=created_at.desc",
+        { method: "GET", token }
+      );
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function createSearchRequest(searchRequest: SearchRequestInput) {
+    const stored = readStoredSession();
+    if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<AdvisorSearchRequestRow[]>("/rest/v1/search_requests", {
+        method: "POST",
+        token: stored.access_token,
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ ...searchRequest, owner_user_id: stored.user.id })
+      });
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function updateSearchRequest(id: string, searchRequest: Partial<SearchRequestInput>) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<AdvisorSearchRequestRow[]>(
+        `/rest/v1/search_requests?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          token,
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ ...searchRequest, updated_at: new Date().toISOString() })
+        }
+      );
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function deleteSearchRequest(id: string) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      await request(`/rest/v1/search_requests?id=eq.${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        token
+      });
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function getTasks() {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<AdvisorTaskRow[]>(
+        "/rest/v1/tasks?select=*&order=created_at.desc",
+        { method: "GET", token }
+      );
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function createTask(task: TaskInput) {
+    const stored = readStoredSession();
+    if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<AdvisorTaskRow[]>("/rest/v1/tasks", {
+        method: "POST",
+        token: stored.access_token,
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ ...task, owner_user_id: stored.user.id })
+      });
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function updateTask(id: string, task: Partial<TaskInput>) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<AdvisorTaskRow[]>(
+        `/rest/v1/tasks?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          token,
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ ...task, updated_at: new Date().toISOString() })
+        }
+      );
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function deleteTask(id: string) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      await request(`/rest/v1/tasks?id=eq.${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        token
+      });
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
   return {
     async getSession() {
       const stored = readStoredSession();
@@ -233,6 +516,30 @@ export function createSupabaseAuthClient(): any {
     getProfile,
 
     saveProfile,
+
+    getPortfolios,
+
+    createPortfolio,
+
+    updatePortfolio,
+
+    deletePortfolio,
+
+    getSearchRequests,
+
+    createSearchRequest,
+
+    updateSearchRequest,
+
+    deleteSearchRequest,
+
+    getTasks,
+
+    createTask,
+
+    updateTask,
+
+    deleteTask,
 
     async signOut() {
       const stored = readStoredSession();

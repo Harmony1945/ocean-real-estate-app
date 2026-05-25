@@ -511,9 +511,7 @@ function AuthScreen({
     defaultPhoneCountry;
 
   return (
-    <main
-      className="relative min-h-dvh overflow-hidden bg-stone-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100"
-    >
+    <main className="relative min-h-dvh overflow-hidden bg-stone-50 text-slate-950 dark:bg-black dark:text-neutral-50">
       <div className="relative mx-auto flex min-h-dvh max-w-7xl flex-col px-4 pt-5 sm:px-6 sm:py-7 lg:px-8">
         <header className="relative z-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -538,15 +536,6 @@ function AuthScreen({
             <p className="mt-5 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400 sm:text-base">
               Portföyleri, arayışları, eşleşmeleri ve danışman süreçlerini tek sade merkezde yönetin.
             </p>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={loading || !isConfigured}
-              className="mt-7 hidden rounded-full bg-slate-950 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-55 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white lg:inline-flex"
-            >
-              Çalışma Alanına Gir
-            </button>
-
             <div className="relative mt-10 flex h-44 w-44 items-center justify-center sm:h-56 sm:w-56 lg:hidden">
               <div className="absolute inset-4 animate-oos-liquid-ring rounded-full border border-slate-200/80 bg-white/50 shadow-[0_24px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]" />
               <div className="animate-oos-liquid-float relative flex h-28 w-28 items-center justify-center border border-white/70 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_24px_70px_rgba(15,23,42,0.16)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)] sm:h-36 sm:w-36">
@@ -557,172 +546,145 @@ function AuthScreen({
             </div>
           </div>
 
-          <div className="hidden min-h-[34rem] rounded-[2.5rem] border border-slate-200 bg-white p-4 shadow-[0_30px_100px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-white/[0.04] lg:block">
-            <div className="h-full rounded-[2rem] bg-stone-50 p-5 dark:bg-slate-950/70">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-slate-400">Bugünkü merkez</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">
-                    OOS Dashboard
-                  </p>
-                </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                  canlı
-                </span>
+          <section className="min-h-[34rem] rounded-[2.5rem] border border-slate-200 bg-slate-950 p-4 text-white shadow-[0_30px_100px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-[#050505] dark:shadow-[0_30px_100px_rgba(0,0,0,0.62)]">
+            <div className="flex h-full flex-col justify-center rounded-[2rem] border border-white/10 bg-black px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-6 sm:py-7 lg:px-7">
+              <div className="mb-6">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/40">Güvenli giriş</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+                  OOS çalışma alanına gir.
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-white/50">
+                  Danışman hesabınızla devam edin veya yeni profilinizi oluşturun.
+                </p>
               </div>
-              <div className="mt-6 grid gap-3">
-                {["Aktif portföyler", "Aktif arayışlar", "Son eşleşmeler"].map((item, index) => (
-                  <div key={item} className="rounded-3xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-500 dark:text-slate-400">{item}</span>
-                      <span className="text-lg font-semibold text-slate-950 dark:text-slate-100">
-                        {[12, 8, 5][index]}
-                      </span>
+
+              <div className="mb-4 grid gap-2">
+                <button
+                  type="button"
+                  disabled
+                  className="flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 opacity-95 shadow-sm disabled:cursor-not-allowed"
+                >
+                  <span className="flex-1 text-center">Apple ile Devam Et</span>
+                  <AppleIcon />
+                </button>
+                <button
+                  type="button"
+                  onClick={continueWithGoogle}
+                  disabled={loading || !isConfigured}
+                  className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white px-4 py-3 text-sm font-medium text-slate-950 shadow-sm transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  <GoogleIcon />
+                  Google ile devam et
+                </button>
+              </div>
+
+              <div className="mb-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onModeChange("signup")}
+                  className={`min-h-12 rounded-2xl px-3 py-2 text-sm font-medium transition ${
+                    mode === "signup"
+                      ? "bg-white text-slate-950"
+                      : "bg-white/10 text-white hover:bg-white/15"
+                  }`}
+                >
+                  Kaydol
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onModeChange("login")}
+                  className={`min-h-12 rounded-2xl px-3 py-2 text-sm font-medium transition ${
+                    mode === "login"
+                      ? "bg-white text-slate-950"
+                      : "bg-white/10 text-white hover:bg-white/15"
+                  }`}
+                >
+                  Oturum aç
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {mode === "signup" ? (
+                  <>
+                    <input
+                      className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
+                      placeholder="Ad Soyad"
+                      value={form.name}
+                      onChange={(event) => update("name", event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") submit();
+                      }}
+                    />
+                    <div className="grid gap-2 sm:grid-cols-[140px_minmax(0,1fr)]">
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-white">
+                          {selectedSignupCountry.flag} {selectedSignupCountry.shortLabel}
+                        </span>
+                        <select
+                          className="input !rounded-2xl !border-white/10 !bg-white/10 !py-3 !pl-4 !pr-4 !text-transparent focus:!border-white/25 focus:!ring-white/10"
+                          aria-label="Telefon ülke kodu"
+                          value={form.phoneCountryCode}
+                          onChange={(event) => update("phoneCountryCode", event.target.value)}
+                        >
+                          {phoneCountries.map((country) => (
+                            <option key={country.code} value={country.code} className="text-slate-950">
+                              {country.flag} {country.label} {country.code}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <input
+                        className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
+                        inputMode="tel"
+                        placeholder="555 111 22 33"
+                        value={form.phone}
+                        onChange={(event) => update("phone", event.target.value)}
+                      />
                     </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-sm font-medium text-slate-950 dark:text-slate-100">
-                  Beykoz villa arayışı
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                  %85 eşleşme: lokasyon, tip ve fiyat aralığı uyumlu.
-                </p>
-                <div className="mt-4 h-2 rounded-full bg-slate-100 dark:bg-slate-800">
-                  <div className="h-2 w-[85%] rounded-full bg-emerald-500" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <section className="mx-[-1rem] rounded-t-[2.2rem] bg-slate-950 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-5 text-white shadow-[0_-24px_80px_rgba(15,23,42,0.20)] dark:bg-black sm:mx-0 sm:w-full sm:rounded-[2.2rem] sm:p-6 lg:max-w-md lg:justify-self-end">
-            <div className="mb-4 grid gap-2">
-            <button
-              type="button"
-              disabled
-              className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 opacity-95 shadow-sm disabled:cursor-not-allowed"
-            >
-              <AppleIcon />
-              Apple ile Devam Et
-            </button>
-            <button
-              type="button"
-              onClick={continueWithGoogle}
-              disabled={loading || !isConfigured}
-              className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white px-4 py-3 text-sm font-medium text-slate-950 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              <GoogleIcon />
-              Google ile devam et
-            </button>
-          </div>
-
-          <div className="mb-4 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => onModeChange("signup")}
-              className={`min-h-12 rounded-2xl px-3 py-2 text-sm font-medium transition ${
-                mode === "signup"
-                  ? "bg-white text-slate-950"
-                  : "bg-white/10 text-white hover:bg-white/15"
-              }`}
-            >
-              Kaydol
-            </button>
-            <button
-              type="button"
-              onClick={() => onModeChange("login")}
-              className={`min-h-12 rounded-2xl px-3 py-2 text-sm font-medium transition ${
-                mode === "login"
-                  ? "bg-white text-slate-950"
-                  : "bg-white/10 text-white hover:bg-white/15"
-              }`}
-            >
-              Oturum aç
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {mode === "signup" ? (
-              <>
+                  </>
+                ) : null}
                 <input
                   className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
-                  placeholder="Ad Soyad"
-                  value={form.name}
-                  onChange={(event) => update("name", event.target.value)}
+                  placeholder="Kullanıcı adı veya e-posta"
+                  value={form.email}
+                  onChange={(event) => update("email", event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") submit();
                   }}
                 />
-                <div className="grid gap-2 sm:grid-cols-[150px_minmax(0,1fr)]">
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-white">
-                      {selectedSignupCountry.flag} {selectedSignupCountry.shortLabel}
-                    </span>
-                    <select
-                      className="input !rounded-2xl !border-white/10 !bg-white/10 !py-3 !pl-20 !pr-4 !text-white focus:!border-white/25 focus:!ring-white/10"
-                      aria-label="Telefon ülke kodu"
-                      value={form.phoneCountryCode}
-                      onChange={(event) => update("phoneCountryCode", event.target.value)}
-                    >
-                      {phoneCountries.map((country) => (
-                        <option key={country.code} value={country.code}>
-                          {country.flag} {country.shortLabel} {country.code}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <input
-                    className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
-                    inputMode="tel"
-                    placeholder="555 111 22 33"
-                    value={form.phone}
-                    onChange={(event) => update("phone", event.target.value)}
-                  />
-                </div>
-              </>
-            ) : null}
-            <input
-              className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
-              placeholder="Kullanıcı adı veya e-posta"
-              value={form.email}
-              onChange={(event) => update("email", event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") submit();
-              }}
-            />
-            <input
-              className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
-              placeholder="Şifre"
-              type="password"
-              value={form.password}
-              onChange={(event) => update("password", event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") submit();
-              }}
-            />
-            {!isConfigured ? (
-              <p className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-sm leading-6 text-white/70">
-                Supabase kurulumu bekleniyor. `NEXT_PUBLIC_SUPABASE_URL` ve `NEXT_PUBLIC_SUPABASE_ANON_KEY` eklenince gerçek giriş aktif olur.
-              </p>
-            ) : null}
-            {notice ? (
-              <p className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-100">
-                {notice}
-              </p>
-            ) : null}
-            {localError || error ? <p className="text-sm text-red-200">{localError || error}</p> : null}
-            <button
-              type="button"
-              onClick={submit}
-              disabled={loading || !isConfigured}
-              className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              {loading ? "Kontrol ediliyor..." : mode === "signup" ? "Kaydol" : "Oturum aç"}
-            </button>
-          </div>
+                <input
+                  className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
+                  placeholder="Şifre"
+                  type="password"
+                  value={form.password}
+                  onChange={(event) => update("password", event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") submit();
+                  }}
+                />
+                {!isConfigured ? (
+                  <p className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-sm leading-6 text-white/70">
+                    Supabase kurulumu bekleniyor. `NEXT_PUBLIC_SUPABASE_URL` ve `NEXT_PUBLIC_SUPABASE_ANON_KEY` eklenince gerçek giriş aktif olur.
+                  </p>
+                ) : null}
+                {notice ? (
+                  <p className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-100">
+                    {notice}
+                  </p>
+                ) : null}
+                {localError || error ? <p className="text-sm text-red-200">{localError || error}</p> : null}
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={loading || !isConfigured}
+                  className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {loading ? "Kontrol ediliyor..." : mode === "signup" ? "Kaydol" : "Oturum aç"}
+                </button>
+              </div>
 
-            <p className="mt-5 text-center text-xs leading-5 text-white/40">OOS advisors private workspace</p>
+              <p className="mt-5 text-center text-xs leading-5 text-white/40">OOS advisors private workspace</p>
+            </div>
           </section>
         </section>
       </div>
@@ -884,9 +846,9 @@ function ProfileShell({
   onToggleTheme: () => void;
 }) {
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-stone-50 px-3 text-slate-950 dark:bg-slate-950 dark:text-slate-100 sm:px-4">
+    <main className="relative min-h-dvh overflow-hidden bg-stone-50 px-3 text-slate-950 dark:bg-black dark:text-neutral-50 sm:px-4">
       <div className="relative mx-auto flex min-h-dvh max-w-md items-center justify-center py-6 sm:py-8">
-        <section className="w-full rounded-3xl border border-white/60 bg-white/95 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/90 sm:p-6">
+        <section className="w-full rounded-3xl border border-white/60 bg-white/95 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#080808] sm:p-6">
           <div className="mb-4 flex justify-end">
             <ThemeToggle />
           </div>

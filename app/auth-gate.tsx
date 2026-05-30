@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { AuthProvider } from "./auth-context";
 import OOSNavigation from "./oos-navigation";
@@ -30,6 +32,23 @@ type ProfileForm = {
   phone: string;
   company: string;
 };
+
+const publicRoutePrefixes = [
+  "/about",
+  "/ocean-elite",
+  "/star-girisim-ve-yatirim",
+  "/contact",
+  "/careers",
+  "/support",
+  "/tools/tax-calculator",
+  "/legal"
+];
+
+function isPublicRoute(pathname: string) {
+  return publicRoutePrefixes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+}
 
 const phoneCountries = [
   { label: "Turkey", flag: "🇹🇷", shortLabel: "TR", code: "+90" },
@@ -129,6 +148,7 @@ function replaceLegacyBrandText() {
 }
 
 export default function AuthGate({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const supabase = useMemo(() => createSupabaseAuthClient(), []);
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [authMode, setAuthMode] = useState<AuthMode>("login");
@@ -373,6 +393,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     window.localStorage.setItem("ocean-authenticated", "false");
     setAuthUser(null);
     setProfile(null);
+  }
+
+  if (isPublicRoute(pathname)) {
+    return <>{children}</>;
   }
 
   if (authLoading) {
@@ -901,21 +925,21 @@ function OceanCorporateFooter() {
     {
       title: "Danışman Araçları",
       links: [
-        { label: "Vergi Hesaplayıcı", href: "/menu/tax-calculator" },
+        { label: "Vergi Hesaplayıcı", href: "/tools/tax-calculator" },
         { label: "İşlem ve Komisyonlar", href: "/menu/commissions" },
         { label: "Raporlar", href: "/menu/reports" },
         { label: "Görevler", href: "/menu/tasks" },
-        { label: "Yardım ve Destek", href: "/menu/support" }
+        { label: "Yardım ve Destek", href: "/support" }
       ]
     },
     {
       title: "Kurumsal",
       links: [
-        { label: "Hakkımızda", href: "/legal/yasal-bilgilendirme" },
-        { label: "Ocean Elite", href: "/menu/payments" },
-        { label: "Star Girişim ve Yatırım A.Ş.", href: "/legal/yasal-bilgilendirme" },
-        { label: "İletişim", href: "/legal/basvuru-ve-iletisim" },
-        { label: "Kariyer", href: "/legal/basvuru-ve-iletisim" }
+        { label: "Hakkımızda", href: "/about" },
+        { label: "Ocean Elite", href: "/ocean-elite" },
+        { label: "Star Girişim ve Yatırım A.Ş.", href: "/star-girisim-ve-yatirim" },
+        { label: "İletişim", href: "/contact" },
+        { label: "Kariyer", href: "/careers" }
       ]
     },
     {
@@ -947,7 +971,7 @@ function OceanCorporateFooter() {
                 <ul className="mt-4 space-y-3 text-sm text-white/55">
                   {column.links.map((item) => (
                     <li key={item.href}>
-                      <a href={item.href} className="transition hover:text-white">{item.label}</a>
+                      <Link href={item.href} className="transition hover:text-white">{item.label}</Link>
                     </li>
                   ))}
                 </ul>

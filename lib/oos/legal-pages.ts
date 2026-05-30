@@ -13,44 +13,39 @@ export const legalPages: LegalPage[] = [
   {
     slug: "kvkk-aydinlatma-metni",
     title: "KVKK Aydınlatma Metni",
-    description: "STAR GİRİŞİM VE YATIRIM A.Ş. kişisel verilerin korunması aydınlatma metni.",
+    description: "Star Girişim ve Yatırım A.Ş. kişisel verilerin korunması aydınlatma metni.",
     intro:
-      "Bu aydınlatma metni, STAR GİRİŞİM VE YATIRIM A.Ş. tarafından Ocean Real Estate markası ve OceanOS dijital danışman operasyon sistemi kapsamında işlenen kişisel verilere ilişkin bilgilendirme amacıyla hazırlanmıştır.",
+      "Bu metin, Star Girişim ve Yatırım A.Ş. tarafından, Ocean Real Estate ve OceanOS kapsamında işlenen kişisel veriler hakkında kullanıcıları bilgilendirmek amacıyla hazırlanmıştır.",
     sections: [
       {
-        heading: "Veri Sorumlusu",
+        heading: "Genel Yaklaşım",
         body: [
-          "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında veri sorumlusu STAR GİRİŞİM VE YATIRIM A.Ş.’dir. Ocean Real Estate markası altında yürütülen iletişim, başvuru, portföy, arayış ve iş birliği süreçlerinde kişisel veriler şirket tarafından işlenebilir."
+          "Star Girişim ve Yatırım A.Ş., kişisel verilerin korunmasına önem verir ve kişisel verileri yürürlükteki mevzuata uygun şekilde işler."
+        ]
+      },
+      {
+        heading: "İşlenen Kişisel Veriler",
+        body: [
+          "Ocean Real Estate ve OceanOS kapsamında; ad, soyad, telefon numarası, e-posta adresi, kullanıcı hesabı bilgileri, portföy bilgileri, arayış kayıtları, işlem kayıtları, başvuru bilgileri, iletişim talepleri ve sistem kullanım kayıtları işlenebilir."
         ]
       },
       {
         heading: "İşleme Amaçları",
         body: [
-          "Kişisel veriler; danışman başvurularını değerlendirmek, portföy ve proje iş birliği taleplerini incelemek, müşteri arayışlarını yönetmek, iletişim süreçlerini yürütmek, operasyonel güvenliği sağlamak, yasal yükümlülükleri yerine getirmek ve OceanOS hizmet kalitesini geliştirmek amaçlarıyla işlenebilir."
-        ]
-      },
-      {
-        heading: "Hukuki Sebepler ve Toplama Yöntemleri",
-        body: [
-          "Veriler, elektronik formlar, e-posta, telefon, web sitesi kullanımı, yüz yüze görüşmeler ve dijital sistem kayıtları aracılığıyla toplanabilir. İşleme faaliyetleri kanunlarda öngörülme, sözleşmenin kurulması veya ifası, hukuki yükümlülük, meşru menfaat ve açık rıza hukuki sebeplerine dayanabilir."
+          "Kişisel veriler; kullanıcı hesabı oluşturmak, portföy ve arayış süreçlerini yürütmek, danışmanlık taleplerini değerlendirmek, işlem süreçlerini yönetmek, yasal yükümlülükleri yerine getirmek, güvenliği sağlamak, kullanıcı deneyimini geliştirmek ve iletişim taleplerine yanıt vermek amacıyla işlenir."
         ]
       },
       {
         heading: "Aktarım",
         body: [
-          "Kişisel veriler; hukuken yetkili kamu kurumları, hizmet alınan teknoloji ve barındırma sağlayıcıları, iş ortakları, danışmanlar ve yasal süreçlerde yetkili kişi ve kuruluşlarla, yalnızca gerekli olduğu ölçüde paylaşılabilir."
+          "Kişisel veriler, mevzuatın izin verdiği durumlarda ve gerekli olduğu ölçüde; yetkili kamu kurumları, hizmet sağlayıcılar, teknik altyapı sağlayıcıları, iş ortakları ve hukuki yükümlülüklerin yerine getirilmesi gereken kişi veya kurumlarla paylaşılabilir."
         ]
       },
       {
-        heading: "KVKK Madde 11 Hakları",
+        heading: "Haklarınız",
         body: [
-          "İlgili kişiler; kişisel verilerinin işlenip işlenmediğini öğrenme, işlenmişse bilgi talep etme, işleme amacını ve amaca uygun kullanılıp kullanılmadığını öğrenme, eksik veya yanlış verilerin düzeltilmesini isteme, silme veya yok etme talep etme, aktarılan üçüncü kişileri öğrenme ve kanunda sayılan diğer haklarını kullanma hakkına sahiptir."
-        ]
-      },
-      {
-        heading: "Başvuru",
-        body: [
-          "KVKK kapsamındaki başvurular, kimlik ve iletişim bilgileri ile talep konusu açıkça belirtilerek info@oceanrealestate.com.tr adresi üzerinden STAR GİRİŞİM VE YATIRIM A.Ş.’ye iletilebilir."
+          "KVKK kapsamında kişisel verilerinizle ilgili bilgi talep etme, düzeltme, silme, işlemeye itiraz etme ve mevzuatta belirtilen diğer haklarınızı kullanabilirsiniz.",
+          "Talepleriniz için info@oceanrealestate.com.tr adresinden iletişime geçebilirsiniz."
         ]
       }
     ]
@@ -58,38 +53,38 @@ export const legalPages: LegalPage[] = [
   {
     slug: "gizlilik-politikasi",
     title: "Gizlilik Politikası",
-    description: "Ocean Real Estate web sitesi ve OceanOS kullanımına ilişkin gizlilik politikası.",
+    description: "Ocean Real Estate ve OceanOS gizlilik politikası.",
     intro:
-      "STAR GİRİŞİM VE YATIRIM A.Ş., Ocean Real Estate markası altında yürüttüğü dijital ve ticari süreçlerde kişisel verilerin gizliliğine önem verir. Bu politika, web sitesi ve OceanOS kapsamındaki veri işleme yaklaşımını açıklar.",
+      "Ocean Real Estate ve OceanOS kullanıcılarının gizliliği bizim için önemlidir.",
     sections: [
       {
-        heading: "İşlenebilecek Veri Kategorileri",
+        heading: "Kapsam",
         body: [
-          "Kimlik, iletişim, başvuru, mesleki deneyim, portföy veya proje talebi, müşteri arayışı, işlem notu, web sitesi kullanım bilgileri, cihaz ve güvenlik kayıtları gibi veriler işlenebilir."
+          "Bu politika, platformu kullanan kişilerin bilgilerinin hangi amaçlarla toplandığını, nasıl korunduğunu ve hangi durumlarda paylaşılabileceğini açıklar."
         ]
       },
       {
-        heading: "İşleme Amaçları",
+        heading: "Toplanan Bilgiler",
         body: [
-          "Veriler; iletişim taleplerini yanıtlamak, danışman başvurularını değerlendirmek, portföy ve proje iş birliği süreçlerini yürütmek, müşteri arayışlarını yönetmek, operasyonel güvenliği sağlamak, hizmetleri geliştirmek ve yasal yükümlülükleri yerine getirmek amacıyla kullanılabilir."
+          "Platform kullanımı sırasında kimlik, iletişim, hesap, portföy, arayış, işlem, başvuru ve teknik kullanım bilgileri toplanabilir."
         ]
       },
       {
-        heading: "Saklama İlkeleri",
+        heading: "Kullanım Amaçları",
         body: [
-          "Kişisel veriler, işleme amacı için gerekli süre boyunca ve ilgili mevzuatta öngörülen saklama süreleri dikkate alınarak muhafaza edilir. Süre sonunda veriler silinebilir, yok edilebilir veya anonim hale getirilebilir."
+          "Bu bilgiler; hizmet sunmak, kullanıcı hesabını yönetmek, portföy ve işlem süreçlerini yürütmek, kullanıcı taleplerini yanıtlamak, güvenliği sağlamak, yasal yükümlülükleri yerine getirmek ve hizmet kalitesini artırmak için kullanılır."
         ]
       },
       {
-        heading: "Paylaşım",
+        heading: "Güvenlik",
         body: [
-          "Veriler; teknik altyapı sağlayıcıları, hukuki veya mali danışmanlar, iş ortakları, yetkili kamu kurumları ve yasal mercilerle yalnızca gerekli olduğu ölçüde paylaşılabilir."
+          "Star Girişim ve Yatırım A.Ş., kullanıcı bilgilerinin yetkisiz erişime, kayba, kötüye kullanıma veya izinsiz paylaşıma karşı korunması için gerekli teknik ve idari tedbirleri almayı hedefler."
         ]
       },
       {
-        heading: "Kullanıcı Hakları ve İletişim",
+        heading: "Üçüncü Taraflarla Paylaşım",
         body: [
-          "Kullanıcılar kişisel verilerine ilişkin bilgi, düzeltme, silme, itiraz ve diğer yasal hakları için info@oceanrealestate.com.tr adresinden STAR GİRİŞİM VE YATIRIM A.Ş. ile iletişime geçebilir."
+          "Kişisel bilgiler, yasal zorunluluklar, hizmetin yürütülmesi veya açıkça gerekli olan operasyonel durumlar dışında üçüncü kişilerle paylaşılmaz."
         ]
       }
     ]
@@ -97,38 +92,26 @@ export const legalPages: LegalPage[] = [
   {
     slug: "cerez-politikasi",
     title: "Çerez Politikası",
-    description: "Ocean Real Estate web sitesi çerez kullanımı hakkında bilgilendirme.",
+    description: "Ocean Real Estate web sitesi ve OceanOS çerez kullanımı hakkında bilgilendirme.",
     intro:
-      "Bu politika, STAR GİRİŞİM VE YATIRIM A.Ş. tarafından Ocean Real Estate web sitesi ve OceanOS arayüzlerinde kullanılabilecek çerez ve benzeri teknolojilere ilişkin bilgilendirme sağlar.",
+      "Ocean Real Estate web sitesi ve OceanOS, kullanıcı deneyimini geliştirmek, güvenliği sağlamak, oturum yönetimini yürütmek ve platform performansını analiz etmek amacıyla çerezler kullanabilir.",
     sections: [
       {
         heading: "Çerez Nedir?",
         body: [
-          "Çerezler, web sitesinin çalışmasını, güvenliğini ve kullanıcı tercihlerini desteklemek için cihazınıza kaydedilebilen küçük metin dosyalarıdır."
+          "Çerezler, ziyaret ettiğiniz web sitesi tarafından tarayıcınıza kaydedilen küçük metin dosyalarıdır. Bu dosyalar, siteyi daha verimli kullanmanıza yardımcı olur."
         ]
       },
       {
-        heading: "Zorunlu Çerezler",
+        heading: "Kullanılan Çerez Türleri",
         body: [
-          "Oturum yönetimi, güvenlik, tema tercihi ve temel site fonksiyonları için gerekli çerezler kullanılabilir. Bu çerezler olmadan bazı hizmetler sağlıklı çalışmayabilir."
+          "Zorunlu çerezler platformun temel fonksiyonlarının çalışması için gereklidir. Performans ve analiz çerezleri ise platformun nasıl kullanıldığını anlamaya ve deneyimi iyileştirmeye yardımcı olur."
         ]
       },
       {
-        heading: "Performans, Analitik ve Fonksiyonel Çerezler",
+        heading: "Çerez Tercihleri",
         body: [
-          "Web sitesi kullanımını anlamak, hizmet kalitesini ölçmek, kullanıcı tercihlerini hatırlamak ve arayüz deneyimini iyileştirmek için performans, analitik ve fonksiyonel çerezler kullanılabilir."
-        ]
-      },
-      {
-        heading: "Pazarlama Çerezleri",
-        body: [
-          "Ticari iletişim ve pazarlama faaliyetleri kapsamında çerez kullanımı gerekirse, bu kullanım ilgili mevzuata ve gerekli izin mekanizmalarına uygun şekilde yürütülür."
-        ]
-      },
-      {
-        heading: "Çerez Yönetimi",
-        body: [
-          "Kullanıcılar tarayıcı ayarları üzerinden çerezleri silebilir, engelleyebilir veya çerez kullanımı için bildirim alacak şekilde tercihlerini düzenleyebilir."
+          "Tarayıcı ayarlarınız üzerinden çerezleri silebilir veya engelleyebilirsiniz. Ancak bazı çerezlerin devre dışı bırakılması platformun bazı bölümlerinin düzgün çalışmamasına neden olabilir."
         ]
       }
     ]
@@ -138,36 +121,31 @@ export const legalPages: LegalPage[] = [
     title: "Kullanım Koşulları",
     description: "Ocean Real Estate web sitesi ve OceanOS kullanım koşulları.",
     intro:
-      "Bu kullanım koşulları, STAR GİRİŞİM VE YATIRIM A.Ş. tarafından Ocean Real Estate markası altında sunulan web sitesi ve OceanOS dijital hizmetlerinin kullanımına ilişkin esasları düzenler.",
+      "Ocean Real Estate web sitesi ve OceanOS’u kullanan herkes, bu kullanım koşullarına uygun hareket etmeyi kabul eder.",
     sections: [
       {
-        heading: "Koşulların Kabulü",
+        heading: "Platform Amacı",
         body: [
-          "Web sitesini veya OceanOS arayüzlerini kullanan kişiler bu koşulları okumuş ve kabul etmiş sayılır. Şirket, koşulları güncelleme hakkını saklı tutar."
+          "Platform; portföy, arayış, eşleşme, işlem, komisyon, iletişim ve başvuru süreçlerini daha düzenli yürütmek amacıyla sunulur."
         ]
       },
       {
-        heading: "Fikri Mülkiyet",
+        heading: "Kullanıcı Sorumlulukları",
         body: [
-          "Ocean Real Estate, OceanOS, OOS, sistem isimleri, metinler, tasarımlar, arayüzler, marka unsurları, görseller ve içerikler STAR GİRİŞİM VE YATIRIM A.Ş.’ye veya ilgili hak sahiplerine aittir. İzinsiz kopyalama, çoğaltma, yayınlama veya ticari kullanım yasaktır."
+          "Kullanıcılar platforma doğru, güncel ve yanıltıcı olmayan bilgi girmekle yükümlüdür.",
+          "Yetkisiz bilgi paylaşımı, üçüncü kişilere ait verilerin izinsiz kullanımı, gerçeğe aykırı portföy girişi, platformu kötüye kullanma veya sistem güvenliğini tehlikeye atma yasaktır."
         ]
       },
       {
-        heading: "Kullanım Sınırları",
+        heading: "Platform Kullanımı",
         body: [
-          "Yetkisiz erişim, veri kazıma, otomatik sorgu, tersine mühendislik, güvenlik önlemlerini aşma, sistemi kötüye kullanma veya üçüncü kişilerin haklarını ihlal eden faaliyetler yasaktır."
+          "OceanOS’ta yer alan bilgiler, yetki seviyesine göre görüntülenir. Kullanıcılar yalnızca kendilerine açılan alanları kullanabilir ve erişim yetkisi olmayan bilgilere ulaşmaya çalışamaz."
         ]
       },
       {
-        heading: "Kullanıcı Sorumluluğu",
+        heading: "Değişiklikler",
         body: [
-          "Kullanıcılar ilettikleri bilgi, belge, portföy, arayış, başvuru ve iletişim içeriklerinin doğruluğundan sorumludur. Web sitesindeki bilgiler nihai teklif, değerleme, sözleşme veya taahhüt anlamına gelmez."
-        ]
-      },
-      {
-        heading: "Uygulanacak Hukuk",
-        body: [
-          "Bu koşullar Türkiye Cumhuriyeti hukukuna tabidir. Uyuşmazlıklarda, niteliğine göre İstanbul mahkemeleri ve icra daireleri yetkili kabul edilebilir."
+          "Star Girişim ve Yatırım A.Ş., platform işleyişini, kullanım kurallarını ve hizmet kapsamını mevzuata ve operasyonel ihtiyaçlara uygun olarak güncelleyebilir."
         ]
       }
     ]
@@ -175,32 +153,32 @@ export const legalPages: LegalPage[] = [
   {
     slug: "uyelik-ve-odeme-kosullari",
     title: "Üyelik ve Ödeme Koşulları",
-    description: "OceanOS üyelik ve ödeme süreçlerine ilişkin kurumsal koşullar.",
+    description: "OceanOS üyelik ve ödeme koşulları.",
     intro:
-      "Bu metin, OceanOS ve Ocean Real Estate kapsamında sunulabilecek üyelik, katılım, çalışma modeli ve ödeme süreçlerine ilişkin genel bilgilendirme sağlar.",
+      "OceanOS üyelik, danışman katılımı, ödeme ve hizmet kullanım süreçleri, ilgili kullanıcı ile Star Girişim ve Yatırım A.Ş. arasında geçerli olan sözleşme, başvuru ve onay süreçlerine göre yürütülür.",
     sections: [
       {
-        heading: "Üyelik ve Katılım",
+        heading: "Üyelik",
         body: [
-          "Ocean Core, Ocean Elite, Ocean Teams veya benzeri ticari katılım modelleri, başvuru değerlendirmesi ve şirket tarafından belirlenecek yazılı koşullara bağlıdır. Her başvuru otomatik kabul anlamına gelmez."
+          "Platforma erişim, kullanıcı rolüne ve yetki durumuna göre tanımlanır. Danışman, yönetici, ekip lideri veya diğer kullanıcı rolleri farklı erişim haklarına sahip olabilir."
         ]
       },
       {
-        heading: "Ödeme Süreçleri",
+        heading: "Ödemeler",
         body: [
-          "Üyelik, katılım veya profesyonel çalışma alanı kapsamındaki ödeme süreçleri, ilgili sözleşme, teklif, fatura ve ödeme altyapısı koşullarına göre yürütülür. Kartlı ödeme altyapısı aktif olduğunda işlem güvenliği ilgili ödeme hizmet sağlayıcısının teknik ve hukuki standartlarıyla desteklenir."
+          "Üyelik, hizmet, danışman katılımı, operasyonel destek veya diğer bedeller varsa, bu bedeller ilgili sözleşme, teklif veya platform üzerinde belirtilen koşullara göre tahsil edilir."
         ]
       },
       {
-        heading: "Ücret ve Hizmet Kapsamı",
+        heading: "Ödeme Güvenliği",
         body: [
-          "Ücretler, hizmet kapsamı, erişim hakları, yenileme, iptal veya değişiklik koşulları yazılı bilgilendirme ve sözleşme ile belirlenir. Web sitesinde yer alan genel açıklamalar tek başına bağlayıcı ticari teklif niteliği taşımaz."
+          "Platform ödeme süreçlerinde güvenli ödeme altyapıları kullanabilir. Kart bilgileri doğrudan OceanOS tarafından saklanmaz; ödeme sağlayıcının güvenli altyapısı üzerinden işlenir."
         ]
       },
       {
-        heading: "Değişiklik Hakkı",
+        heading: "Değişiklik",
         body: [
-          "STAR GİRİŞİM VE YATIRIM A.Ş., mevzuata ve sözleşmesel yükümlülüklere uygun olmak kaydıyla üyelik ve ödeme süreçlerine ilişkin çalışma esaslarını güncelleyebilir."
+          "Ücretler, hizmet kapsamı ve ödeme koşulları, ilgili sözleşme ve bilgilendirmelere uygun şekilde güncellenebilir."
         ]
       }
     ]
@@ -208,32 +186,27 @@ export const legalPages: LegalPage[] = [
   {
     slug: "acik-riza-metni",
     title: "Açık Rıza Metni",
-    description: "Ocean Real Estate iletişim, başvuru ve iş birliği süreçleri için açık rıza metni.",
+    description: "Belirli kişisel veri işleme faaliyetleri için açık rıza metni.",
     intro:
-      "Bu açık rıza metni, STAR GİRİŞİM VE YATIRIM A.Ş. tarafından Ocean Real Estate markası kapsamında yürütülen iletişim, danışman başvurusu, portföy ve proje iş birliği süreçleri için hazırlanmıştır.",
+      "Bu metin, kullanıcıların belirli kişisel veri işleme faaliyetlerine açık rıza vermesi gereken durumlar için hazırlanmıştır.",
     sections: [
       {
-        heading: "Rıza Kapsamı",
+        heading: "Açık Rıza Tanımı",
         body: [
-          "İletişim formları, danışman başvuruları, portföy veya proje iş birliği talepleri ve ticari iletişim süreçleri kapsamında paylaşılan kişisel verilerin değerlendirme, geri dönüş, planlama ve operasyonel takip amaçlarıyla işlenmesine rıza verilebilir."
+          "Açık rıza, kullanıcının belirli bir konuya ilişkin bilgilendirilmiş ve özgür iradesiyle verdiği onaydır."
         ]
       },
       {
-        heading: "Ticari İletişim",
+        heading: "Açık Rıza Kapsamı",
         body: [
-          "Kullanıcının ayrıca onay vermesi halinde, Ocean Real Estate ve OceanOS hizmetleri, etkinlikleri, başvuru süreçleri veya iş birliği modelleri hakkında ticari ileti gönderilebilir."
+          "Kullanıcı, gerekli olduğu durumlarda; iletişim, pazarlama, platform deneyiminin geliştirilmesi, belirli verilerin paylaşılması veya özel nitelikli olmayan verilerin ek işleme amaçları için açık rıza verebilir."
         ]
       },
       {
         heading: "Rızanın Geri Alınması",
         body: [
-          "Açık rıza her zaman geri alınabilir. Rızanın geri alınması, geri alma tarihinden önce rızaya dayanılarak yapılan işlemlerin hukuka uygunluğunu etkilemez."
-        ]
-      },
-      {
-        heading: "Başvuru Kanalı",
-        body: [
-          "Rıza yönetimi ve veri işleme talepleri info@oceanrealestate.com.tr adresi üzerinden STAR GİRİŞİM VE YATIRIM A.Ş.’ye iletilebilir."
+          "Kullanıcı, verdiği açık rızayı mevzuata uygun şekilde geri alabilir. Rızanın geri alınması, geri alma tarihinden sonraki işlemler için geçerlidir.",
+          "Talepler için info@oceanrealestate.com.tr adresinden iletişime geçilebilir."
         ]
       }
     ]
@@ -241,32 +214,26 @@ export const legalPages: LegalPage[] = [
   {
     slug: "yasal-bilgilendirme",
     title: "Yasal Bilgilendirme",
-    description: "Ocean Real Estate web sitesi için kurumsal yasal bilgilendirme.",
+    description: "Ocean Real Estate ve OceanOS için yasal bilgilendirme.",
     intro:
-      "Bu web sitesi ve OceanOS dijital arayüzleri, STAR GİRİŞİM VE YATIRIM A.Ş. tarafından Ocean Real Estate markası kapsamında işletilir veya işletilmesi amacıyla sunulur.",
+      "Ocean Real Estate markası ve OceanOS dijital operasyon sistemi, Star Girişim ve Yatırım A.Ş. tarafından yürütülmektedir.",
     sections: [
       {
-        heading: "Genel Bilgi Niteliği",
+        heading: "Genel Bilgilendirme",
         body: [
-          "Web sitesinde yer alan bilgi, açıklama, görsel, örnek portföy, ticari model ve sistem anlatımları genel bilgilendirme niteliğindedir. Nihai hak ve yükümlülükler yazılı sözleşmelerle belirlenir."
+          "Platformda yer alan bilgiler genel bilgilendirme ve operasyonel kullanım amacı taşır. Gayrimenkul işlemleri, ilgili mevzuat, resmi kurum uygulamaları, sözleşme hükümleri ve taraflar arasındaki özel koşullara göre değişebilir."
         ]
       },
       {
-        heading: "Sözleşmeye Bağlı Süreçler",
+        heading: "Sorumluluk",
         body: [
-          "Gayrimenkul işlemleri, danışman başvuruları, portföy iş birlikleri, proje geliştirme süreçleri, üyelik ve ödeme modelleri yazılı anlaşma, yetki, teklif veya şirket değerlendirmesine tabidir."
+          "Ocean Real Estate, kullanıcıların platforma girdiği bilgilerin doğruluğunu sağlamak için sistemsel kontroller geliştirebilir. Ancak kullanıcılar, kendi girdikleri bilgilerin doğruluğundan ve güncelliğinden sorumludur."
         ]
       },
       {
-        heading: "Güncelleme Hakkı",
+        heading: "Marka ve İçerik Hakları",
         body: [
-          "STAR GİRİŞİM VE YATIRIM A.Ş., web sitesi içeriklerini, hizmet açıklamalarını, sistem fonksiyonlarını ve ticari model bilgilendirmelerini güncelleme hakkını saklı tutar."
-        ]
-      },
-      {
-        heading: "Korunan Unsurlar",
-        body: [
-          "Marka, logo, metin, görsel, arayüz, sistem adı ve diğer tüm içerikler ilgili mevzuat kapsamında korunur. İzinsiz kullanım halinde yasal haklar saklıdır."
+          "Ocean Real Estate adı, logosu, sistem yapısı, metinleri, görselleri ve dijital içerikleri izinsiz kullanılamaz, kopyalanamaz veya çoğaltılamaz."
         ]
       }
     ]
@@ -274,32 +241,29 @@ export const legalPages: LegalPage[] = [
   {
     slug: "basvuru-ve-iletisim",
     title: "Başvuru ve İletişim",
-    description: "KVKK talepleri, danışman başvuruları ve iş birliği iletişim kanalları.",
+    description: "Ocean Real Estate başvuru ve iletişim kanalları.",
     intro:
-      "STAR GİRİŞİM VE YATIRIM A.Ş. ile Ocean Real Estate markası kapsamındaki başvuru, iş birliği ve veri koruma talepleri için aşağıdaki esaslar geçerlidir.",
+      "Ocean Real Estate’e danışmanlık, portföy, proje iş birliği, kariyer, destek veya bilgi talepleriniz için başvurabilirsiniz.",
     sections: [
       {
-        heading: "Başvuru Konuları",
+        heading: "Başvuru Süreci",
         body: [
-          "KVKK talepleri, danışman başvuruları, iş birliği önerileri, portföy veya proje değerlendirme talepleri, kurumsal iletişim ve sistem erişim konuları şirketle paylaşılabilir."
+          "Başvurular ilgili ekipler tarafından değerlendirilir. Başvuru yapılması, başvurunun kabul edildiği anlamına gelmez."
         ]
       },
       {
-        heading: "Başvuruda Bulunması Gereken Bilgiler",
+        heading: "Başvuru Kanalları",
         body: [
-          "Başvurularda ad-soyad, iletişim bilgileri, talep konusu, varsa ilgili portföy veya iş birliği açıklaması ve başvuruyu destekleyen belgeler açık şekilde belirtilmelidir."
+          "Başvurularınızı info@oceanrealestate.com.tr adresine iletebilirsiniz.",
+          "İlgili başvuru değerlendirme sürecinde sizden ek bilgi veya belge talep edilebilir."
         ]
       },
       {
-        heading: "İletişim Kanalı",
+        heading: "İletişim Bilgileri",
         body: [
-          "Başvurular info@oceanrealestate.com.tr adresine iletilebilir. Telefonla iletişim için +90 (216) 280 01 00 numarası kullanılabilir."
-        ]
-      },
-      {
-        heading: "Değerlendirme",
-        body: [
-          "Başvuruların alınması kabul, sözleşme kurulması veya iş birliği taahhüdü anlamına gelmez. Şirket, başvuruları kendi operasyonel ve ticari değerlendirme süreçleri doğrultusunda inceler."
+          "Telefon: +90 (216) 280 01 00",
+          "E-posta: info@oceanrealestate.com.tr",
+          "Adres: Acarlar Mahallesi, Acarkent Sitesi 9. Cadde, Coliseum 5. Kat, Archerson, 34820 Beykoz / İstanbul"
         ]
       }
     ]
@@ -307,32 +271,32 @@ export const legalPages: LegalPage[] = [
   {
     slug: "sorumluluk-reddi",
     title: "Sorumluluk Reddi",
-    description: "Ocean Real Estate web sitesi ve OceanOS içerikleri için sorumluluk reddi.",
+    description: "Ocean Real Estate web sitesi ve OceanOS bilgileri için sorumluluk reddi.",
     intro:
-      "Bu sorumluluk reddi, STAR GİRİŞİM VE YATIRIM A.Ş. tarafından Ocean Real Estate markası ve OceanOS dijital sistemi kapsamında sunulan içeriklerin kullanımına ilişkin genel sınırları açıklar.",
+      "Ocean Real Estate web sitesi ve OceanOS üzerinde yer alan bilgiler, genel bilgilendirme ve operasyonel süreç yönetimi amacıyla sunulur.",
     sections: [
       {
-        heading: "Danışmanlık Niteliği Taşımama",
+        heading: "Danışmanlık Niteliği",
         body: [
-          "Web sitesi ve OceanOS üzerinde yer alan içerikler yatırım, hukuk, vergi, değerleme, finans veya teknik danışmanlık niteliği taşımaz. Kullanıcılar karar almadan önce ilgili uzmanlardan bağımsız görüş almalıdır."
+          "Platformda yer alan hiçbir bilgi, tek başına hukuki, mali, vergisel veya yatırım danışmanlığı olarak kabul edilmemelidir."
         ]
       },
       {
-        heading: "Değişebilir Bilgiler",
+        heading: "Gayrimenkul Bilgileri",
         body: [
-          "Gayrimenkul fiyatları, proje detayları, portföy uygunluğu, erişilebilirlik, komisyon yapıları, üyelik modelleri ve ticari koşullar zaman içinde değişebilir. Güncel durum ayrıca teyit edilmelidir."
+          "Portföy bilgileri, kullanıcılar, danışmanlar veya yetkili kişiler tarafından girilebilir. Ocean Real Estate, bilgilerin doğru ve güncel olması için süreçler geliştirse de her portföy bilgisi işlem öncesinde ayrıca teyit edilmelidir."
         ]
       },
       {
-        heading: "Yazılı Sözleşme Esası",
+        heading: "İşlem Kararları",
         body: [
-          "Tarafların nihai hak ve yükümlülükleri yalnızca imzalanmış yazılı sözleşmeler, yetki belgeleri, teklif ve ekleri kapsamında doğar."
+          "Gayrimenkul alım, satım, kiralama, yatırım veya proje iş birliği kararları verilmeden önce tarafların kendi araştırmalarını yapması, gerekli belgeleri incelemesi ve uzman desteği alması önerilir."
         ]
       },
       {
-        heading: "Üçüncü Taraflar",
+        heading: "Teknik Erişim",
         body: [
-          "Üçüncü taraf bağlantılar, hizmet sağlayıcılar veya dış sistemlerden kaynaklanan içerik, işlem veya kesintiler şirketin doğrudan kontrolü dışında olabilir. STAR GİRİŞİM VE YATIRIM A.Ş. bu tür üçüncü taraf süreçlerden doğan sonuçlardan mevzuatın izin verdiği ölçüde sorumlu değildir."
+          "Platformun kesintisiz veya hatasız çalışacağı garanti edilmez. Teknik bakım, güncelleme, altyapı sağlayıcı sorunları veya mücbir sebepler nedeniyle erişim kesintileri yaşanabilir."
         ]
       }
     ]

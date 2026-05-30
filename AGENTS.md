@@ -1,5 +1,25 @@
 # Ocean Real Estate App - Codex Instructions
 
+## Required Project Memory
+Before making changes, read:
+
+* docs/OCEANOS_APPLICATION_MAP.md
+* docs/OCEANOS_SYSTEM_BLUEPRINT.md
+* docs/OOS_KULLANIM_KITAPCIGI.md
+* docs/FOOTER_PUBLIC_PAGES_CONTENT.md
+
+Use these documents as the source of truth for:
+
+* app structure
+* route logic
+* product behavior
+* public/protected page rules
+* visibility model
+* legal flows
+* media/photo rules
+* footer public page content
+* OceanOS operating principles
+
 ## Product Context
 This is a mobile-first real estate operating system for Ocean Real Estate. The platform is designed for real estate advisors, portfolio owners, admins, buyers, investors, and client request management.
 

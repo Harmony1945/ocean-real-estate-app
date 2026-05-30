@@ -34,35 +34,35 @@ export default async function LegalPage({ params }: LegalRouteProps) {
   if (!page) notFound();
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-5 text-slate-950 dark:bg-black dark:text-neutral-50 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#011c40] px-4 py-5 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
         <header className="flex items-center justify-between gap-3">
-          <Link href="/" className="mini-action">Ana Sayfa</Link>
+          <Link href="/" className="mini-action !border-white/10 !bg-white/10 !text-white hover:!bg-white/15">Ana Sayfa</Link>
           <ThemeToggle />
         </header>
 
-        <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#080808] sm:p-8">
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-400">
+        <section className="mt-8 rounded-[2rem] border border-white/10 bg-black/35 p-5 shadow-[0_30px_100px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-8">
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-white/45">
             STAR GİRİŞİM VE YATIRIM A.Ş.
           </p>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
             {page.title}
           </h1>
-          <p className="mt-4 text-sm leading-7 text-slate-500 dark:text-slate-400">
+          <p className="mt-4 text-sm leading-7 text-white/70">
             {page.intro}
           </p>
-          <p className="mt-5 text-sm font-medium text-slate-500 dark:text-slate-400">
+          <p className="mt-5 text-sm font-medium text-white/55">
             Son güncelleme: 2026
           </p>
         </section>
 
         <section className="mt-6 space-y-4 pb-16">
           {page.sections.map((section) => (
-            <article key={section.heading} className="oos-card rounded-[1.75rem] p-5 sm:p-6">
+            <article key={section.heading} className="rounded-[1.75rem] border border-white/10 bg-black/25 p-5 backdrop-blur-xl sm:p-6">
               <h2 className="text-xl font-semibold tracking-tight">{section.heading}</h2>
               <div className="mt-3 space-y-3">
                 {section.body.map((paragraph) => (
-                  <p key={paragraph} className="text-sm leading-7 text-slate-600 dark:text-slate-300">
+                  <p key={paragraph} className="text-sm leading-7 text-white/70">
                     {paragraph}
                   </p>
                 ))}

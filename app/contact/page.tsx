@@ -23,7 +23,7 @@ export default function ContactPage() {
       <section className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-black/35 p-7 text-center shadow-[0_30px_100px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-10">
         <BrandLogo
           variant="full"
-          className="mx-auto h-10 w-auto max-w-[14rem] object-contain"
+          className="mx-auto h-9 w-auto max-w-[13rem] object-contain"
           fallbackClassName="text-xs font-medium uppercase tracking-[0.22em] text-white/45"
         />
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">İletişim</h1>

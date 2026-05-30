@@ -60,6 +60,37 @@ body > main > nav.pointer-events-none.fixed {
   display: none !important;
 }
 
+.oos-map-surface .leaflet-pane {
+  z-index: 10;
+}
+
+.oos-map-surface .leaflet-tile-pane {
+  z-index: 10;
+}
+
+.oos-map-surface .leaflet-overlay-pane {
+  z-index: 20;
+}
+
+.oos-map-surface .leaflet-shadow-pane {
+  z-index: 30;
+}
+
+.oos-map-surface .leaflet-marker-pane {
+  z-index: 40;
+}
+
+.oos-map-surface .leaflet-tooltip-pane {
+  z-index: 50;
+}
+
+.oos-map-surface .leaflet-popup-pane,
+.oos-map-surface .leaflet-control-container,
+.oos-map-surface .leaflet-top,
+.oos-map-surface .leaflet-bottom {
+  z-index: 60;
+}
+
 @layer components {
   .input {
     @apply min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-200/50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-neutral-50 dark:placeholder:text-neutral-500 dark:focus:border-white/20 dark:focus:ring-white/10 sm:text-sm;

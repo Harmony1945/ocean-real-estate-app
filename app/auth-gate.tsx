@@ -51,10 +51,12 @@ function isPublicRoute(pathname: string) {
 }
 
 const phoneCountries = [
-  { label: "Turkey", flag: "🇹🇷", shortLabel: "TR", code: "+90" },
-  { label: "United Kingdom", flag: "🇬🇧", shortLabel: "GB", code: "+44" },
-  { label: "UAE / Dubai", flag: "🇦🇪", shortLabel: "AE", code: "+971" },
-  { label: "Kazakhstan", flag: "🇰🇿", shortLabel: "KZ", code: "+7" }
+  { value: "TR", label: "Turkey", flag: "🇹🇷", shortLabel: "TR", code: "+90" },
+  { value: "US", label: "United States", flag: "🇺🇸", shortLabel: "US", code: "+1" },
+  { value: "UK", label: "United Kingdom", flag: "🇬🇧", shortLabel: "UK", code: "+44" },
+  { value: "AE", label: "UAE / Dubai", flag: "🇦🇪", shortLabel: "AE", code: "+971" },
+  { value: "KZ", label: "Kazakhstan", flag: "🇰🇿", shortLabel: "KZ", code: "+7" },
+  { value: "RU", label: "Russia", flag: "🇷🇺", shortLabel: "RU", code: "+7" }
 ];
 
 const defaultPhoneCountry = phoneCountries[0];
@@ -81,7 +83,7 @@ function parseStoredPhone(phone?: string | null) {
     defaultPhoneCountry;
 
   return {
-    phoneCountryCode: country.code,
+    phoneCountryCode: country.value,
     phone: trimmedPhone.startsWith(country.code)
       ? trimmedPhone.slice(country.code.length)
       : trimmedPhone
@@ -89,7 +91,9 @@ function parseStoredPhone(phone?: string | null) {
 }
 
 function formatInternationalPhone(countryCode: string, phone: string) {
-  const country = phoneCountries.find((item) => item.code === countryCode) || defaultPhoneCountry;
+  const country =
+    phoneCountries.find((item) => item.value === countryCode || item.code === countryCode) ||
+    defaultPhoneCountry;
   const countryDigits = country.code.replace(/\D/g, "");
   const digits = phone.replace(/\D/g, "");
   const localDigits = digits.startsWith(countryDigits)
@@ -97,6 +101,10 @@ function formatInternationalPhone(countryCode: string, phone: string) {
     : digits.replace(/^0+/, "");
 
   return `${country.code}${localDigits}`;
+}
+
+function getCountryDisplay(country: (typeof phoneCountries)[number]) {
+  return `${country.flag} ${country.shortLabel} ${country.code}`;
 }
 
 function getUserMetadataPhone(user: SupabaseAuthUser | null) {
@@ -156,14 +164,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     name: "",
     email: "",
     password: "",
-    phoneCountryCode: defaultPhoneCountry.code,
+    phoneCountryCode: defaultPhoneCountry.value,
     phone: ""
   });
   const [authUser, setAuthUser] = useState<SupabaseAuthUser | null>(null);
   const [profile, setProfile] = useState<AdvisorProfile | null>(null);
   const [profileForm, setProfileForm] = useState<ProfileForm>({
     fullName: "",
-    phoneCountryCode: defaultPhoneCountry.code,
+    phoneCountryCode: defaultPhoneCountry.value,
     phone: "",
     company: ""
   });
@@ -532,7 +540,7 @@ function AuthScreen({
   }
 
   const selectedSignupCountry =
-    phoneCountries.find((country) => country.code === form.phoneCountryCode) ||
+    phoneCountries.find((country) => country.value === form.phoneCountryCode || country.code === form.phoneCountryCode) ||
     defaultPhoneCountry;
 
   return (
@@ -575,7 +583,10 @@ function AuthScreen({
           <section className="min-h-[34rem] rounded-[2.5rem] border border-slate-200 bg-slate-950 p-4 text-white shadow-[0_30px_100px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-[#050505] dark:shadow-[0_30px_100px_rgba(0,0,0,0.62)]">
             <div className="flex h-full flex-col justify-center rounded-[2rem] border border-white/10 bg-black px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-6 sm:py-7 lg:px-7">
               <div className="mb-6">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/40">Güvenli giriş</p>
+                <p className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-white/40">
+                  Güvenli giriş
+                  <LockIcon className="h-3.5 w-3.5 text-emerald-400/90" />
+                </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
                   OOS çalışma alanına gir.
                 </h2>
@@ -641,10 +652,10 @@ function AuthScreen({
                         if (event.key === "Enter") submit();
                       }}
                     />
-                    <div className="grid gap-2 sm:grid-cols-[140px_minmax(0,1fr)]">
+                    <div className="grid gap-2 sm:grid-cols-[156px_minmax(0,1fr)]">
                       <div className="relative">
                         <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-white">
-                          {selectedSignupCountry.flag} {selectedSignupCountry.shortLabel}
+                          {getCountryDisplay(selectedSignupCountry)}
                         </span>
                         <select
                           className="input !rounded-2xl !border-white/10 !bg-white/10 !py-3 !pl-4 !pr-4 !text-transparent focus:!border-white/25 focus:!ring-white/10"
@@ -653,7 +664,7 @@ function AuthScreen({
                           onChange={(event) => update("phoneCountryCode", event.target.value)}
                         >
                           {phoneCountries.map((country) => (
-                            <option key={country.code} value={country.code} className="text-slate-950">
+                            <option key={country.value} value={country.value} className="text-slate-950">
                               {country.flag} {country.label} {country.code}
                             </option>
                           ))}
@@ -735,6 +746,15 @@ function AppleIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
       <path d="M16.7 12.7c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.7-1.3-.1-2.5.8-3.1.8-.7 0-1.7-.8-2.8-.7-1.4 0-2.7.8-3.5 2.1-1.5 2.7-.4 6.7 1.1 8.9.7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 2.9-.7 1.4 0 1.8.7 3 .7 1.2 0 2-1.1 2.8-2.2.8-1.2 1.2-2.4 1.2-2.4 0-.1-2.2-.9-2.2-3.8ZM14.6 6.4c.6-.8 1.1-1.8 1-2.9-1 .1-2 .7-2.7 1.5-.6.7-1.1 1.8-1 2.8 1 .1 2-.5 2.7-1.4Z" />
+    </svg>
+  );
+}
+
+function LockIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="5" y="10" width="14" height="10" rx="2.5" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
     </svg>
   );
 }
@@ -951,7 +971,7 @@ function OceanCorporateFooter() {
   return (
     <footer className="border-t border-white/10 bg-black px-4 py-12 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_1.9fr]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <div>
             <p className="text-2xl font-semibold tracking-tight">Ocean Real Estate</p>
             <p className="mt-2 text-sm font-medium text-white/55">Star Girişim ve Yatırım A.Ş.</p>
@@ -964,14 +984,14 @@ function OceanCorporateFooter() {
               <p>Acarlar Mahallesi, Acarkent Sitesi 9. Cadde, Coliseum 5. Kat, Archerson, 34820</p>
             </div>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-x-8 gap-y-7 sm:grid-cols-2 lg:grid-cols-4">
             {columns.map((column) => (
-              <div key={column.title}>
+              <div key={column.title} className="min-w-0">
                 <h3 className="text-sm font-semibold">{column.title}</h3>
                 <ul className="mt-4 space-y-3 text-sm text-white/55">
                   {column.links.map((item) => (
                     <li key={item.href}>
-                      <Link href={item.href} className="transition hover:text-white">{item.label}</Link>
+                      <Link href={item.href} className="break-words transition hover:text-white">{item.label}</Link>
                     </li>
                   ))}
                 </ul>
@@ -1022,7 +1042,7 @@ function ProfileCompletionScreen({
   onToggleTheme: () => void;
 }) {
   const selectedPhoneCountry =
-    phoneCountries.find((country) => country.code === form.phoneCountryCode) ||
+    phoneCountries.find((country) => country.value === form.phoneCountryCode || country.code === form.phoneCountryCode) ||
     defaultPhoneCountry;
 
   function update(key: keyof ProfileForm, value: string) {
@@ -1054,19 +1074,19 @@ function ProfileCompletionScreen({
           value={form.fullName}
           onChange={(event) => update("fullName", event.target.value)}
         />
-        <div className="grid gap-2 sm:grid-cols-[160px_minmax(0,1fr)]">
+        <div className="grid gap-2 sm:grid-cols-[170px_minmax(0,1fr)]">
           <div className="relative">
-            <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-lg leading-none">
-              {selectedPhoneCountry.flag} {selectedPhoneCountry.shortLabel}
+            <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm font-medium leading-none">
+              {getCountryDisplay(selectedPhoneCountry)}
             </span>
             <select
-              className="input !rounded-xl !py-3 !pl-20 !pr-4"
+              className="input !rounded-xl !py-3 !pl-4 !pr-4 !text-transparent"
               aria-label="Telefon ülke kodu"
               value={form.phoneCountryCode}
               onChange={(event) => update("phoneCountryCode", event.target.value)}
             >
               {phoneCountries.map((country) => (
-                <option key={country.code} value={country.code}>
+                <option key={country.value} value={country.value}>
                   {country.flag} {country.shortLabel} {country.code}
                 </option>
               ))}

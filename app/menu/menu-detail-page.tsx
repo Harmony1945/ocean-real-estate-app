@@ -392,7 +392,7 @@ function MapPanel({
             {mapError}
           </div>
         ) : (
-          <div ref={mapElementRef} className="min-h-[30rem] rounded-[1.5rem] border border-slate-200 dark:border-white/10 lg:min-h-[42rem]" />
+          <div ref={mapElementRef} className="oos-map-surface relative z-0 min-h-[30rem] rounded-[1.5rem] border border-slate-200 dark:border-white/10 lg:min-h-[42rem]" />
         )}
         <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
           Leaflet ve OpenStreetMap ile ücretsiz, API anahtarsız İstanbul harita temeli. İlçe merkezinden gösterilen kayıtlar yaklaşık konum olarak etiketlenir.

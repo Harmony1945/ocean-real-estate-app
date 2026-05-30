@@ -212,7 +212,7 @@ export function MenuPanelContent({
             <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
               {group.title}
             </p>
-            <div className="divide-y divide-slate-200/70 dark:divide-white/10">
+            <div className="space-y-1">
               {group.items.map((item) => (
                 <MenuRow key={item.label} item={item} onItemSelect={onItemSelect} />
               ))}
@@ -233,11 +233,17 @@ export function MenuPanelContent({
 }
 
 function MenuRow({ item, onItemSelect }: { item: MenuItem; onItemSelect?: () => void }) {
+  const pathname = usePathname();
+  const active = pathname === item.href;
+
   return (
     <Link
       href={item.href}
       onClick={onItemSelect}
-      className="group flex min-h-[58px] items-center gap-4 px-3 py-3 text-slate-800 transition hover:bg-white/55 dark:text-slate-200 dark:hover:bg-white/5"
+      aria-current={active ? "page" : undefined}
+      className={`group flex min-h-[58px] items-center gap-4 rounded-[1.35rem] px-3 py-3 text-slate-800 transition hover:bg-white/55 active:bg-white/70 dark:text-slate-200 dark:hover:bg-white/5 dark:active:bg-white/10 ${
+        active ? "bg-white/70 shadow-sm dark:bg-white/10" : ""
+      }`}
     >
       <span className="flex h-7 w-7 shrink-0 items-center justify-center text-slate-700 dark:text-slate-200">
         <MenuItemIcon name={item.icon} />

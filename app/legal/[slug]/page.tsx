@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BrandLogo from "@/app/brand-logo";
 import ThemeToggle from "@/app/theme-toggle";
 import { getLegalPage, legalPages } from "@/lib/oos/legal-pages";
 
@@ -42,9 +43,12 @@ export default async function LegalPage({ params }: LegalRouteProps) {
         </header>
 
         <section className="mt-8 rounded-[2rem] border border-white/10 bg-black/35 p-5 shadow-[0_30px_100px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-8">
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-white/45">
-            STAR GİRİŞİM VE YATIRIM A.Ş.
-          </p>
+          <BrandLogo
+            variant="full"
+            className="h-10 w-auto max-w-[14rem] object-contain"
+            fallbackClassName="text-xs font-medium uppercase tracking-[0.22em] text-white/45"
+            fallbackText="STAR GİRİŞİM VE YATIRIM A.Ş."
+          />
           <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
             {page.title}
           </h1>

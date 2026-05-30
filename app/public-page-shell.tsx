@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandLogo from "./brand-logo";
 import ThemeToggle from "./theme-toggle";
 import type { PublicContentPage } from "@/lib/oos/footer-public-pages";
 
@@ -14,9 +15,11 @@ export default function PublicPageShell({ page }: { page: PublicContentPage }) {
         </header>
 
         <section className="mt-10 rounded-[2rem] border border-white/10 bg-black/35 p-6 shadow-[0_30px_100px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-9">
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-white/45">
-            Ocean Real Estate
-          </p>
+          <BrandLogo
+            variant="full"
+            className="h-10 w-auto max-w-[14rem] object-contain"
+            fallbackClassName="text-xs font-medium uppercase tracking-[0.22em] text-white/45"
+          />
           <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-6xl">
             {page.title}
           </h1>

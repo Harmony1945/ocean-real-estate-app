@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { AuthProvider } from "./auth-context";
+import BrandLogo from "./brand-logo";
 import OOSNavigation from "./oos-navigation";
 import { applyTheme, getPreferredTheme, saveTheme, themeStorageKey, type ThemeMode } from "./theme";
 import ThemeToggle from "./theme-toggle";
@@ -549,7 +550,11 @@ function AuthScreen({
         <header className="relative z-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm font-semibold shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
-              O
+              <BrandLogo
+                variant="ocean-only"
+                className="h-6 w-6 object-contain"
+                fallbackClassName="text-sm font-semibold text-slate-950 dark:text-slate-100"
+              />
             </span>
             <span className="text-sm font-semibold tracking-tight text-slate-950 dark:text-slate-100">
               OceanOS
@@ -973,7 +978,11 @@ function OceanCorporateFooter() {
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <div>
-            <p className="text-2xl font-semibold tracking-tight">Ocean Real Estate</p>
+            <BrandLogo
+              variant="full"
+              className="h-9 w-auto max-w-[13rem] object-contain"
+              fallbackClassName="text-2xl font-semibold tracking-tight"
+            />
             <p className="mt-2 text-sm font-medium text-white/55">Star Girişim ve Yatırım A.Ş.</p>
             <p className="mt-5 max-w-sm text-sm leading-6 text-white/55">
               Ofis değil, sistem. OceanOS, gayrimenkul danışmanlarının portföy, arayış, eşleşme ve işlem süreçlerini yönetmesi için geliştirilmiş dijital operasyon sistemidir.
@@ -1053,7 +1062,11 @@ function ProfileCompletionScreen({
     <ProfileShell theme={theme} onToggleTheme={onToggleTheme}>
       <div className="mb-6 text-center">
         <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          O
+          <BrandLogo
+            variant="ocean-only"
+            className="h-6 w-6 object-contain"
+            fallbackClassName="text-sm font-semibold text-slate-950 dark:text-slate-100"
+          />
         </div>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-3xl">
           Danışman profilini tamamla

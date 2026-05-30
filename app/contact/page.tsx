@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import BrandLogo from "../brand-logo";
 import ThemeToggle from "../theme-toggle";
 
 export const metadata: Metadata = {
@@ -20,9 +21,11 @@ export default function ContactPage() {
       </div>
 
       <section className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-black/35 p-7 text-center shadow-[0_30px_100px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-10">
-        <p className="text-xs font-medium uppercase tracking-[0.22em] text-white/45">
-          Ocean Real Estate
-        </p>
+        <BrandLogo
+          variant="full"
+          className="mx-auto h-10 w-auto max-w-[14rem] object-contain"
+          fallbackClassName="text-xs font-medium uppercase tracking-[0.22em] text-white/45"
+        />
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">İletişim</h1>
         <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-white/70">
           Ocean Real Estate ile iletişime geçmek için aşağıdaki bilgileri kullanabilirsiniz.

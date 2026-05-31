@@ -65,7 +65,7 @@ type MatchResult = {
 };
 
 const MATCH_THRESHOLD = 60;
-const ACTIVE_STATUSES = ["active", "Aktif"];
+const ACTIVE_STATUS = "active";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MUTABLE_MATCH_STATUSES = new Set(["new", "pending"]);
 const LOCKED_MATCH_STATUSES = new Set(["viewed", "contacted", "accepted", "rejected", "deal_started", "closed"]);
@@ -220,7 +220,7 @@ function loadProperties(supabase: ReturnType<typeof createClient>, propertyId?: 
     .from("properties")
     .select("id,advisor_id,title,property_type,usage_type,city,district,neighborhood,gross_area,net_area,asking_price,currency,status,is_public")
     .eq("is_public", true)
-    .in("status", ACTIVE_STATUSES);
+    .eq("status", ACTIVE_STATUS);
 
   if (propertyId) query = query.eq("id", propertyId);
 
@@ -231,7 +231,7 @@ function loadSearchRequests(supabase: ReturnType<typeof createClient>, searchReq
   let query = supabase
     .from("search_requests")
     .select("id,advisor_id,client_id,request_type,city,districts,property_types,min_price,max_price,currency,min_area,max_area,rooms,commercial_or_residential,must_have_features,nice_to_have_features,urgency,financing_status,notes,status")
-    .in("status", ACTIVE_STATUSES);
+    .eq("status", ACTIVE_STATUS);
 
   if (searchRequestId) query = query.eq("id", searchRequestId);
 

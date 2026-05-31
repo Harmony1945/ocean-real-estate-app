@@ -10,6 +10,7 @@ import {
   type AdvisorDealRow,
   type AdvisorMatchRow,
   type AdvisorPortfolioRow,
+  type AdvisorPropertyRow,
   type AdvisorSearchRequestRow,
   type AdvisorTaskRow
 } from "@/lib/supabase/client";
@@ -496,6 +497,34 @@ function fromPortfolioRow(row: AdvisorPortfolioRow, consultant: Consultant): Opp
   };
 }
 
+function fromPropertyRow(row: AdvisorPropertyRow, consultant: Consultant): Opportunity {
+  const location = [row.city, row.district, row.neighborhood].filter(Boolean).join(" / ");
+  const area = row.gross_area ? String(row.gross_area) : "";
+
+  return {
+    id: row.id,
+    title: row.title,
+    location: location || "Konum bekleniyor",
+    owner: "OceanOS",
+    value: Number(row.asking_price || 0),
+    stage: row.status === "active" ? "Yeni" : (row.status || "Yeni") as Stage,
+    contractType: row.usage_type || "Satışa Aracılık",
+    nextMove: row.is_public ? "Public görünürlük aktif" : "Görünürlük kontrolü bekleniyor",
+    risk: "Düşük",
+    commissionRate: 2,
+    commission: calculateCommission(Number(row.asking_price || 0), 2),
+    createdAt: row.created_at?.slice(0, 10) || today(),
+    propertyType: row.property_type || "Konut",
+    area,
+    rooms: "",
+    description: "",
+    latitude: null,
+    longitude: null,
+    ownerConsultantId: consultant.id,
+    ownerConsultantName: getConsultantName(consultant)
+  };
+}
+
 function toSearchRequestRow(request: SearchRequest) {
   return {
     title: request.title,
@@ -516,13 +545,24 @@ function toSearchRequestRow(request: SearchRequest) {
 }
 
 function fromSearchRequestRow(row: AdvisorSearchRequestRow, consultant: Consultant): SearchRequest {
+  const districts = Array.isArray(row.districts)
+    ? row.districts.join(", ")
+    : row.districts || row.location || "";
+  const location = [row.city, districts].filter(Boolean).join(" / ");
+  const propertyType = Array.isArray(row.property_types)
+    ? row.property_types.join(", ")
+    : row.property_types || row.property_type || "Portföy";
+  const title = row.title || (row.notes?.startsWith("OceanOS Demo: ")
+    ? row.notes.replace("OceanOS Demo: ", "")
+    : [location, propertyType, row.request_type || "Arayış"].filter(Boolean).join(" · "));
+
   return {
     id: row.id,
     consultantId: consultant.id,
     consultantName: getConsultantName(consultant),
-    title: row.title,
-    location: row.location || "Konum bekleniyor",
-    propertyType: row.property_type || "Portföy",
+    title,
+    location: location || "Konum bekleniyor",
+    propertyType,
     minPrice: Number(row.min_price || 0),
     maxPrice: Number(row.max_price || 0),
     currency: (row.currency || "TRY") as SearchCurrency,
@@ -530,7 +570,7 @@ function fromSearchRequestRow(row: AdvisorSearchRequestRow, consultant: Consulta
     minArea: Number(row.min_area || 0),
     maxArea: Number(row.max_area || 0),
     rooms: row.rooms || "",
-    purpose: row.purpose || "Satın Alma",
+    purpose: row.purpose || row.request_type || "Satın Alma",
     urgency: (row.urgency || "Normal") as SearchUrgency,
     notes: row.notes || "",
     status: (row.status || "Aktif") as SearchStatus,
@@ -839,33 +879,33 @@ export default function Home() {
     setDataError("");
 
     Promise.all([
-      supabase.getPortfolios(),
+      supabase.getProperties(),
       supabase.getSearchRequests(),
-      supabase.getTasks()
+      supabase.getMatches()
     ])
-      .then(async ([portfolioRows, requestRows, taskRows]) => {
+      .then(async ([propertyRows, requestRows, matches]) => {
         if (!mounted) return;
-        const nextPortfolios: Opportunity[] = portfolioRows.map((row: AdvisorPortfolioRow) =>
-          fromPortfolioRow(row, currentUser)
+        const nextPortfolios: Opportunity[] = propertyRows.map((row: AdvisorPropertyRow) =>
+          fromPropertyRow(row, currentUser)
         );
         const nextRequests: SearchRequest[] = requestRows.map((row: AdvisorSearchRequestRow) =>
           fromSearchRequestRow(row, currentUser)
         );
-        const [matches, deals, commissions] = await Promise.allSettled([
-          supabase.getMatches(),
+        const [tasks, deals, commissions] = await Promise.allSettled([
+          supabase.getTasks(),
           supabase.getDeals(),
           supabase.getCommissions()
         ]);
 
         setOpportunities(nextPortfolios);
         setSearchRequests(nextRequests);
-        setTasks(taskRows.map(fromTaskRow));
+        setTasks(tasks.status === "fulfilled" ? tasks.value.map(fromTaskRow) : []);
         setNotifications([]);
-        setMatchRows(matches.status === "fulfilled" ? matches.value : []);
+        setMatchRows(matches);
         setDealRows(deals.status === "fulfilled" ? deals.value : []);
         setCommissionRows(commissions.status === "fulfilled" ? commissions.value : []);
         setSelectedId(nextPortfolios[0]?.id ?? "");
-        const optionalError = [matches, deals, commissions]
+        const optionalError = [tasks, deals, commissions]
           .find((result) => result.status === "rejected") as PromiseRejectedResult | undefined;
         setDataError(optionalError ? getDataSetupMessage(optionalError.reason?.message || "", { optional: true }) : "");
       })

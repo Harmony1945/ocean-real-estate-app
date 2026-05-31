@@ -63,9 +63,9 @@ export type AdvisorSearchRequestRow = {
   city?: string | null;
   districts?: string[] | string | null;
   property_types?: string[] | string | null;
-  title: string;
-  location: string | null;
-  property_type: string | null;
+  title?: string | null;
+  location?: string | null;
+  property_type?: string | null;
   min_price: number | null;
   max_price: number | null;
   currency: string | null;

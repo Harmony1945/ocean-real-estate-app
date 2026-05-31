@@ -136,7 +136,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         setMatchRows([]);
         setDealRows([]);
         setCommissionRows([]);
-        setModuleMessage(getDataSetupMessage(error.message));
+        setModuleMessage(getDataSetupMessage(error.message, { optional: page.slug === "commissions" }));
       });
 
     return () => {

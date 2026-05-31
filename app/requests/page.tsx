@@ -292,7 +292,7 @@ function SetupNotice({ message }: { message: string }) {
 function fromRow(row: AdvisorSearchRequestRow): RequestCard {
   return {
     id: row.id,
-    title: row.title,
+    title: row.title || row.notes?.replace("OceanOS Demo: ", "") || "Arayış bilgisi bekleniyor",
     location: row.location || "Konum bekleniyor",
     propertyType: row.property_type || "Konut",
     minPrice: Number(row.min_price || 0),

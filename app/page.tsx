@@ -92,6 +92,17 @@ type OpportunityForm = {
   commissionRate: number;
 };
 
+type PendingPortfolioPhoto = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
+
+type PropertyPhotoPreviewItem = PropertyMediaRow & {
+  preview_url?: string;
+  is_pending?: boolean;
+};
+
 type Task = {
   id: EntityId;
   opportunityId: EntityId;
@@ -877,6 +888,8 @@ export default function Home() {
   const [mediaLoading, setMediaLoading] = useState(false);
   const [mediaMessage, setMediaMessage] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [pendingPortfolioPhotos, setPendingPortfolioPhotos] = useState<PendingPortfolioPhoto[]>([]);
+  const [formPhotoMessage, setFormPhotoMessage] = useState("");
 
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
@@ -1001,6 +1014,23 @@ export default function Home() {
   const selectedMedia = selectedOpportunity
     ? propertyMedia[String(selectedOpportunity.id)] ?? []
     : [];
+  const pendingPortfolioMedia: PropertyPhotoPreviewItem[] = pendingPortfolioPhotos.map((photo, index) => ({
+    id: photo.id,
+    property_id: "pending",
+    storage_bucket: "property-images",
+    storage_path: "",
+    display_storage_path: null,
+    original_storage_path: null,
+    file_name: photo.file.name,
+    file_size: photo.file.size,
+    mime_type: photo.file.type,
+    sort_order: index,
+    is_cover: index === 0,
+    visibility: "internal",
+    uploaded_by: null,
+    preview_url: photo.previewUrl,
+    is_pending: true
+  }));
   const formValue = Number(form.value) || 0;
   const formCommission = calculateCommission(formValue, form.commissionRate);
   const listingAreaNumber = parseArea(
@@ -1081,13 +1111,91 @@ export default function Home() {
   function openCreateForm() {
     setEditingId(null);
     setForm(emptyForm());
+    clearPendingPortfolioPhotos();
+    setFormPhotoMessage("");
     setFormOpen(true);
   }
 
   function openEditForm(opportunity: Opportunity) {
     setEditingId(opportunity.id);
     setForm(toForm(opportunity));
+    clearPendingPortfolioPhotos();
+    setFormPhotoMessage("");
     setFormOpen(true);
+  }
+
+  function clearPendingPortfolioPhotos() {
+    setPendingPortfolioPhotos((current) => {
+      current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+      return [];
+    });
+  }
+
+  function validatePhotoFiles(files: File[], currentCount: number) {
+    if (currentCount + files.length > PROPERTY_PHOTO_LIMIT) {
+      return `En fazla ${PROPERTY_PHOTO_LIMIT} fotoğraf yüklenebilir.`;
+    }
+
+    const invalidFile = files.find((file) => !PROPERTY_PHOTO_MIME_TYPES.includes(file.type as typeof PROPERTY_PHOTO_MIME_TYPES[number]));
+    if (invalidFile) return "Sadece JPEG, PNG veya WebP fotoğraf yüklenebilir.";
+
+    const oversizedFile = files.find((file) => file.size > PROPERTY_PHOTO_MAX_SIZE);
+    if (oversizedFile) return "Her fotoğraf en fazla 10 MB olabilir.";
+
+    return "";
+  }
+
+  async function uploadFilesForProperty(
+    propertyId: string,
+    files: File[],
+    currentMedia: PropertyMediaRow[]
+  ) {
+    if (!persistentMode || !supabase) return currentMedia;
+
+    let nextMedia = currentMedia;
+
+    for (const [index, file] of files.entries()) {
+      const media = await supabase.uploadPropertyPhoto(
+        propertyId,
+        file,
+        nextMedia.length,
+        (progress: number) => {
+          const totalProgress = Math.round(((index + progress / 100) / files.length) * 100);
+          setUploadProgress(totalProgress);
+        }
+      );
+
+      if (media) nextMedia = [...nextMedia, media];
+    }
+
+    return nextMedia;
+  }
+
+  function addPendingPortfolioPhotos(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+
+    if (!files.length) return;
+    if (!persistentMode || !supabase) {
+      setFormPhotoMessage("Fotoğraf yükleme için Supabase bağlantısı gerekli.");
+      return;
+    }
+
+    const validationMessage = validatePhotoFiles(files, pendingPortfolioPhotos.length);
+    if (validationMessage) {
+      setFormPhotoMessage(validationMessage);
+      return;
+    }
+
+    setPendingPortfolioPhotos((current) => [
+      ...current,
+      ...files.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: URL.createObjectURL(file)
+      }))
+    ]);
+    setFormPhotoMessage("Fotoğraflar portföy kaydedilince yüklenecek.");
   }
 
   async function uploadPropertyPhotos(event: ChangeEvent<HTMLInputElement>) {
@@ -1102,21 +1210,9 @@ export default function Home() {
 
     const propertyId = String(selectedOpportunity.id);
     const currentMedia = propertyMedia[propertyId] ?? [];
-
-    if (currentMedia.length + files.length > PROPERTY_PHOTO_LIMIT) {
-      setMediaMessage(`En fazla ${PROPERTY_PHOTO_LIMIT} fotoğraf yüklenebilir.`);
-      return;
-    }
-
-    const invalidFile = files.find((file) => !PROPERTY_PHOTO_MIME_TYPES.includes(file.type as typeof PROPERTY_PHOTO_MIME_TYPES[number]));
-    if (invalidFile) {
-      setMediaMessage("Sadece JPEG, PNG veya WebP fotoğraf yüklenebilir.");
-      return;
-    }
-
-    const oversizedFile = files.find((file) => file.size > PROPERTY_PHOTO_MAX_SIZE);
-    if (oversizedFile) {
-      setMediaMessage("Her fotoğraf en fazla 10 MB olabilir.");
+    const validationMessage = validatePhotoFiles(files, currentMedia.length);
+    if (validationMessage) {
+      setMediaMessage(validationMessage);
       return;
     }
 
@@ -1125,22 +1221,7 @@ export default function Home() {
     setUploadProgress(0);
 
     try {
-      let nextMedia = currentMedia;
-
-      for (const [index, file] of files.entries()) {
-        const media = await supabase.uploadPropertyPhoto(
-          propertyId,
-          file,
-          nextMedia.length,
-          (progress: number) => {
-            const totalProgress = Math.round(((index + progress / 100) / files.length) * 100);
-            setUploadProgress(totalProgress);
-          }
-        );
-
-        if (media) nextMedia = [...nextMedia, media];
-      }
-
+      const nextMedia = await uploadFilesForProperty(propertyId, files, currentMedia);
       setPropertyMedia((current) => ({ ...current, [propertyId]: nextMedia }));
       setUploadProgress(100);
       setMediaMessage("Fotoğraflar yüklendi.");
@@ -1216,6 +1297,31 @@ export default function Home() {
           ? await supabase.updatePortfolio(String(editingId), toPortfolioRow(savedOpportunity))
           : await supabase.createPortfolio(toPortfolioRow(savedOpportunity));
         if (row) savedOpportunity = fromPortfolioRow(row, currentUser);
+
+        if (!editingId && pendingPortfolioPhotos.length) {
+          setUploadProgress(0);
+          try {
+            const uploadedMedia = await uploadFilesForProperty(
+              String(savedOpportunity.id),
+              pendingPortfolioPhotos.map((photo) => photo.file),
+              []
+            );
+            setPropertyMedia((current) => ({ ...current, [String(savedOpportunity.id)]: uploadedMedia }));
+            setMediaMessage("Portföy oluşturuldu ve fotoğraflar yüklendi.");
+            setUploadProgress(100);
+          } catch (uploadError) {
+            console.error(uploadError);
+            const refreshedMedia = await supabase.getPropertyMedia(String(savedOpportunity.id)).catch(() => []);
+            setPropertyMedia((current) => ({ ...current, [String(savedOpportunity.id)]: refreshedMedia }));
+            setMediaMessage(
+              uploadError instanceof Error
+                ? getDataSetupMessage(uploadError.message, { optional: true })
+                : "Portföy oluşturuldu, ancak fotoğraflar yüklenemedi."
+            );
+          }
+          clearPendingPortfolioPhotos();
+          setFormPhotoMessage("");
+        }
         setDataError("");
       } catch (error) {
         console.error(error);
@@ -1235,6 +1341,7 @@ export default function Home() {
     setSelectedId(savedOpportunity.id);
     setFormOpen(false);
     setActionLoading("");
+    setTimeout(() => setUploadProgress(null), 800);
   }
 
   async function deleteOpportunity(id: EntityId) {
@@ -1901,6 +2008,7 @@ export default function Home() {
                   media={selectedMedia}
                   message={mediaMessage}
                   progress={uploadProgress}
+                  uploadId="property-photo-detail-upload"
                   onMarkCover={markPhotoAsCover}
                   onUpload={uploadPropertyPhotos}
                   markingCoverId={actionLoading.startsWith("photo-cover-") ? actionLoading.replace("photo-cover-", "") : ""}
@@ -2193,7 +2301,10 @@ export default function Home() {
               <button
                 className="btn-secondary w-full sm:w-auto"
                 type="button"
-                onClick={() => setFormOpen(false)}
+                onClick={() => {
+                  setFormOpen(false);
+                  clearPendingPortfolioPhotos();
+                }}
               >
                 Kapat
               </button>
@@ -2321,11 +2432,28 @@ export default function Home() {
               </div>
             </div>
 
+            {!editingId ? (
+              <PropertyPhotoManager
+                disabled={!persistentMode || actionLoading === "portfolio-save"}
+                loading={actionLoading === "portfolio-save"}
+                markingCoverId=""
+                media={pendingPortfolioMedia}
+                message={formPhotoMessage}
+                progress={actionLoading === "portfolio-save" ? uploadProgress : null}
+                uploadId="property-photo-create-upload"
+                onMarkCover={() => undefined}
+                onUpload={addPendingPortfolioPhotos}
+              />
+            ) : null}
+
             <div className="mt-6 flex flex-col-reverse justify-end gap-2 sm:flex-row">
               <button
                 className="btn-secondary w-full sm:w-auto"
                 type="button"
-                onClick={() => setFormOpen(false)}
+                onClick={() => {
+                  setFormOpen(false);
+                  clearPendingPortfolioPhotos();
+                }}
               >
                 Vazgeç
               </button>
@@ -3987,20 +4115,21 @@ function PropertyPhotoManager({
   media,
   message,
   progress,
+  uploadId,
   onMarkCover,
   onUpload
 }: {
   disabled: boolean;
   loading: boolean;
   markingCoverId: string;
-  media: PropertyMediaRow[];
+  media: PropertyPhotoPreviewItem[];
   message: string;
   progress: number | null;
+  uploadId: string;
   onMarkCover: (mediaId: string) => void;
   onUpload: (event: ChangeEvent<HTMLInputElement>) => void;
 }) {
   const remaining = Math.max(PROPERTY_PHOTO_LIMIT - media.length, 0);
-  const uploadId = "property-photo-upload";
   const isUploading = progress !== null;
 
   return (
@@ -4026,35 +4155,12 @@ function PropertyPhotoManager({
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {media.map((item) => (
-          <div key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
-            {item.signed_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={item.signed_url}
-                alt={item.file_name || "Portföy fotoğrafı"}
-                className="h-32 w-full object-cover"
-              />
-            ) : (
-              <div className="grid h-32 place-items-center bg-slate-100 text-xs text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">
-                Önizleme hazırlanıyor
-              </div>
-            )}
-            <div className="flex items-center justify-between gap-2 px-3 py-2">
-              <span className="truncate text-xs text-slate-500 dark:text-slate-400">
-                {item.is_cover ? "Kapak" : item.mime_type || "Fotoğraf"}
-              </span>
-              {!item.is_cover ? (
-                <button
-                  className="text-xs font-medium text-slate-700 transition hover:text-slate-950 disabled:opacity-50 dark:text-slate-300 dark:hover:text-white"
-                  type="button"
-                  disabled={Boolean(markingCoverId)}
-                  onClick={() => onMarkCover(item.id)}
-                >
-                  {markingCoverId === item.id ? "İşleniyor..." : "Kapak yap"}
-                </button>
-              ) : null}
-            </div>
-          </div>
+          <PropertyPhotoPreviewCard
+            key={item.id}
+            item={item}
+            markingCoverId={markingCoverId}
+            onMarkCover={onMarkCover}
+          />
         ))}
 
         <label
@@ -4087,6 +4193,52 @@ function PropertyPhotoManager({
           {message}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+function PropertyPhotoPreviewCard({
+  item,
+  markingCoverId,
+  onMarkCover
+}: {
+  item: PropertyPhotoPreviewItem;
+  markingCoverId: string;
+  onMarkCover: (mediaId: string) => void;
+}) {
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const previewUrl = item.signed_url || item.preview_url || "";
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
+      {previewUrl && !previewFailed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={previewUrl}
+          alt={item.file_name || "Portföy fotoğrafı"}
+          className="h-32 w-full object-cover"
+          onError={() => setPreviewFailed(true)}
+        />
+      ) : (
+        <div className="grid h-32 place-items-center bg-slate-100 px-3 text-center text-xs text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">
+          {previewFailed ? "Önizleme gösterilemedi" : "Önizleme hazırlanıyor"}
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+          {item.is_pending ? "Seçildi" : item.is_cover ? "Kapak" : item.mime_type || "Fotoğraf"}
+        </span>
+        {!item.is_cover && !item.is_pending ? (
+          <button
+            className="text-xs font-medium text-slate-700 transition hover:text-slate-950 disabled:opacity-50 dark:text-slate-300 dark:hover:text-white"
+            type="button"
+            disabled={Boolean(markingCoverId)}
+            onClick={() => onMarkCover(item.id)}
+          >
+            {markingCoverId === item.id ? "İşleniyor..." : "Kapak yap"}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

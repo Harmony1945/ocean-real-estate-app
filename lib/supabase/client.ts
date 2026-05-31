@@ -614,7 +614,10 @@ export function createSupabaseAuthClient(): any {
     const signedPath = data.signedURL || data.signedUrl || "";
 
     if (!signedPath) return "";
-    return signedPath.startsWith("http") ? signedPath : `${supabaseUrl}${signedPath}`;
+    if (signedPath.startsWith("http")) return signedPath;
+    if (signedPath.startsWith("/storage/v1")) return `${supabaseUrl}${signedPath}`;
+
+    return `${supabaseUrl}/storage/v1${signedPath.startsWith("/") ? signedPath : `/${signedPath}`}`;
   }
 
   async function withSignedImageUrls(rows: PropertyMediaRow[]) {

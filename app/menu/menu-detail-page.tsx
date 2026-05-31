@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthContext } from "../auth-context";
-import ThemeToggle from "../theme-toggle";
 import type { MenuPageData } from "./menu-data";
 import {
   createSupabaseAuthClient,
@@ -158,10 +157,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
     <main className="min-h-screen bg-stone-50 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-20 text-slate-950 dark:bg-black dark:text-neutral-50 sm:px-6 md:pt-24 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <header className="border-b border-slate-200 pb-6 dark:border-slate-800">
-          <div className="flex items-center justify-between gap-3">
-            <Link href="/menu" className="mini-action">Menüye Dön</Link>
-            <ThemeToggle />
-          </div>
+          <Link href="/menu" className="mini-action">Menüye Dön</Link>
           <p className="mt-7 text-sm font-medium text-slate-500 dark:text-slate-400">{page.eyebrow}</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-5xl">{page.title}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">{page.description}</p>

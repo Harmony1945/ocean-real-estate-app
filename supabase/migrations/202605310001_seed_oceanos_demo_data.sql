@@ -5,17 +5,95 @@
 
 do $$
 declare
+  demo_profile_id uuid;
   demo_advisor_id uuid;
+  demo_advisor_model text;
 begin
   select id
-    into demo_advisor_id
+    into demo_profile_id
     from public.profiles
     where lower(email) = 'melihberkeyildiz@gmail.com'
     limit 1;
 
-  if demo_advisor_id is null then
+  if demo_profile_id is null then
     raise notice 'OceanOS demo seed skipped: profile melihberkeyildiz@gmail.com not found.';
     return;
+  end if;
+
+  select id
+    into demo_advisor_id
+    from public.advisors
+    where profile_id = demo_profile_id
+    limit 1;
+
+  if demo_advisor_id is null then
+    select e.enumlabel
+      into demo_advisor_model
+      from pg_attribute a
+      join pg_class c on c.oid = a.attrelid
+      join pg_namespace n on n.oid = c.relnamespace
+      join pg_type t on t.oid = a.atttypid
+      join pg_enum e on e.enumtypid = t.oid
+      where n.nspname = 'public'
+        and c.relname = 'advisors'
+        and a.attname = 'model'
+      order by case e.enumlabel
+        when 'elite' then 1
+        when 'standard' then 2
+        when 'advisor' then 3
+        when 'agent' then 4
+        when 'freelance' then 5
+        else 99
+      end
+      limit 1;
+
+    if demo_advisor_model is not null then
+      insert into public.advisors (
+        profile_id,
+        advisor_code,
+        model,
+        title,
+        city,
+        district,
+        commission_cap_amount,
+        commission_cap_currency,
+        joined_at
+      )
+      values (
+        demo_profile_id,
+        'OCEAN-DEMO-MELIH',
+        demo_advisor_model,
+        'Gayrimenkul Danışmanı',
+        'İstanbul',
+        'Beykoz',
+        50000,
+        'USD',
+        now()
+      )
+      returning id into demo_advisor_id;
+    else
+      insert into public.advisors (
+        profile_id,
+        advisor_code,
+        title,
+        city,
+        district,
+        commission_cap_amount,
+        commission_cap_currency,
+        joined_at
+      )
+      values (
+        demo_profile_id,
+        'OCEAN-DEMO-MELIH',
+        'Gayrimenkul Danışmanı',
+        'İstanbul',
+        'Beykoz',
+        50000,
+        'USD',
+        now()
+      )
+      returning id into demo_advisor_id;
+    end if;
   end if;
 
   delete from public.matches

@@ -148,6 +148,25 @@ export type AdvisorCommissionRow = {
   [key: string]: unknown;
 };
 
+export type PropertyMediaRow = {
+  id: string;
+  property_id: string;
+  storage_bucket: string;
+  storage_path: string;
+  display_storage_path: string | null;
+  original_storage_path: string | null;
+  file_name: string | null;
+  file_size: number | null;
+  mime_type: string | null;
+  sort_order: number | null;
+  is_cover: boolean | null;
+  visibility: "public" | "internal" | "restricted" | "private" | string;
+  uploaded_by: string | null;
+  created_at?: string;
+  updated_at?: string;
+  signed_url?: string;
+};
+
 export type PortfolioInput = Partial<Omit<AdvisorPortfolioRow, "id" | "owner_user_id" | "created_at" | "updated_at">> & {
   title: string;
 };
@@ -170,6 +189,11 @@ type AuthResponse = {
   msg?: string;
   message?: string;
 };
+
+export const PROPERTY_IMAGE_BUCKET = "property-images";
+export const PROPERTY_PHOTO_LIMIT = 12;
+export const PROPERTY_PHOTO_MAX_SIZE = 10 * 1024 * 1024;
+export const PROPERTY_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 function authError(data: AuthResponse, fallback: string) {
   return data.error_description || data.message || data.msg || data.error || fallback;
@@ -268,6 +292,48 @@ async function request<T>(path: string, options: RequestInit & { token?: string 
   }
 
   return data as T;
+}
+
+function encodeStoragePath(path: string) {
+  return path.split("/").map(encodeURIComponent).join("/");
+}
+
+function getImageExtension(file: File) {
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  return "jpg";
+}
+
+function uploadStorageObject(path: string, file: File, token: string, onProgress?: (progress: number) => void) {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase ortam değişkenleri eksik.");
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    const uploadRequest = new XMLHttpRequest();
+    uploadRequest.open("POST", `${supabaseUrl}/storage/v1/object/${PROPERTY_IMAGE_BUCKET}/${encodeStoragePath(path)}`);
+    uploadRequest.setRequestHeader("apikey", supabaseAnonKey);
+    uploadRequest.setRequestHeader("Authorization", `Bearer ${token}`);
+    uploadRequest.setRequestHeader("Content-Type", file.type);
+    uploadRequest.setRequestHeader("x-upsert", "false");
+
+    uploadRequest.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+
+    uploadRequest.onload = () => {
+      if (uploadRequest.status >= 200 && uploadRequest.status < 300) {
+        resolve();
+        return;
+      }
+
+      reject(new Error("Fotoğraf yüklenemedi."));
+    };
+    uploadRequest.onerror = () => reject(new Error("Fotoğraf yüklenemedi."));
+    uploadRequest.send(file);
+  });
 }
 
 export function createSupabaseAuthClient(): any {
@@ -533,6 +599,119 @@ export function createSupabaseAuthClient(): any {
     return getOperationalRows<AdvisorCommissionRow>("commissions");
   }
 
+  async function createSignedImageUrl(storagePath: string) {
+    const token = getAccessToken();
+    if (!token) return "";
+
+    const data = await request<{ signedURL?: string; signedUrl?: string }>(
+      `/storage/v1/object/sign/${PROPERTY_IMAGE_BUCKET}/${encodeStoragePath(storagePath)}`,
+      {
+        method: "POST",
+        token,
+        body: JSON.stringify({ expiresIn: 3600 })
+      }
+    );
+    const signedPath = data.signedURL || data.signedUrl || "";
+
+    if (!signedPath) return "";
+    return signedPath.startsWith("http") ? signedPath : `${supabaseUrl}${signedPath}`;
+  }
+
+  async function withSignedImageUrls(rows: PropertyMediaRow[]) {
+    return Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        signed_url: await createSignedImageUrl(row.display_storage_path || row.storage_path).catch(() => "")
+      }))
+    );
+  }
+
+  async function getPropertyMedia(propertyId: string) {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      const rows = await request<PropertyMediaRow[]>(
+        `/rest/v1/property_media?property_id=eq.${encodeURIComponent(propertyId)}&select=*&order=sort_order.asc,created_at.asc`,
+        { method: "GET", token }
+      );
+
+      return withSignedImageUrls(rows);
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function uploadPropertyPhoto(
+    propertyId: string,
+    file: File,
+    sortOrder: number,
+    onProgress?: (progress: number) => void
+  ) {
+    const stored = readStoredSession();
+    if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
+
+    const mediaId = crypto.randomUUID();
+    const storagePath = `${propertyId}/${mediaId}.${getImageExtension(file)}`;
+
+    try {
+      await uploadStorageObject(storagePath, file, stored.access_token, onProgress);
+      const rows = await request<PropertyMediaRow[]>("/rest/v1/property_media", {
+        method: "POST",
+        token: stored.access_token,
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          id: mediaId,
+          property_id: propertyId,
+          storage_bucket: PROPERTY_IMAGE_BUCKET,
+          storage_path: storagePath,
+          original_storage_path: storagePath,
+          file_name: file.name,
+          file_size: file.size,
+          mime_type: file.type,
+          sort_order: sortOrder,
+          is_cover: sortOrder === 0,
+          visibility: "internal",
+          uploaded_by: stored.user.id
+        })
+      });
+
+      const signedRows = await withSignedImageUrls(rows);
+      return signedRows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function markPropertyMediaCover(propertyId: string, mediaId: string) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      await request(
+        `/rest/v1/property_media?property_id=eq.${encodeURIComponent(propertyId)}`,
+        {
+          method: "PATCH",
+          token,
+          body: JSON.stringify({ is_cover: false, updated_at: new Date().toISOString() })
+        }
+      );
+      const rows = await request<PropertyMediaRow[]>(
+        `/rest/v1/property_media?id=eq.${encodeURIComponent(mediaId)}&property_id=eq.${encodeURIComponent(propertyId)}`,
+        {
+          method: "PATCH",
+          token,
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ is_cover: true, updated_at: new Date().toISOString() })
+        }
+      );
+
+      return withSignedImageUrls(rows);
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
   async function createTask(task: TaskInput) {
     const stored = readStoredSession();
     if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
@@ -670,6 +849,12 @@ export function createSupabaseAuthClient(): any {
     getDeals,
 
     getCommissions,
+
+    getPropertyMedia,
+
+    uploadPropertyPhoto,
+
+    markPropertyMediaCover,
 
     createTask,
 

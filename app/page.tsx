@@ -1,18 +1,22 @@
 "use client";
 
-import { FormEvent, PointerEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, PointerEvent, useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "./auth-context";
 import {
   createSupabaseAuthClient,
   getDataSetupMessage,
   isSupabaseConfigured,
+  PROPERTY_PHOTO_LIMIT,
+  PROPERTY_PHOTO_MAX_SIZE,
+  PROPERTY_PHOTO_MIME_TYPES,
   type AdvisorCommissionRow,
   type AdvisorDealRow,
   type AdvisorMatchRow,
   type AdvisorPortfolioRow,
   type AdvisorPropertyRow,
   type AdvisorSearchRequestRow,
-  type AdvisorTaskRow
+  type AdvisorTaskRow,
+  type PropertyMediaRow
 } from "@/lib/supabase/client";
 import { demoSearchRequests, demoShowcasePortfolios } from "@/lib/oos/demo-data";
 
@@ -868,6 +872,10 @@ export default function Home() {
   const [dataError, setDataError] = useState("");
   const [dataLoading, setDataLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState("");
+  const [propertyMedia, setPropertyMedia] = useState<Record<string, PropertyMediaRow[]>>({});
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaMessage, setMediaMessage] = useState("");
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
@@ -936,6 +944,35 @@ export default function Home() {
     opportunities[0] ??
     null;
 
+  useEffect(() => {
+    if (!persistentMode || !supabase || !selectedOpportunity?.id) return;
+
+    const propertyId = String(selectedOpportunity.id);
+    if (propertyMedia[propertyId]) return;
+
+    let mounted = true;
+    setMediaLoading(true);
+    setMediaMessage("");
+
+    supabase.getPropertyMedia(propertyId)
+      .then((rows: PropertyMediaRow[]) => {
+        if (!mounted) return;
+        setPropertyMedia((current) => ({ ...current, [propertyId]: rows }));
+      })
+      .catch((error: Error) => {
+        if (!mounted) return;
+        console.error(error);
+        setMediaMessage(getDataSetupMessage(error.message, { optional: true }));
+      })
+      .finally(() => {
+        if (mounted) setMediaLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [persistentMode, propertyMedia, selectedOpportunity?.id, supabase]);
+
   const filteredOpportunities = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("tr-TR");
 
@@ -960,6 +997,9 @@ export default function Home() {
   const selectedTasks = tasks.filter(
     (task) => task.opportunityId === selectedOpportunity?.id
   );
+  const selectedMedia = selectedOpportunity
+    ? propertyMedia[String(selectedOpportunity.id)] ?? []
+    : [];
   const formValue = Number(form.value) || 0;
   const formCommission = calculateCommission(formValue, form.commissionRate);
   const listingAreaNumber = parseArea(
@@ -1047,6 +1087,94 @@ export default function Home() {
     setEditingId(opportunity.id);
     setForm(toForm(opportunity));
     setFormOpen(true);
+  }
+
+  async function uploadPropertyPhotos(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+
+    if (!files.length || !selectedOpportunity) return;
+    if (!persistentMode || !supabase) {
+      setMediaMessage("Fotoğraf yükleme için Supabase bağlantısı gerekli.");
+      return;
+    }
+
+    const propertyId = String(selectedOpportunity.id);
+    const currentMedia = propertyMedia[propertyId] ?? [];
+
+    if (currentMedia.length + files.length > PROPERTY_PHOTO_LIMIT) {
+      setMediaMessage(`En fazla ${PROPERTY_PHOTO_LIMIT} fotoğraf yüklenebilir.`);
+      return;
+    }
+
+    const invalidFile = files.find((file) => !PROPERTY_PHOTO_MIME_TYPES.includes(file.type as typeof PROPERTY_PHOTO_MIME_TYPES[number]));
+    if (invalidFile) {
+      setMediaMessage("Sadece JPEG, PNG veya WebP fotoğraf yüklenebilir.");
+      return;
+    }
+
+    const oversizedFile = files.find((file) => file.size > PROPERTY_PHOTO_MAX_SIZE);
+    if (oversizedFile) {
+      setMediaMessage("Her fotoğraf en fazla 10 MB olabilir.");
+      return;
+    }
+
+    setActionLoading("photo-upload");
+    setMediaMessage("");
+    setUploadProgress(0);
+
+    try {
+      let nextMedia = currentMedia;
+
+      for (const [index, file] of files.entries()) {
+        const media = await supabase.uploadPropertyPhoto(
+          propertyId,
+          file,
+          nextMedia.length,
+          (progress: number) => {
+            const totalProgress = Math.round(((index + progress / 100) / files.length) * 100);
+            setUploadProgress(totalProgress);
+          }
+        );
+
+        if (media) nextMedia = [...nextMedia, media];
+      }
+
+      setPropertyMedia((current) => ({ ...current, [propertyId]: nextMedia }));
+      setUploadProgress(100);
+      setMediaMessage("Fotoğraflar yüklendi.");
+    } catch (error) {
+      console.error(error);
+      setMediaMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Fotoğraf yüklenemedi.");
+    } finally {
+      setActionLoading("");
+      setTimeout(() => setUploadProgress(null), 800);
+    }
+  }
+
+  async function markPhotoAsCover(mediaId: string) {
+    if (!selectedOpportunity || !persistentMode || !supabase) return;
+
+    const propertyId = String(selectedOpportunity.id);
+    setActionLoading(`photo-cover-${mediaId}`);
+    setMediaMessage("");
+
+    try {
+      await supabase.markPropertyMediaCover(propertyId, mediaId);
+      setPropertyMedia((current) => ({
+        ...current,
+        [propertyId]: (current[propertyId] ?? []).map((media) => ({
+          ...media,
+          is_cover: media.id === mediaId
+        }))
+      }));
+      setMediaMessage("Kapak fotoğrafı güncellendi.");
+    } catch (error) {
+      console.error(error);
+      setMediaMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Kapak fotoğrafı güncellenemedi.");
+    } finally {
+      setActionLoading("");
+    }
   }
 
   async function saveOpportunity(event: FormEvent<HTMLFormElement>) {
@@ -1765,6 +1893,17 @@ export default function Home() {
                   <Info label="Risk" value={selectedOpportunity.risk} tone="danger" />
                   <Info label="Sonraki hamle" value={selectedOpportunity.nextMove} />
                 </div>
+
+                <PropertyPhotoManager
+                  disabled={!persistentMode || actionLoading === "photo-upload"}
+                  loading={mediaLoading}
+                  media={selectedMedia}
+                  message={mediaMessage}
+                  progress={uploadProgress}
+                  onMarkCover={markPhotoAsCover}
+                  onUpload={uploadPropertyPhotos}
+                  markingCoverId={actionLoading.startsWith("photo-cover-") ? actionLoading.replace("photo-cover-", "") : ""}
+                />
 
                 {selectedPortfolioSearchMatches.length ? (
                   <div className="mt-6 rounded-3xl border border-slate-200 bg-stone-50 p-4">
@@ -3829,6 +3968,117 @@ function OpportunityCard({
         <Info label="Risk" value={opportunity.risk} tone="danger" />
       </div>
     </button>
+  );
+}
+
+function PropertyPhotoManager({
+  disabled,
+  loading,
+  markingCoverId,
+  media,
+  message,
+  progress,
+  onMarkCover,
+  onUpload
+}: {
+  disabled: boolean;
+  loading: boolean;
+  markingCoverId: string;
+  media: PropertyMediaRow[];
+  message: string;
+  progress: number | null;
+  onMarkCover: (mediaId: string) => void;
+  onUpload: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  const remaining = Math.max(PROPERTY_PHOTO_LIMIT - media.length, 0);
+  const uploadId = "property-photo-upload";
+  const isUploading = progress !== null;
+
+  return (
+    <div className="mt-6 rounded-3xl border border-slate-200 bg-stone-50 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-slate-950">Portföy Fotoğrafları</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {media.length}/{PROPERTY_PHOTO_LIMIT} · JPEG, PNG veya WebP · maksimum 10 MB
+          </p>
+        </div>
+        {isUploading ? (
+          <div
+            className="grid h-12 w-12 place-items-center rounded-full text-xs font-semibold text-slate-950"
+            style={{ background: `conic-gradient(#16a34a ${progress * 3.6}deg, #e5e7eb 0deg)` }}
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-stone-50">
+              {progress === 100 ? "✓" : `${progress}%`}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {media.map((item) => (
+          <div key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            {item.signed_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.signed_url}
+                alt={item.file_name || "Portföy fotoğrafı"}
+                className="h-32 w-full object-cover"
+              />
+            ) : (
+              <div className="grid h-32 place-items-center bg-slate-100 text-xs text-slate-500">
+                Önizleme hazırlanıyor
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2 px-3 py-2">
+              <span className="truncate text-xs text-slate-500">
+                {item.is_cover ? "Kapak" : item.mime_type || "Fotoğraf"}
+              </span>
+              {!item.is_cover ? (
+                <button
+                  className="text-xs font-medium text-slate-700 transition hover:text-slate-950 disabled:opacity-50"
+                  type="button"
+                  disabled={Boolean(markingCoverId)}
+                  onClick={() => onMarkCover(item.id)}
+                >
+                  {markingCoverId === item.id ? "İşleniyor..." : "Kapak yap"}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ))}
+
+        <label
+          htmlFor={uploadId}
+          className={`flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center transition ${
+            disabled || remaining === 0 ? "cursor-not-allowed opacity-60" : "hover:border-slate-500"
+          }`}
+        >
+          <span className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 text-xl">↑</span>
+          <span className="mt-3 text-sm font-semibold text-slate-950">
+            {remaining === 0 ? "Limit doldu" : "Fotoğraf yükle"}
+          </span>
+          <span className="mt-1 text-xs text-slate-500">
+            {loading ? "Fotoğraflar yükleniyor..." : `${remaining} hak kaldı`}
+          </span>
+          <input
+            id={uploadId}
+            className="sr-only"
+            type="file"
+            accept={PROPERTY_PHOTO_MIME_TYPES.join(",")}
+            multiple
+            disabled={disabled || remaining === 0}
+            onChange={onUpload}
+          />
+        </label>
+      </div>
+
+      {message ? (
+        <p className={`mt-3 text-sm ${message.includes("yüklendi") || message.includes("güncellendi") ? "text-emerald-700" : "text-amber-700"}`}>
+          {message}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

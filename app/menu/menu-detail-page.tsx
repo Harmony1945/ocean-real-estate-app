@@ -316,8 +316,11 @@ function MatchCard({ match }: { match: AdvisorMatchRow }) {
   const searchRequest = match.search_request;
   const score = Number(match.match_score ?? match.score ?? 0);
   const matchTime = formatRelativeMatchTime(match.created_at);
+  const opportunityLabel = getMatchOpportunityLabel(score);
+  const reasonTags = getMatchReasonTags(match.match_reasons);
   const portfolioTitle = property?.title || portfolio?.title || "Portföy bilgisi bekleniyor";
   const searchTitle = getSearchRequestTitle(searchRequest);
+  const matchSummary = formatMatchSummary(property, portfolio);
   const portfolioMeta = [
     property ? [property.city, property.district, property.neighborhood].filter(Boolean).join(" / ") : portfolio?.location || portfolio?.district,
     property?.property_type || portfolio?.property_type,
@@ -333,11 +336,14 @@ function MatchCard({ match }: { match: AdvisorMatchRow }) {
     <article className="oos-card rounded-[1.75rem] p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">
+          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getMatchOpportunityClass(score)}`}>
+            {opportunityLabel}
+          </span>
+          <h2 className="mt-3 text-lg font-semibold leading-snug text-slate-950 dark:text-slate-100">
             {searchTitle}
           </h2>
-          <p className="mt-1 text-sm font-medium text-slate-700 dark:text-slate-300">
-            {portfolioTitle}
+          <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
+            → {portfolioTitle}
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -347,10 +353,24 @@ function MatchCard({ match }: { match: AdvisorMatchRow }) {
             </span>
           ) : null}
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200">
-            %{score}
+            %{score} Uyum
           </span>
         </div>
       </div>
+      {matchSummary ? (
+        <p className="mt-4 text-sm font-medium leading-6 text-slate-700 dark:text-slate-300">
+          {matchSummary}
+        </p>
+      ) : null}
+      {reasonTags.length ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {reasonTags.map((reason) => (
+            <span key={reason} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+              {reason}
+            </span>
+          ))}
+        </div>
+      ) : null}
       {searchMeta ? (
         <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
           Arayış: {searchMeta}
@@ -363,6 +383,20 @@ function MatchCard({ match }: { match: AdvisorMatchRow }) {
       ) : null}
     </article>
   );
+}
+
+function getMatchOpportunityLabel(score: number) {
+  if (score >= 90) return "Sıcak Eşleşme";
+  if (score >= 75) return "Güçlü Eşleşme";
+  if (score >= 60) return "İncelenmeli";
+  return "Eşleşme";
+}
+
+function getMatchOpportunityClass(score: number) {
+  if (score >= 90) return "bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200";
+  if (score >= 75) return "bg-indigo-50 text-indigo-700 dark:bg-indigo-400/10 dark:text-indigo-200";
+  if (score >= 60) return "bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-200";
+  return "bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300";
 }
 
 function formatRelativeMatchTime(createdAt?: string | null) {
@@ -382,6 +416,57 @@ function formatRelativeMatchTime(createdAt?: string | null) {
   if (diffDays === 1) return "1 gün önce";
 
   return `${diffDays} gün önce`;
+}
+
+function formatMatchSummary(
+  property?: AdvisorMatchRow["property"],
+  portfolio?: AdvisorMatchRow["portfolio"]
+) {
+  const district = property?.district || portfolio?.district || portfolio?.location;
+  const type = property?.property_type || portfolio?.property_type;
+  const price = property?.asking_price
+    ? formatCompactCurrency(Number(property.asking_price), property.currency || "TRY")
+    : portfolio?.value
+      ? formatCompactCurrency(Number(portfolio.value), "TRY")
+      : "";
+  const area = property?.gross_area || property?.net_area || portfolio?.area;
+
+  return [
+    district,
+    type,
+    price,
+    area ? `${area} m²` : ""
+  ].filter(Boolean).join(" / ");
+}
+
+function formatCompactCurrency(value: number, currency: string) {
+  const safeCurrency = currency === "TRY" ? "TL" : currency;
+  const formatted = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(value || 0);
+
+  return `${formatted} ${safeCurrency}`;
+}
+
+function getMatchReasonTags(reasons: unknown) {
+  if (!reasons || typeof reasons !== "object" || Array.isArray(reasons)) return [];
+
+  const labels: Record<string, string> = {
+    city: "Bölge",
+    district: "Bölge",
+    location: "Bölge",
+    type: "Tip",
+    price: "Bütçe",
+    budget: "Bütçe",
+    area: "Alan",
+    features: "Özellik"
+  };
+
+  return Array.from(
+    new Set(
+      Object.keys(reasons)
+        .map((key) => labels[key])
+        .filter(Boolean)
+    )
+  );
 }
 
 function enrichMatches(

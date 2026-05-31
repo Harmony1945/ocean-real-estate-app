@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, PointerEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthContext } from "./auth-context";
 import {
   createSupabaseAuthClient,
@@ -12,10 +13,10 @@ import {
   type AdvisorCommissionRow,
   type AdvisorDealRow,
   type AdvisorMatchRow,
-  type AdvisorPortfolioRow,
   type AdvisorPropertyRow,
   type AdvisorSearchRequestRow,
   type AdvisorTaskRow,
+  type PropertyInput,
   type PropertyMediaRow
 } from "@/lib/supabase/client";
 import { demoSearchRequests, demoShowcasePortfolios } from "@/lib/oos/demo-data";
@@ -88,7 +89,6 @@ type OpportunityForm = {
   stage: Stage;
   contractType: string;
   nextMove: string;
-  risk: Risk;
   commissionRate: number;
 };
 
@@ -377,7 +377,6 @@ function emptyForm(): OpportunityForm {
     stage: "Yeni",
     contractType: "Satışa Aracılık",
     nextMove: "",
-    risk: "Düşük",
     commissionRate: 2
   };
 }
@@ -410,7 +409,6 @@ function toForm(opportunity: Opportunity): OpportunityForm {
     stage: opportunity.stage,
     contractType: opportunity.contractType,
     nextMove: opportunity.nextMove,
-    risk: opportunity.risk,
     commissionRate: opportunity.commissionRate
   };
 }
@@ -464,52 +462,31 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function toPortfolioRow(opportunity: Opportunity) {
-  return {
-    title: opportunity.title,
-    location: opportunity.location,
-    district: opportunity.location?.split("/")[0]?.trim() || null,
-    owner: opportunity.owner,
-    value: opportunity.value,
-    stage: opportunity.stage,
-    contract_type: opportunity.contractType,
-    next_move: opportunity.nextMove,
-    risk: opportunity.risk,
-    commission_rate: opportunity.commissionRate,
-    commission: getOpportunityCommission(opportunity),
-    listing_id: opportunity.listingId || null,
-    property_type: opportunity.propertyType || null,
-    area: opportunity.area || null,
-    rooms: opportunity.rooms || null,
-    description: opportunity.description || null,
-    latitude: opportunity.latitude ?? null,
-    longitude: opportunity.longitude ?? null
-  };
+function getPropertyStatusValue(stage: string) {
+  const normalizedStage = stage.toLocaleLowerCase("tr-TR");
+  if (normalizedStage.includes("kapandı")) return "archived";
+  return "active";
 }
 
-function fromPortfolioRow(row: AdvisorPortfolioRow, consultant: Consultant): Opportunity {
+function toPropertyInput(opportunity: Opportunity): PropertyInput {
+  const [city, district, neighborhood] = opportunity.location
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
   return {
-    id: row.id,
-    title: row.title,
-    listingId: row.listing_id || undefined,
-    location: row.location || "Konum bekleniyor",
-    owner: row.owner || "Müşteri bekleniyor",
-    value: Number(row.value || 0),
-    stage: (row.stage || "Yeni") as Stage,
-    contractType: row.contract_type || "Satışa Aracılık",
-    nextMove: row.next_move || "Sonraki adım belirlenmedi",
-    risk: row.risk || "Düşük",
-    commissionRate: Number(row.commission_rate || 2),
-    commission: Number(row.commission || 0),
-    createdAt: row.created_at?.slice(0, 10) || today(),
-    propertyType: row.property_type || "Konut",
-    area: row.area || "",
-    rooms: row.rooms || "",
-    description: row.description || "",
-    latitude: row.latitude,
-    longitude: row.longitude,
-    ownerConsultantId: consultant.id,
-    ownerConsultantName: getConsultantName(consultant)
+    title: opportunity.title,
+    property_type: opportunity.propertyType || "Konut",
+    usage_type: opportunity.contractType,
+    city: city || null,
+    district: district || null,
+    neighborhood: neighborhood || null,
+    gross_area: parseArea(opportunity.area),
+    net_area: null,
+    asking_price: opportunity.value,
+    currency: "TRY",
+    status: getPropertyStatusValue(opportunity.stage),
+    is_public: true
   };
 }
 
@@ -823,6 +800,7 @@ function downloadContract(fileUrl: string) {
 
 export default function Home() {
   const { user } = useAuthContext();
+  const router = useRouter();
   const supabase = useMemo(() => createSupabaseAuthClient(), []);
   const demoMode = !isSupabaseConfigured;
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -1280,7 +1258,7 @@ export default function Home() {
       stage: form.stage,
       contractType: form.contractType.trim() || "Satışa Aracılık",
       nextMove: form.nextMove.trim() || "Sonraki adım belirlenmedi",
-      risk: form.risk,
+      risk: existingOpportunity?.risk || "Düşük",
       commissionRate: form.commissionRate,
       commission: calculateCommission(value, form.commissionRate),
       propertyType: existingOpportunity?.propertyType || "Konut",
@@ -1294,9 +1272,9 @@ export default function Home() {
     if (persistentMode && supabase) {
       try {
         const row = editingId
-          ? await supabase.updatePortfolio(String(editingId), toPortfolioRow(savedOpportunity))
-          : await supabase.createPortfolio(toPortfolioRow(savedOpportunity));
-        if (row) savedOpportunity = fromPortfolioRow(row, currentUser);
+          ? await supabase.updateProperty(String(editingId), toPropertyInput(savedOpportunity))
+          : await supabase.createProperty(toPropertyInput(savedOpportunity));
+        if (row) savedOpportunity = fromPropertyRow(row, currentUser);
 
         if (!editingId && pendingPortfolioPhotos.length) {
           setUploadProgress(0);
@@ -1348,7 +1326,7 @@ export default function Home() {
     setActionLoading(`portfolio-delete-${id}`);
     if (persistentMode && supabase) {
       try {
-        await supabase.deletePortfolio(String(id));
+        await supabase.deleteProperty(String(id));
         await Promise.all(
           tasks
             .filter((task) => task.opportunityId === id && typeof task.id === "string")
@@ -1672,11 +1650,11 @@ export default function Home() {
 
     if (persistentMode && supabase) {
       try {
-        const row = await supabase.createPortfolio(toPortfolioRow(savedOpportunity));
+        const row = await supabase.createProperty(toPropertyInput(savedOpportunity));
         if (row) {
-          savedOpportunity = fromPortfolioRow(row, currentUser);
+          savedOpportunity = fromPropertyRow(row, currentUser);
           const taskRow = await supabase.createTask({
-            portfolio_id: row.id,
+            portfolio_id: null,
             title: savedTask.title,
             done: false
           });
@@ -1794,10 +1772,7 @@ export default function Home() {
             onCreate={openCreateForm}
             onDelete={deleteOpportunity}
             onEdit={openEditForm}
-            onOpen={(id) => {
-              setSelectedId(id);
-              setActivePage("dashboard");
-            }}
+            onOpen={(id) => router.push(`/properties/${id}`)}
           />
         ) : activePage === "searches" ? (
           <section className="mt-6 sm:mt-8">
@@ -1998,7 +1973,6 @@ export default function Home() {
                   />
                   <Info label="Aşama" value={selectedOpportunity.stage} />
                   <Info label="Sözleşme" value={selectedOpportunity.contractType} />
-                  <Info label="Risk" value={selectedOpportunity.risk} tone="danger" />
                   <Info label="Sonraki hamle" value={selectedOpportunity.nextMove} />
                 </div>
 
@@ -2255,11 +2229,6 @@ export default function Home() {
                       }
                     />
                     <Info
-                      label="Risk notu"
-                      value="Fiyat, yetki, malik ve ilan güncelliği manuel doğrulanmalıdır."
-                      tone="danger"
-                    />
-                    <Info
                       label="Kaynak"
                       value={sahibindenListing.sourceUrl || sahibindenUrl}
                     />
@@ -2368,19 +2337,6 @@ export default function Home() {
                     ] as Stage[]
                   ).map((stage) => (
                     <option key={stage}>{stage}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Risk">
-                <select
-                  className="input"
-                  value={form.risk}
-                  onChange={(event) =>
-                    setForm({ ...form, risk: event.target.value as Risk })
-                  }
-                >
-                  {(["Düşük", "Orta", "Yüksek"] as Risk[]).map((risk) => (
-                    <option key={risk}>{risk}</option>
                   ))}
                 </select>
               </Field>
@@ -4102,7 +4058,6 @@ function OpportunityCard({
         />
         <Info label="Sözleşme" value={opportunity.contractType} />
         <Info label="Sonraki hamle" value={opportunity.nextMove} />
-        <Info label="Risk" value={opportunity.risk} tone="danger" />
       </div>
     </button>
   );

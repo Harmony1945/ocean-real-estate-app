@@ -100,6 +100,10 @@ export type AdvisorPropertyRow = {
   updated_at?: string;
 };
 
+export type PropertyInput = Partial<Omit<AdvisorPropertyRow, "id" | "created_at" | "updated_at">> & {
+  title: string;
+};
+
 export type AdvisorTaskRow = {
   id: string;
   owner_user_id: string;
@@ -302,6 +306,74 @@ function getImageExtension(file: File) {
   if (file.type === "image/png") return "png";
   if (file.type === "image/webp") return "webp";
   return "jpg";
+}
+
+function loadImageElement(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Fotoğraf watermark işlemi tamamlanamadı."));
+    image.src = src;
+  });
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality = 0.88) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+        return;
+      }
+
+      reject(new Error("Fotoğraf watermark işlemi tamamlanamadı."));
+    }, type, quality);
+  });
+}
+
+async function addOceanWatermark(file: File) {
+  if (typeof window === "undefined" || typeof document === "undefined") return file;
+
+  const sourceUrl = URL.createObjectURL(file);
+
+  try {
+    const [sourceImage, watermarkImage] = await Promise.all([
+      loadImageElement(sourceUrl),
+      loadImageElement("/assets/brand/ocean-watermark.png")
+    ]);
+    const maxDimension = 2200;
+    const scale = Math.min(1, maxDimension / Math.max(sourceImage.naturalWidth, sourceImage.naturalHeight));
+    const width = Math.max(1, Math.round(sourceImage.naturalWidth * scale));
+    const height = Math.max(1, Math.round(sourceImage.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Fotoğraf watermark işlemi tamamlanamadı.");
+
+    canvas.width = width;
+    canvas.height = height;
+    context.drawImage(sourceImage, 0, 0, width, height);
+
+    const watermarkWidth = Math.min(Math.max(width * 0.18, 96), 320);
+    const watermarkHeight = watermarkWidth * (watermarkImage.naturalHeight / watermarkImage.naturalWidth);
+    const margin = Math.max(width, height) * 0.035;
+    context.save();
+    context.globalAlpha = 0.72;
+    context.drawImage(
+      watermarkImage,
+      width - watermarkWidth - margin,
+      height - watermarkHeight - margin,
+      watermarkWidth,
+      watermarkHeight
+    );
+    context.restore();
+
+    const blob = await canvasToBlob(canvas, file.type || "image/jpeg");
+    return new File([blob], file.name, {
+      type: blob.type || file.type,
+      lastModified: Date.now()
+    });
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
 }
 
 function uploadStorageObject(path: string, file: File, token: string, onProgress?: (progress: number) => void) {
@@ -577,6 +649,92 @@ export function createSupabaseAuthClient(): any {
     }
   }
 
+  async function getCurrentAdvisorId() {
+    const stored = readStoredSession();
+    if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
+
+    const rows = await request<Array<{ id: string }>>(
+      `/rest/v1/advisors?profile_id=eq.${encodeURIComponent(stored.user.id)}&select=id&limit=1`,
+      { method: "GET", token: stored.access_token }
+    );
+
+    if (!rows[0]?.id) {
+      throw new Error("Danışman kaydı bulunamadı. Portföy kaydı için advisor profili gerekli.");
+    }
+
+    return rows[0].id;
+  }
+
+  async function getProperty(id: string) {
+    const token = getAccessToken();
+    if (!token) return null;
+
+    try {
+      const rows = await request<AdvisorPropertyRow[]>(
+        `/rest/v1/properties?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+        { method: "GET", token }
+      );
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function createProperty(property: PropertyInput) {
+    const stored = readStoredSession();
+    if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const advisorId = property.advisor_id || (await getCurrentAdvisorId());
+      const rows = await request<AdvisorPropertyRow[]>("/rest/v1/properties", {
+        method: "POST",
+        token: stored.access_token,
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ ...property, advisor_id: advisorId })
+      });
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function updateProperty(id: string, property: Partial<PropertyInput>) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<AdvisorPropertyRow[]>(
+        `/rest/v1/properties?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          token,
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ ...property, updated_at: new Date().toISOString() })
+        }
+      );
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function deleteProperty(id: string) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      await request(`/rest/v1/properties?id=eq.${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        token
+      });
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
   async function getMatches() {
     const token = getAccessToken();
     if (!token) return [];
@@ -658,7 +816,8 @@ export function createSupabaseAuthClient(): any {
     const storagePath = `${propertyId}/${mediaId}.${getImageExtension(file)}`;
 
     try {
-      await uploadStorageObject(storagePath, file, stored.access_token, onProgress);
+      const watermarkedFile = await addOceanWatermark(file);
+      await uploadStorageObject(storagePath, watermarkedFile, stored.access_token, onProgress);
       const rows = await request<PropertyMediaRow[]>("/rest/v1/property_media", {
         method: "POST",
         token: stored.access_token,
@@ -670,8 +829,8 @@ export function createSupabaseAuthClient(): any {
           storage_path: storagePath,
           original_storage_path: storagePath,
           file_name: file.name,
-          file_size: file.size,
-          mime_type: file.type,
+          file_size: watermarkedFile.size,
+          mime_type: watermarkedFile.type || file.type,
           sort_order: sortOrder,
           is_cover: sortOrder === 0,
           visibility: "internal",
@@ -846,6 +1005,14 @@ export function createSupabaseAuthClient(): any {
     getTasks,
 
     getProperties,
+
+    getProperty,
+
+    createProperty,
+
+    updateProperty,
+
+    deleteProperty,
 
     getMatches,
 

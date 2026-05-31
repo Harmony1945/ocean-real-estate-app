@@ -39,7 +39,7 @@ export type IconName =
 
 const navItems = [
   { href: "/", label: "Ana Sayfa", icon: HomeIcon },
-  { href: "/portfolios", label: "Portföyler", icon: PortfolioIcon },
+  { href: "/portfolios", label: "Portföylerim", icon: PortfolioIcon },
   { href: "/requests", label: "Arayışlar", icon: SearchIcon },
   { href: "/menu", label: "Menü", icon: MenuIcon }
 ];
@@ -50,6 +50,7 @@ const menuGroups: Array<{ title: string; items: MenuItem[] }> = [
     items: [
       { label: "Profilim", href: "/menu/profile", icon: "user" },
       { label: "Portföylerim", href: "/portfolios", icon: "portfolio" },
+      { label: "Tüm Portföyler", href: "/all-portfolios", icon: "portfolio" },
       { label: "Arayışlarım", href: "/requests", icon: "search" },
       { label: "Eşleşmeler", href: "/menu/matches", icon: "match" }
     ]
@@ -131,7 +132,7 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
             className="fixed inset-0 z-[65] hidden cursor-default bg-transparent md:block"
             onClick={() => setDesktopMenuOpen(false)}
           />
-          <aside className="liquid-glass-strong fixed right-4 top-16 z-[75] hidden w-[22rem] max-w-[calc(100vw-2rem)] rounded-[2rem] p-3 text-slate-950 dark:text-slate-100 md:block">
+          <aside className="liquid-glass-strong fixed right-4 top-16 z-[75] hidden max-h-[calc(100dvh-5rem)] w-[22rem] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-[2rem] p-3 text-slate-950 dark:text-slate-100 md:block">
             <MenuPanelContent
               displayName={displayName}
               email={user?.email || "Kurulum bekleniyor"}

@@ -867,7 +867,7 @@ export default function Home() {
         setSelectedId(nextPortfolios[0]?.id ?? "");
         const optionalError = [matches, deals, commissions]
           .find((result) => result.status === "rejected") as PromiseRejectedResult | undefined;
-        setDataError(optionalError ? getDataSetupMessage(optionalError.reason?.message || "") : "");
+        setDataError(optionalError ? getDataSetupMessage(optionalError.reason?.message || "", { optional: true }) : "");
       })
       .catch((error: Error) => {
         if (!mounted) return;

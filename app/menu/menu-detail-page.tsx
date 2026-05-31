@@ -14,6 +14,7 @@ import {
   type AdvisorDealRow,
   type AdvisorMatchRow,
   type AdvisorPortfolioRow,
+  type AdvisorSearchRequestRow,
   type AdvisorTaskRow
 } from "@/lib/supabase/client";
 import { createCheckoutSession } from "@/lib/oos/payments";
@@ -104,8 +105,15 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
       }
 
       if (page.slug === "matches") {
-        const matches = await supabase.getMatches();
-        if (mounted) setMatchRows(matches);
+        const [matches, portfolios, requests] = await Promise.all([
+          supabase.getMatches(),
+          supabase.getPortfolios(),
+          supabase.getSearchRequests()
+        ]);
+        if (mounted) {
+          setPortfolioRows(portfolios);
+          setMatchRows(enrichMatches(matches, portfolios, requests));
+        }
       }
 
       if (page.slug === "commissions") {
@@ -234,17 +242,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         {page.slug === "matches" && isSupabaseConfigured ? (
           <section className="mt-6 grid gap-4 md:grid-cols-2">
             {matchRows.map((match) => (
-              <article key={match.id} className="oos-card rounded-[1.75rem] p-5">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
-                  {match.status || "Eşleşme"}
-                </p>
-                <h2 className="mt-2 text-lg font-semibold">
-                  {String(match.search_request_id || "Arayış kaydı")} → {String(match.portfolio_id || match.property_id || "Portföy kaydı")}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                  Uyum skoru: %{Number(match.match_score ?? match.score ?? 0)}
-                </p>
-              </article>
+              <MatchCard key={match.id} match={match} />
             ))}
             {!matchRows.length ? (
               <article className="rounded-[1.75rem] border border-dashed border-slate-200 p-5 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 md:col-span-2">
@@ -313,6 +311,88 @@ function InfoCard({ title, value }: { title: string; value: string }) {
       <p className="mt-2 break-words text-xl font-semibold">{value}</p>
     </article>
   );
+}
+
+function MatchCard({ match }: { match: AdvisorMatchRow }) {
+  const portfolio = match.portfolio;
+  const searchRequest = match.search_request;
+  const score = Number(match.match_score ?? match.score ?? 0);
+  const portfolioTitle = portfolio?.title || "Portföy bilgisi bekleniyor";
+  const searchTitle = searchRequest?.title || "Arayış bilgisi bekleniyor";
+  const portfolioMeta = [
+    portfolio?.location || portfolio?.district,
+    portfolio?.property_type,
+    portfolio?.value ? formatCurrency(Number(portfolio.value)) : ""
+  ].filter(Boolean).join(" · ");
+  const searchMeta = [
+    searchRequest?.location,
+    searchRequest?.property_type,
+    formatBudgetRange(searchRequest)
+  ].filter(Boolean).join(" · ");
+
+  return (
+    <article className="oos-card rounded-[1.75rem] p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+            {match.status || "Eşleşme"}
+          </p>
+          <h2 className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-100">
+            {searchTitle}
+          </h2>
+          <p className="mt-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+            {portfolioTitle}
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200">
+          %{score}
+        </span>
+      </div>
+      {searchMeta ? (
+        <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          Arayış: {searchMeta}
+        </p>
+      ) : null}
+      {portfolioMeta ? (
+        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          Portföy: {portfolioMeta}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+function enrichMatches(
+  matches: AdvisorMatchRow[],
+  portfolios: AdvisorPortfolioRow[],
+  searchRequests: AdvisorSearchRequestRow[]
+) {
+  return matches.map((match) => ({
+    ...match,
+    portfolio:
+      match.portfolio ??
+      portfolios.find((portfolio) =>
+        portfolio.id === (match.portfolio_id || match.property_id)
+      ) ??
+      null,
+    search_request:
+      match.search_request ??
+      searchRequests.find((request) => request.id === match.search_request_id) ??
+      null
+  }));
+}
+
+function formatBudgetRange(searchRequest?: AdvisorMatchRow["search_request"]) {
+  if (!searchRequest) return "";
+
+  const currency = searchRequest.currency || "TRY";
+  const min = Number(searchRequest.min_price || 0);
+  const max = Number(searchRequest.max_price || 0);
+
+  if (!min && !max) return "";
+  if (min && max) return `${formatCurrencyAmount(min, currency)} - ${formatCurrencyAmount(max, currency)}`;
+  if (min) return `${formatCurrencyAmount(min, currency)}+`;
+  return `Maks ${formatCurrencyAmount(max, currency)}`;
 }
 
 function PaymentPanel({
@@ -558,4 +638,14 @@ function Result({ label, value }: { label: string; value: string }) {
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(value || 0);
+}
+
+function formatCurrencyAmount(value: number, currency: string) {
+  const safeCurrency = ["TRY", "USD", "EUR", "GBP"].includes(currency) ? currency : "TRY";
+
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: safeCurrency,
+    maximumFractionDigits: 0
+  }).format(value || 0);
 }

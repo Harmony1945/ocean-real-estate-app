@@ -91,6 +91,8 @@ export type AdvisorMatchRow = {
   property_id?: string | null;
   portfolio_id?: string | null;
   search_request_id?: string | null;
+  portfolio?: AdvisorPortfolioRow | null;
+  search_request?: AdvisorSearchRequestRow | null;
   score?: number | null;
   match_score?: number | null;
   status?: string | null;
@@ -162,12 +164,16 @@ function dataError(error: unknown) {
   return message || "Supabase veri işlemi tamamlanamadı.";
 }
 
-export function getDataSetupMessage(errorMessage = "") {
+export function getDataSetupMessage(errorMessage = "", options: { optional?: boolean } = {}) {
   if (!isSupabaseConfigured) {
     return "Supabase bağlantısı bekleniyor. Demo verilerle devam ediyorsunuz.";
   }
 
   if (errorMessage.includes("migration") || errorMessage.includes("tablo")) {
+    if (options.optional) {
+      return "Bazı gelişmiş tablolar henüz etkin değil. Temel veriler kullanılabilir.";
+    }
+
     return "Veritabanı tabloları bekleniyor. Supabase migration uygulanmalı.";
   }
 
@@ -467,7 +473,17 @@ export function createSupabaseAuthClient(): any {
   }
 
   async function getMatches() {
-    return getOperationalRows<AdvisorMatchRow>("matches");
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<AdvisorMatchRow[]>(
+        "/rest/v1/matches?select=*,portfolio:portfolios!matches_portfolio_id_fkey(id,owner_user_id,title,location,district,owner,value,stage,contract_type,next_move,risk,commission_rate,commission,listing_id,property_type,area,rooms,description,latitude,longitude,created_at,updated_at),search_request:search_requests!matches_search_request_id_fkey(id,owner_user_id,title,location,property_type,min_price,max_price,currency,min_bedrooms,min_area,max_area,rooms,purpose,urgency,notes,status,created_at,updated_at)&order=created_at.desc",
+        { method: "GET", token }
+      );
+    } catch {
+      return getOperationalRows<AdvisorMatchRow>("matches");
+    }
   }
 
   async function getDeals() {

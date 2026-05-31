@@ -57,7 +57,12 @@ export type AdvisorPortfolioRow = {
 
 export type AdvisorSearchRequestRow = {
   id: string;
-  owner_user_id: string;
+  owner_user_id?: string;
+  advisor_id?: string | null;
+  request_type?: string | null;
+  city?: string | null;
+  districts?: string[] | string | null;
+  property_types?: string[] | string | null;
   title: string;
   location: string | null;
   property_type: string | null;
@@ -72,6 +77,25 @@ export type AdvisorSearchRequestRow = {
   urgency: string | null;
   notes: string | null;
   status: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AdvisorPropertyRow = {
+  id: string;
+  advisor_id: string | null;
+  title: string;
+  property_type: string | null;
+  usage_type: string | null;
+  city: string | null;
+  district: string | null;
+  neighborhood: string | null;
+  gross_area: number | null;
+  net_area: number | null;
+  asking_price: number | null;
+  currency: string | null;
+  status: string | null;
+  is_public: boolean | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -91,6 +115,7 @@ export type AdvisorMatchRow = {
   property_id?: string | null;
   portfolio_id?: string | null;
   search_request_id?: string | null;
+  property?: AdvisorPropertyRow | null;
   portfolio?: AdvisorPortfolioRow | null;
   search_request?: AdvisorSearchRequestRow | null;
   score?: number | null;
@@ -472,13 +497,27 @@ export function createSupabaseAuthClient(): any {
     }
   }
 
+  async function getProperties() {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<AdvisorPropertyRow[]>(
+        "/rest/v1/properties?select=*&order=created_at.desc",
+        { method: "GET", token }
+      );
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
   async function getMatches() {
     const token = getAccessToken();
     if (!token) return [];
 
     try {
       return await request<AdvisorMatchRow[]>(
-        "/rest/v1/matches?select=*,portfolio:portfolios!matches_portfolio_id_fkey(id,owner_user_id,title,location,district,owner,value,stage,contract_type,next_move,risk,commission_rate,commission,listing_id,property_type,area,rooms,description,latitude,longitude,created_at,updated_at),search_request:search_requests!matches_search_request_id_fkey(id,owner_user_id,title,location,property_type,min_price,max_price,currency,min_bedrooms,min_area,max_area,rooms,purpose,urgency,notes,status,created_at,updated_at)&order=created_at.desc",
+        "/rest/v1/matches?select=*,property:properties!matches_property_id_fkey(id,advisor_id,title,property_type,usage_type,city,district,neighborhood,gross_area,net_area,asking_price,currency,status,is_public,created_at,updated_at),search_request:search_requests!matches_search_request_id_fkey(*)&order=created_at.desc",
         { method: "GET", token }
       );
     } catch {
@@ -623,6 +662,8 @@ export function createSupabaseAuthClient(): any {
     deleteSearchRequest,
 
     getTasks,
+
+    getProperties,
 
     getMatches,
 

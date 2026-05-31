@@ -1,353 +1,276 @@
--- Safe OceanOS demo seed.
--- Demo records are attached to melihberkeyildiz@gmail.com when that auth user exists.
--- Existing RLS remains unchanged, so cross-user visibility depends on current policies.
-
-create table if not exists public.matches (
-  id uuid primary key default gen_random_uuid(),
-  owner_user_id uuid references auth.users(id) on delete cascade,
-  portfolio_id uuid references public.portfolios(id) on delete cascade,
-  property_id uuid references public.portfolios(id) on delete cascade,
-  search_request_id uuid references public.search_requests(id) on delete cascade,
-  match_score numeric,
-  score numeric,
-  status text not null default 'new',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table public.matches add column if not exists owner_user_id uuid references auth.users(id) on delete cascade;
-alter table public.matches add column if not exists portfolio_id uuid references public.portfolios(id) on delete cascade;
-alter table public.matches add column if not exists property_id uuid references public.portfolios(id) on delete cascade;
-alter table public.matches add column if not exists search_request_id uuid references public.search_requests(id) on delete cascade;
-alter table public.matches add column if not exists match_score numeric;
-alter table public.matches add column if not exists score numeric;
-alter table public.matches add column if not exists status text not null default 'new';
-alter table public.matches add column if not exists created_at timestamptz not null default now();
-alter table public.matches add column if not exists updated_at timestamptz not null default now();
-
-alter table public.matches enable row level security;
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'matches'
-      and policyname = 'Users can read own matches'
-  ) then
-    create policy "Users can read own matches"
-      on public.matches for select
-      using (auth.uid() = owner_user_id);
-  end if;
-
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'matches'
-      and policyname = 'Users can insert own matches'
-  ) then
-    create policy "Users can insert own matches"
-      on public.matches for insert
-      with check (auth.uid() = owner_user_id);
-  end if;
-
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'public'
-      and tablename = 'matches'
-      and policyname = 'Users can update own matches'
-  ) then
-    create policy "Users can update own matches"
-      on public.matches for update
-      using (auth.uid() = owner_user_id)
-      with check (auth.uid() = owner_user_id);
-  end if;
-end
-$$;
-
-create index if not exists matches_owner_user_id_idx on public.matches(owner_user_id);
-create index if not exists matches_portfolio_id_idx on public.matches(portfolio_id);
-create index if not exists matches_search_request_id_idx on public.matches(search_request_id);
+-- Safe OceanOS production demo seed.
+-- Uses the production tables: properties, search_requests, matches, profiles.
+-- Demo records are attached to the profile with email melihberkeyildiz@gmail.com.
+-- Existing RLS is not changed.
 
 do $$
 declare
-  demo_user_id uuid;
+  demo_advisor_id uuid;
 begin
   select id
-    into demo_user_id
-    from auth.users
+    into demo_advisor_id
+    from public.profiles
     where lower(email) = 'melihberkeyildiz@gmail.com'
     limit 1;
 
-  if demo_user_id is null then
-    raise notice 'OceanOS demo seed skipped: melihberkeyildiz@gmail.com auth user not found.';
+  if demo_advisor_id is null then
+    raise notice 'OceanOS demo seed skipped: profile melihberkeyildiz@gmail.com not found.';
     return;
   end if;
 
-  insert into public.portfolios (
+  delete from public.matches
+  where id = '30000000-0000-4000-8000-000000000301'
+     or property_id in (
+       '10000000-0000-4000-8000-000000000101',
+       '10000000-0000-4000-8000-000000000102',
+       '10000000-0000-4000-8000-000000000103',
+       '10000000-0000-4000-8000-000000000104'
+     )
+     or search_request_id in (
+       '20000000-0000-4000-8000-000000000201',
+       '20000000-0000-4000-8000-000000000202',
+       '20000000-0000-4000-8000-000000000203',
+       '20000000-0000-4000-8000-000000000204'
+     );
+
+  delete from public.search_requests
+  where id in (
+       '20000000-0000-4000-8000-000000000201',
+       '20000000-0000-4000-8000-000000000202',
+       '20000000-0000-4000-8000-000000000203',
+       '20000000-0000-4000-8000-000000000204'
+     )
+     or notes in (
+       'OceanOS Demo: Beykoz 4+1 Villa Arayışı',
+       'OceanOS Demo: Boğaz Manzaralı Daire Arayışı',
+       'OceanOS Demo: Etiler Yatırımlık Daire Arayışı',
+       'OceanOS Demo: Sarıyer Arsa Arayışı'
+     );
+
+  delete from public.properties
+  where id in (
+       '10000000-0000-4000-8000-000000000101',
+       '10000000-0000-4000-8000-000000000102',
+       '10000000-0000-4000-8000-000000000103',
+       '10000000-0000-4000-8000-000000000104'
+     )
+     or title in (
+       'Acarkent B Tipi Villa',
+       'Çubuklu Deniz Manzaralı Daire',
+       'Etiler Yatırımlık Daire',
+       'Sarıyer Yatırımlık Arsa'
+     );
+
+  insert into public.properties (
     id,
-    owner_user_id,
+    advisor_id,
     title,
-    location,
-    district,
-    owner,
-    value,
-    stage,
-    contract_type,
-    next_move,
-    risk,
-    commission_rate,
-    commission,
     property_type,
-    area,
-    rooms,
-    description,
-    latitude,
-    longitude
+    usage_type,
+    city,
+    district,
+    neighborhood,
+    gross_area,
+    net_area,
+    asking_price,
+    currency,
+    status,
+    is_public,
+    created_at,
+    updated_at
   )
   values
     (
       '10000000-0000-4000-8000-000000000101',
-      demo_user_id,
+      demo_advisor_id,
       'Acarkent B Tipi Villa',
-      'Beykoz / Acarkent',
-      'Beykoz',
-      'OceanOS Demo',
-      125000000,
-      'Yeni',
-      'Satışa Aracılık',
-      'Yetki ve lokasyon teyidi',
-      'Düşük',
-      2,
-      2500000,
       'Villa',
-      '420',
-      '4+1',
-      'Demo kayıt: Beykoz villa arayışları için güvenli örnek portföy.',
-      41.1323,
-      29.0924
+      'Konut',
+      'İstanbul',
+      'Beykoz',
+      'Acarkent',
+      420,
+      360,
+      125000000,
+      'TRY',
+      'active',
+      true,
+      now(),
+      now()
     ),
     (
       '10000000-0000-4000-8000-000000000102',
-      demo_user_id,
+      demo_advisor_id,
       'Çubuklu Deniz Manzaralı Daire',
-      'Beykoz / Çubuklu',
-      'Beykoz',
-      'OceanOS Demo',
-      68000000,
-      'Yeni',
-      'Satışa Aracılık',
-      'Sunum dosyası hazırlanacak',
-      'Orta',
-      2,
-      1360000,
       'Daire',
-      '210',
-      '3+1',
-      'Demo kayıt: Boğaz manzaralı daire arayışları için örnek fırsat.',
-      41.1081,
-      29.0803
+      'Konut',
+      'İstanbul',
+      'Beykoz',
+      'Çubuklu',
+      210,
+      185,
+      68000000,
+      'TRY',
+      'active',
+      true,
+      now(),
+      now()
     ),
     (
       '10000000-0000-4000-8000-000000000103',
-      demo_user_id,
+      demo_advisor_id,
       'Etiler Yatırımlık Daire',
-      'Beşiktaş / Etiler',
-      'Beşiktaş',
-      'OceanOS Demo',
-      42000000,
-      'Yeni',
-      'Satışa Aracılık',
-      'Kira getirisi analizi',
-      'Düşük',
-      2,
-      840000,
       'Daire',
-      '145',
-      '2+1',
-      'Demo kayıt: yatırım amaçlı Etiler talepleri için örnek portföy.',
-      41.0871,
-      29.0355
+      'Konut',
+      'İstanbul',
+      'Beşiktaş',
+      'Etiler',
+      145,
+      125,
+      42000000,
+      'TRY',
+      'active',
+      true,
+      now(),
+      now()
     ),
     (
       '10000000-0000-4000-8000-000000000104',
-      demo_user_id,
+      demo_advisor_id,
       'Sarıyer Yatırımlık Arsa',
-      'Sarıyer / Zekeriyaköy',
+      'Arsa',
+      'Yatırım',
+      'İstanbul',
       'Sarıyer',
-      'OceanOS Demo',
+      'Zekeriyaköy',
+      1250,
+      1250,
       95000000,
-      'Yeni',
-      'Satışa Aracılık',
-      'İmar notları kontrolü',
-      'Orta',
-      2,
-      1900000,
-      'Arsa',
-      '1250',
-      'Arsa',
-      'Demo kayıt: Sarıyer arsa arayışları için örnek yatırım fırsatı.',
-      41.1663,
-      29.0501
-    )
-  on conflict (id) do update
-    set owner_user_id = excluded.owner_user_id,
-        title = excluded.title,
-        location = excluded.location,
-        district = excluded.district,
-        owner = excluded.owner,
-        value = excluded.value,
-        stage = excluded.stage,
-        contract_type = excluded.contract_type,
-        next_move = excluded.next_move,
-        risk = excluded.risk,
-        commission_rate = excluded.commission_rate,
-        commission = excluded.commission,
-        property_type = excluded.property_type,
-        area = excluded.area,
-        rooms = excluded.rooms,
-        description = excluded.description,
-        latitude = excluded.latitude,
-        longitude = excluded.longitude,
-        updated_at = now();
+      'TRY',
+      'active',
+      true,
+      now(),
+      now()
+    );
 
   insert into public.search_requests (
     id,
-    owner_user_id,
-    title,
-    location,
-    property_type,
+    advisor_id,
+    client_id,
+    request_type,
+    city,
     min_price,
     max_price,
     currency,
-    min_bedrooms,
     min_area,
     max_area,
     rooms,
-    purpose,
+    commercial_or_residential,
     urgency,
+    financing_status,
     notes,
-    status
+    status,
+    created_at
   )
   values
     (
       '20000000-0000-4000-8000-000000000201',
-      demo_user_id,
-      'Beykoz 4+1 Villa Arayışı',
-      'Beykoz',
-      'Villa',
+      demo_advisor_id,
+      null,
+      'Satın Alma',
+      'İstanbul',
       90000000,
       140000000,
       'TRY',
-      4,
       300,
       550,
       '4+1',
-      'Satın Alma',
+      'Konut',
       'Acil',
-      'Demo kayıt: müşteri kimliği içermeyen güvenli arayış özeti.',
-      'Aktif'
+      'Hazır',
+      'OceanOS Demo: Beykoz 4+1 Villa Arayışı',
+      'active',
+      now()
     ),
     (
       '20000000-0000-4000-8000-000000000202',
-      demo_user_id,
-      'Boğaz Manzaralı Daire Arayışı',
-      'Beykoz',
-      'Daire',
+      demo_advisor_id,
+      null,
+      'Satın Alma',
+      'İstanbul',
       45000000,
       75000000,
       'TRY',
-      3,
       160,
       260,
       '3+1',
-      'Satın Alma',
+      'Konut',
       'Normal',
-      'Demo kayıt: deniz manzarası öncelikli daire arayışı.',
-      'Aktif'
+      'Hazır',
+      'OceanOS Demo: Boğaz Manzaralı Daire Arayışı',
+      'active',
+      now()
     ),
     (
       '20000000-0000-4000-8000-000000000203',
-      demo_user_id,
-      'Etiler Yatırımlık Daire Arayışı',
-      'Etiler',
-      'Daire',
+      demo_advisor_id,
+      null,
+      'Yatırım',
+      'İstanbul',
       30000000,
       50000000,
       'TRY',
-      2,
       100,
       180,
       '2+1',
-      'Yatırım',
+      'Konut',
       'Normal',
-      'Demo kayıt: kira getirisi odaklı yatırım arayışı.',
-      'Aktif'
+      'Hazır',
+      'OceanOS Demo: Etiler Yatırımlık Daire Arayışı',
+      'active',
+      now()
     ),
     (
       '20000000-0000-4000-8000-000000000204',
-      demo_user_id,
-      'Sarıyer Arsa Arayışı',
-      'Sarıyer',
-      'Arsa',
+      demo_advisor_id,
+      null,
+      'Yatırım',
+      'İstanbul',
       70000000,
       120000000,
       'TRY',
-      0,
       800,
       1800,
       'Arsa',
-      'Yatırım',
+      'Arsa',
       'Düşük',
-      'Demo kayıt: imar potansiyeli olan arsa arayışı.',
-      'Aktif'
-    )
-  on conflict (id) do update
-    set owner_user_id = excluded.owner_user_id,
-        title = excluded.title,
-        location = excluded.location,
-        property_type = excluded.property_type,
-        min_price = excluded.min_price,
-        max_price = excluded.max_price,
-        currency = excluded.currency,
-        min_bedrooms = excluded.min_bedrooms,
-        min_area = excluded.min_area,
-        max_area = excluded.max_area,
-        rooms = excluded.rooms,
-        purpose = excluded.purpose,
-        urgency = excluded.urgency,
-        notes = excluded.notes,
-        status = excluded.status,
-        updated_at = now();
+      'Hazır',
+      'OceanOS Demo: Sarıyer Arsa Arayışı',
+      'active',
+      now()
+    );
 
   insert into public.matches (
     id,
-    owner_user_id,
-    portfolio_id,
     property_id,
     search_request_id,
+    property_advisor_id,
+    request_advisor_id,
     match_score,
-    score,
-    status
+    status,
+    created_at,
+    reviewed_at
   )
   values (
     '30000000-0000-4000-8000-000000000301',
-    demo_user_id,
-    '10000000-0000-4000-8000-000000000101',
     '10000000-0000-4000-8000-000000000101',
     '20000000-0000-4000-8000-000000000201',
+    demo_advisor_id,
+    demo_advisor_id,
     92,
-    92,
-    'new'
-  )
-  on conflict (id) do update
-    set owner_user_id = excluded.owner_user_id,
-        portfolio_id = excluded.portfolio_id,
-        property_id = excluded.property_id,
-        search_request_id = excluded.search_request_id,
-        match_score = excluded.match_score,
-        score = excluded.score,
-        status = excluded.status,
-        updated_at = now();
+    'new',
+    now(),
+    null
+  );
 end
 $$;

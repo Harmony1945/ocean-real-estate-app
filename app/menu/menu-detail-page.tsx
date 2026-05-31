@@ -14,6 +14,7 @@ import {
   type AdvisorDealRow,
   type AdvisorMatchRow,
   type AdvisorPortfolioRow,
+  type AdvisorPropertyRow,
   type AdvisorSearchRequestRow,
   type AdvisorTaskRow
 } from "@/lib/supabase/client";
@@ -105,14 +106,13 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
       }
 
       if (page.slug === "matches") {
-        const [matches, portfolios, requests] = await Promise.all([
+        const [matches, properties, requests] = await Promise.all([
           supabase.getMatches(),
-          supabase.getPortfolios(),
+          supabase.getProperties(),
           supabase.getSearchRequests()
         ]);
         if (mounted) {
-          setPortfolioRows(portfolios);
-          setMatchRows(enrichMatches(matches, portfolios, requests));
+          setMatchRows(enrichMatches(matches, properties, requests));
         }
       }
 
@@ -314,19 +314,20 @@ function InfoCard({ title, value }: { title: string; value: string }) {
 }
 
 function MatchCard({ match }: { match: AdvisorMatchRow }) {
+  const property = match.property;
   const portfolio = match.portfolio;
   const searchRequest = match.search_request;
   const score = Number(match.match_score ?? match.score ?? 0);
-  const portfolioTitle = portfolio?.title || "Portföy bilgisi bekleniyor";
-  const searchTitle = searchRequest?.title || "Arayış bilgisi bekleniyor";
+  const portfolioTitle = property?.title || portfolio?.title || "Portföy bilgisi bekleniyor";
+  const searchTitle = getSearchRequestTitle(searchRequest);
   const portfolioMeta = [
-    portfolio?.location || portfolio?.district,
-    portfolio?.property_type,
-    portfolio?.value ? formatCurrency(Number(portfolio.value)) : ""
+    property ? [property.city, property.district, property.neighborhood].filter(Boolean).join(" / ") : portfolio?.location || portfolio?.district,
+    property?.property_type || portfolio?.property_type,
+    property?.asking_price ? formatCurrencyAmount(Number(property.asking_price), property.currency || "TRY") : portfolio?.value ? formatCurrency(Number(portfolio.value)) : ""
   ].filter(Boolean).join(" · ");
   const searchMeta = [
-    searchRequest?.location,
-    searchRequest?.property_type,
+    getSearchLocation(searchRequest),
+    getSearchPropertyType(searchRequest),
     formatBudgetRange(searchRequest)
   ].filter(Boolean).join(" · ");
 
@@ -364,15 +365,15 @@ function MatchCard({ match }: { match: AdvisorMatchRow }) {
 
 function enrichMatches(
   matches: AdvisorMatchRow[],
-  portfolios: AdvisorPortfolioRow[],
+  properties: AdvisorPropertyRow[],
   searchRequests: AdvisorSearchRequestRow[]
 ) {
   return matches.map((match) => ({
     ...match,
-    portfolio:
-      match.portfolio ??
-      portfolios.find((portfolio) =>
-        portfolio.id === (match.portfolio_id || match.property_id)
+    property:
+      match.property ??
+      properties.find((property) =>
+        property.id === match.property_id
       ) ??
       null,
     search_request:
@@ -380,6 +381,34 @@ function enrichMatches(
       searchRequests.find((request) => request.id === match.search_request_id) ??
       null
   }));
+}
+
+function getSearchRequestTitle(searchRequest?: AdvisorMatchRow["search_request"]) {
+  if (!searchRequest) return "Arayış bilgisi bekleniyor";
+
+  if (searchRequest.title) return searchRequest.title;
+  if (searchRequest.notes?.startsWith("OceanOS Demo: ")) {
+    return searchRequest.notes.replace("OceanOS Demo: ", "");
+  }
+
+  return [getSearchLocation(searchRequest), getSearchPropertyType(searchRequest), searchRequest.request_type || "Arayış"]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function getSearchLocation(searchRequest?: AdvisorMatchRow["search_request"]) {
+  if (!searchRequest) return "";
+  const districts = Array.isArray(searchRequest.districts)
+    ? searchRequest.districts.join(", ")
+    : searchRequest.districts || searchRequest.location || "";
+
+  return [searchRequest.city, districts].filter(Boolean).join(" / ");
+}
+
+function getSearchPropertyType(searchRequest?: AdvisorMatchRow["search_request"]) {
+  if (!searchRequest) return "";
+  if (Array.isArray(searchRequest.property_types)) return searchRequest.property_types.join(", ");
+  return searchRequest.property_types || searchRequest.property_type || "";
 }
 
 function formatBudgetRange(searchRequest?: AdvisorMatchRow["search_request"]) {

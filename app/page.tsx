@@ -1615,14 +1615,14 @@ export default function Home() {
               <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 O
               </span>
-              <span className="text-sm font-medium text-slate-500">
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 OCEAN BrokerageOS
               </span>
             </div>
             <h1 className="mt-6 max-w-3xl break-words text-[2rem] font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100 sm:mt-8 sm:text-5xl">
               {activePageTitle[activePage]}
             </h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-slate-500">
+            <p className="mt-4 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400">
               {activePageSubtitle[activePage]}
             </p>
           </div>
@@ -1841,7 +1841,7 @@ export default function Home() {
                     />
                   ))
                 ) : (
-                  <div className="rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-5 text-center text-sm text-slate-500">
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-5 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
                     <p>İlk portföyünü ekle.</p>
                     <button className="btn-primary mt-4" type="button" onClick={openCreateForm}>
                       Portföy ekle
@@ -1855,10 +1855,10 @@ export default function Home() {
               <Card title="Seçili Fırsat">
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <h2 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+                    <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-2xl">
                       {selectedOpportunity.title}
                     </h2>
-                    <p className="mt-2 text-sm text-slate-500">
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                       {selectedOpportunity.location} · {selectedOpportunity.owner}
                     </p>
                   </div>
@@ -1907,21 +1907,21 @@ export default function Home() {
                 />
 
                 {selectedPortfolioSearchMatches.length ? (
-                  <div className="mt-6 rounded-3xl border border-slate-200 bg-stone-50 p-4">
-                    <p className="text-sm font-semibold text-slate-950">
+                  <div className="mt-6 rounded-3xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                    <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">
                       Bu portföye uygun arayışlar
                     </p>
                     <div className="mt-3 space-y-2">
                       {selectedPortfolioSearchMatches.map((match) => (
                         <div
                           key={match.search.id}
-                          className="flex flex-col gap-2 rounded-2xl bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                          className="flex flex-col gap-2 rounded-2xl bg-white px-3 py-3 dark:bg-[#080808] sm:flex-row sm:items-center sm:justify-between"
                         >
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-950">
+                            <p className="text-sm font-medium text-slate-950 dark:text-slate-100">
                               {match.search.consultantName} — {match.search.title}
                             </p>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                               {match.search.location} · {match.search.purpose}
                             </p>
                           </div>
@@ -1975,7 +1975,7 @@ export default function Home() {
                   selectedTasks.map((task) => (
                     <div
                       key={task.id}
-                      className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3"
+                      className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 dark:border-white/10 dark:bg-[#080808]"
                     >
                       <input
                         type="checkbox"
@@ -1988,7 +1988,7 @@ export default function Home() {
                         className={`min-w-0 flex-1 text-sm ${
                           task.done
                             ? "text-emerald-700 line-through"
-                            : "text-slate-800"
+                            : "text-slate-800 dark:text-slate-200"
                         }`}
                       >
                         {task.title}
@@ -2004,7 +2004,7 @@ export default function Home() {
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-center text-sm text-slate-500">
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
                     Bugünün ilk görevini ekle.
                   </div>
                 )}
@@ -2016,13 +2016,13 @@ export default function Home() {
                 {contracts.map((contract) => (
                   <div
                     key={contract.id}
-                    className="flex flex-col gap-3 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+                    className="flex flex-col gap-3 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0 dark:border-white/10 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-950">
+                      <p className="text-sm font-medium text-slate-950 dark:text-slate-100">
                         {contract.name}
                       </p>
-                      <p className="mt-1 text-sm leading-5 text-slate-500">
+                      <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">
                         {contract.description}
                       </p>
                     </div>
@@ -2046,20 +2046,20 @@ export default function Home() {
                   {consultants.map((consultant) => (
                     <div
                       key={consultant.id}
-                      className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3"
+                      className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3 dark:border-white/10 dark:bg-[#080808]"
                     >
-                      <p className="text-sm font-medium text-slate-950">
+                      <p className="text-sm font-medium text-slate-950 dark:text-slate-100">
                         {consultant.firstName} {consultant.lastName}
                       </p>
-                      <p className="mt-1 break-words text-sm text-slate-500">{consultant.phone}</p>
-                      <p className="mt-1 text-sm text-slate-500">
+                      <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">{consultant.phone}</p>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                         {consultant.portfolioCount} portföy
                       </p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-sm text-slate-500">
+                <p className="rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
                   Gerçek danışman profilleri için profil kayıtları bekleniyor.
                 </p>
               )}
@@ -2089,7 +2089,7 @@ export default function Home() {
                 ) : null}
 
                 {sahibindenListing ? (
-                  <div className="min-w-0 space-y-4 rounded-2xl border border-slate-200 bg-stone-50 p-3 sm:p-4">
+                  <div className="min-w-0 space-y-4 rounded-2xl border border-slate-200 bg-stone-50 p-3 dark:border-white/10 dark:bg-white/[0.04] sm:p-4">
                     {sahibindenListing.images?.length ? (
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {sahibindenListing.images.slice(0, 3).map((image) => (
@@ -2178,12 +2178,12 @@ export default function Home() {
       {formOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/20 px-3 py-3 backdrop-blur-sm sm:items-center sm:px-4 sm:py-4">
           <form
-            className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-3xl border border-slate-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-xl sm:rounded-3xl sm:p-5"
+            className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-3xl border border-slate-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-xl dark:border-white/10 dark:bg-[#080808] sm:rounded-3xl sm:p-5"
             onSubmit={saveOpportunity}
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   {editingId ? "Fırsatı düzenle" : "Yeni fırsat"}
                 </p>
                 <h2 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
@@ -2293,8 +2293,8 @@ export default function Home() {
               </Field>
             </div>
 
-            <div className="mt-6 rounded-3xl border border-slate-200 bg-stone-50 p-4">
-              <p className="text-sm font-medium text-slate-950">
+            <div className="mt-6 rounded-3xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="text-sm font-medium text-slate-950 dark:text-slate-100">
                 Komisyon oranı
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -2306,15 +2306,15 @@ export default function Home() {
                     className={`rounded-full border px-4 py-2 text-sm transition ${
                       form.commissionRate === rate
                         ? "border-slate-950 bg-slate-950 text-white"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-300 dark:hover:border-white/20"
                     }`}
                   >
                     {formatRate(rate)}
                   </button>
                 ))}
               </div>
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-sm text-slate-500">Hesaplanan komisyon</p>
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#080808]">
+                <p className="text-sm text-slate-500 dark:text-slate-400">Hesaplanan komisyon</p>
                 <p className="mt-1 text-2xl font-semibold tracking-tight">
                   {formatCurrency(formCommission)}
                 </p>
@@ -2439,33 +2439,33 @@ function PortfolioListPage({
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Toplam Portföy</p>
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#080808]">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Toplam Portföy</p>
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
             {opportunities.length}
           </p>
         </div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Toplam Portföy Değeri</p>
-          <p className="mt-2 break-words text-2xl font-semibold tracking-tight text-slate-950">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#080808]">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Toplam Portföy Değeri</p>
+          <p className="mt-2 break-words text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
             {money(totalPortfolioValue)}
           </p>
         </div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Potansiyel Komisyon</p>
-          <p className="mt-2 break-words text-2xl font-semibold tracking-tight text-emerald-700">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#080808]">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Potansiyel Komisyon</p>
+          <p className="mt-2 break-words text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">
             {money(totalPotentialCommission)}
           </p>
         </div>
       </div>
 
-      <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#080808] sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold tracking-tight text-slate-950">
+            <h2 className="text-base font-semibold tracking-tight text-slate-950 dark:text-slate-100">
               Tüm Portföyler
             </h2>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
+            <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
               Mevcut fırsat kayıtlarından oluşturulan temiz portföy listesi.
             </p>
           </div>
@@ -2494,8 +2494,8 @@ function PortfolioListPage({
               key={item}
               className={`shrink-0 rounded-full px-3 py-2 text-xs font-medium transition ${
                 stageFilter === item
-                  ? "bg-slate-950 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/[0.06] dark:text-slate-300 dark:hover:bg-white/[0.1]"
               }`}
               type="button"
               onClick={() => setStageFilter(item)}
@@ -2510,66 +2510,66 @@ function PortfolioListPage({
             <div className="mt-5 hidden overflow-x-auto md:block">
               <table className="w-full min-w-[980px] border-separate border-spacing-0 text-left text-sm">
                 <thead>
-                  <tr className="text-xs font-medium text-slate-400">
-                    <th className="border-b border-slate-100 px-3 py-3">Portföy</th>
-                    <th className="border-b border-slate-100 px-3 py-3">Lokasyon</th>
-                    <th className="border-b border-slate-100 px-3 py-3">Tip</th>
-                    <th className="border-b border-slate-100 px-3 py-3">Değer</th>
-                    <th className="border-b border-slate-100 px-3 py-3">Komisyon</th>
-                    <th className="border-b border-slate-100 px-3 py-3">Aşama</th>
-                    <th className="border-b border-slate-100 px-3 py-3">Danışman</th>
-                    <th className="border-b border-slate-100 px-3 py-3">Aksiyon</th>
+                  <tr className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                    <th className="border-b border-slate-100 px-3 py-3 dark:border-white/10">Portföy</th>
+                    <th className="border-b border-slate-100 px-3 py-3 dark:border-white/10">Lokasyon</th>
+                    <th className="border-b border-slate-100 px-3 py-3 dark:border-white/10">Tip</th>
+                    <th className="border-b border-slate-100 px-3 py-3 dark:border-white/10">Değer</th>
+                    <th className="border-b border-slate-100 px-3 py-3 dark:border-white/10">Komisyon</th>
+                    <th className="border-b border-slate-100 px-3 py-3 dark:border-white/10">Aşama</th>
+                    <th className="border-b border-slate-100 px-3 py-3 dark:border-white/10">Danışman</th>
+                    <th className="border-b border-slate-100 px-3 py-3 dark:border-white/10">Aksiyon</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredPortfolios.map((opportunity) => (
                     <tr key={opportunity.id} className="align-top">
-                      <td className="border-b border-slate-100 px-3 py-4">
-                        <p className="font-medium text-slate-950">{opportunity.title}</p>
-                        <p className="mt-1 text-xs text-slate-500">
+                      <td className="border-b border-slate-100 px-3 py-4 dark:border-white/10">
+                        <p className="font-medium text-slate-950 dark:text-slate-100">{opportunity.title}</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                           {opportunity.listingId || "Portföy no yok"}
                         </p>
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-4 text-slate-600">
+                      <td className="border-b border-slate-100 px-3 py-4 text-slate-600 dark:border-white/10 dark:text-slate-300">
                         {opportunity.location}
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-4 text-slate-600">
+                      <td className="border-b border-slate-100 px-3 py-4 text-slate-600 dark:border-white/10 dark:text-slate-300">
                         <p>{opportunity.propertyType || "Belirtilmedi"}</p>
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                           {[opportunity.area ? `${opportunity.area} m²` : "", opportunity.rooms]
                             .filter(Boolean)
                             .join(" · ") || "m² / oda yok"}
                         </p>
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-4 font-medium text-slate-950">
+                      <td className="border-b border-slate-100 px-3 py-4 font-medium text-slate-950 dark:border-white/10 dark:text-slate-100">
                         {money(opportunity.value)}
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-4">
-                        <p className="font-medium text-emerald-700">
+                      <td className="border-b border-slate-100 px-3 py-4 dark:border-white/10">
+                        <p className="font-medium text-emerald-700 dark:text-emerald-300">
                           {money(getOpportunityCommission(opportunity))}
                         </p>
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                           {formatRate(opportunity.commissionRate)}
                         </p>
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-4">
+                      <td className="border-b border-slate-100 px-3 py-4 dark:border-white/10">
                         <span
                           className={`rounded-full border px-2.5 py-1 text-xs ${
                             isActiveStatus(opportunity.stage)
                               ? getStatusPillClass(opportunity.stage)
                               : opportunity.stage === "Kapandı"
                               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                              : "border-slate-200 text-slate-600"
+                              : "border-slate-200 text-slate-600 dark:border-white/10 dark:text-slate-300"
                           }`}
                         >
                           {opportunity.stage}
                         </span>
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-4 text-slate-600">
+                      <td className="border-b border-slate-100 px-3 py-4 text-slate-600 dark:border-white/10 dark:text-slate-300">
                         <p>{opportunity.ownerConsultantName || "Atanmadı"}</p>
-                        <p className="mt-1 text-xs text-slate-400">{opportunity.owner}</p>
+                        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{opportunity.owner}</p>
                       </td>
-                      <td className="border-b border-slate-100 px-3 py-4">
+                      <td className="border-b border-slate-100 px-3 py-4 dark:border-white/10">
                         <div className="flex flex-wrap gap-1.5">
                           <button className="mini-action" type="button" onClick={() => onOpen(opportunity.id)}>
                             Aç
@@ -2599,13 +2599,13 @@ function PortfolioListPage({
 
             <div className="mt-5 space-y-3 md:hidden">
               {filteredPortfolios.map((opportunity) => (
-                <div key={opportunity.id} className="rounded-3xl border border-slate-200 bg-white p-4">
+                <div key={opportunity.id} className="rounded-3xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#111111]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="text-base font-semibold text-slate-950">
+                      <h3 className="text-base font-semibold text-slate-950 dark:text-slate-100">
                         {opportunity.title}
                       </h3>
-                      <p className="mt-1 break-words text-sm text-slate-500">
+                      <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">
                         {opportunity.location}
                       </p>
                     </div>
@@ -2615,7 +2615,7 @@ function PortfolioListPage({
                           ? getStatusPillClass(opportunity.stage)
                           : opportunity.stage === "Kapandı"
                           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                          : "border-slate-200 text-slate-600"
+                          : "border-slate-200 text-slate-600 dark:border-white/10 dark:text-slate-300"
                       }`}
                     >
                       {opportunity.stage}
@@ -2670,11 +2670,11 @@ function PortfolioListPage({
             </div>
           </>
         ) : (
-          <div className="mt-5 rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-6 text-center">
-            <p className="text-sm font-medium text-slate-950">
+          <div className="mt-5 rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-6 text-center dark:border-white/10 dark:bg-white/[0.04]">
+            <p className="text-sm font-medium text-slate-950 dark:text-slate-100">
               İlk portföyünü ekle.
             </p>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
+            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
               Yeni fırsat ekleyerek portföy listenizi oluşturmaya başlayabilirsiniz.
             </p>
             <button className="btn-primary mt-4 w-full sm:w-auto" type="button" onClick={onCreate}>
@@ -2708,15 +2708,15 @@ function SearchStatusBadge({ status }: { status: SearchStatus }) {
   const displayStatus = formatStatusLabel(status);
   const styles: Record<string, string> = {
     "Aktif": "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200",
-    "Acil": "bg-red-50 text-red-700",
-    "Beklemede": "bg-slate-100 text-slate-700",
-    "Kapalı": "bg-slate-100 text-slate-500",
-    "Kapatıldı": "bg-slate-100 text-slate-500",
-    "Eşleşme Bulundu": "bg-emerald-50 text-emerald-700"
+    "Acil": "bg-red-50 text-red-700 dark:bg-red-400/10 dark:text-red-200",
+    "Beklemede": "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200",
+    "Kapalı": "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400",
+    "Kapatıldı": "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400",
+    "Eşleşme Bulundu": "bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200"
   };
 
   return (
-    <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${styles[displayStatus] || "bg-slate-100 text-slate-700"}`}>
+    <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${styles[displayStatus] || "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200"}`}>
       {displayStatus}
     </span>
   );
@@ -2746,27 +2746,27 @@ function SearchMatchCard({
   onSelectPortfolio: (id: EntityId) => void;
 }) {
   return (
-    <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-3 sm:p-4">
+    <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#111111] sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-950">
+          <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">
             {match.portfolio.title}
           </p>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
             {match.portfolio.listingId ? `${match.portfolio.listingId} · ` : ""}
             {match.portfolio.location} · {money(match.portfolio.value)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <MatchScoreBadge score={match.score} />
-          <span className="text-sm font-semibold text-slate-950">%{match.score}</span>
+          <span className="text-sm font-semibold text-slate-950 dark:text-slate-100">%{match.score}</span>
         </div>
       </div>
-      <p className="mt-3 text-sm leading-6 text-slate-600">
+      <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
         %{match.score} eşleşme: {getMatchReason(match.details)}.
       </p>
 
-      <div className="mt-3 h-1.5 rounded-full bg-slate-100">
+      <div className="mt-3 h-1.5 rounded-full bg-slate-100 dark:bg-white/10">
         <div
           className={`h-1.5 rounded-full ${
             match.score >= 85 ? "bg-emerald-500" : "bg-slate-500"
@@ -2775,8 +2775,8 @@ function SearchMatchCard({
         />
       </div>
 
-      <details className="mt-4 rounded-2xl bg-stone-50 p-3">
-        <summary className="cursor-pointer text-xs font-medium text-slate-600">
+      <details className="mt-4 rounded-2xl bg-stone-50 p-3 dark:bg-white/[0.04]">
+        <summary className="cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-300">
           Neden eşleşti?
         </summary>
         <div className="mt-2 space-y-1">
@@ -2798,21 +2798,21 @@ function SearchMatchCard({
 
       <div className="mt-3 grid gap-1.5 sm:flex sm:flex-wrap">
         <button
-          className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 sm:min-h-9"
+          className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-[#111111] sm:min-h-9"
           type="button"
           onClick={() => onSelectPortfolio(match.portfolio.id)}
         >
           Portföyü Aç
         </button>
         <button
-          className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 sm:min-h-9"
+          className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-[#111111] sm:min-h-9"
           type="button"
           onClick={() => openWhatsAppForSearch(search, match.portfolio)}
         >
           WhatsApp
         </button>
         <button
-          className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 sm:min-h-9"
+          className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-[#111111] sm:min-h-9"
           type="button"
           onClick={() => onCreateTask(search, match.portfolio)}
         >
@@ -2879,7 +2879,7 @@ function SearchRequestsCard({
     <Card title="Arayışlar">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <p className="text-sm leading-6 text-slate-500">
+          <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
             Danışmanların aktif müşteri ve yatırımcı talepleri.
           </p>
           <button className="btn-primary w-full sm:w-auto" type="button" onClick={onOpenForm}>
@@ -2893,8 +2893,8 @@ function SearchRequestsCard({
               key={item}
               className={`shrink-0 rounded-full px-3 py-2 text-xs font-medium transition ${
                 filter === item
-                  ? "bg-slate-950 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/[0.06] dark:text-slate-300 dark:hover:bg-white/[0.1]"
               }`}
               type="button"
               onClick={() => onFilterChange(item)}
@@ -2911,7 +2911,7 @@ function SearchRequestsCard({
         ) : null}
 
         {formOpen ? (
-          <div className="rounded-3xl border border-slate-200 bg-stone-50 p-3 sm:p-4">
+          <div className="rounded-3xl border border-slate-200 bg-stone-50 p-3 dark:border-white/10 dark:bg-white/[0.04] sm:p-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <input className="input" placeholder="Başlık" value={form.title} onChange={(event) => update("title", event.target.value)} />
               <input className="input" placeholder="Lokasyon" value={form.location} onChange={(event) => update("location", event.target.value)} />
@@ -2968,11 +2968,11 @@ function SearchRequestsCard({
                   : request.status;
 
               return (
-                <div key={request.id} className="min-w-0 rounded-3xl border border-slate-200 bg-white p-3 sm:p-4">
+                <div key={request.id} className="min-w-0 rounded-3xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#111111] sm:p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <h3 className="text-base font-semibold text-slate-950">{request.title}</h3>
-                      <p className="mt-1 text-sm text-slate-500">
+                      <h3 className="text-base font-semibold text-slate-950 dark:text-slate-100">{request.title}</h3>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                         {request.consultantName} • {request.purpose}
                       </p>
                     </div>
@@ -2982,7 +2982,7 @@ function SearchRequestsCard({
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-2 break-words text-sm text-slate-600 sm:grid-cols-2">
+                  <div className="mt-4 grid gap-2 break-words text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
                     <p>Lokasyon: {request.location}</p>
                     <p>Tip: {request.propertyType}</p>
                     <p>
@@ -2993,25 +2993,25 @@ function SearchRequestsCard({
                     <p>Minimum yatak odası: {request.minBedrooms || "Belirtilmedi"}</p>
                     <p>Tarih: {request.createdAt}</p>
                   </div>
-                  <p className="mt-3 break-words text-sm leading-6 text-slate-500">{request.notes}</p>
-                  <p className="mt-3 text-sm font-medium text-slate-950">
+                  <p className="mt-3 break-words text-sm leading-6 text-slate-500 dark:text-slate-400">{request.notes}</p>
+                  <p className="mt-3 text-sm font-medium text-slate-950 dark:text-slate-100">
                     {matches.length} eşleşme bulundu
                   </p>
 
                   {bestMatch && !isExpanded ? (
                     <button
-                      className="mt-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-stone-50 px-3 py-3 text-left transition hover:border-slate-300"
+                      className="mt-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-stone-50 px-3 py-3 text-left transition hover:border-slate-300 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-white/20"
                       type="button"
                       onClick={() => setExpandedSearchId(request.id)}
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-950">
+                        <p className="truncate text-sm font-medium text-slate-950 dark:text-slate-100">
                           {bestMatch.portfolio.title}
                         </p>
-                        <p className="mt-1 truncate text-xs text-slate-500">
+                        <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
                           En güçlü eşleşme · {bestMatch.portfolio.location}
                         </p>
-                        <p className="mt-1 truncate text-xs text-slate-500">
+                        <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
                           {getMatchReason(bestMatch.details)}
                         </p>
                       </div>
@@ -3061,11 +3061,11 @@ function SearchRequestsCard({
             })}
           </div>
         ) : (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-5 text-center">
-            <p className="text-sm font-medium text-slate-950">
+          <div className="rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-5 text-center dark:border-white/10 dark:bg-white/[0.04]">
+            <p className="text-sm font-medium text-slate-950 dark:text-slate-100">
               İlk arayışını oluştur.
             </p>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
+            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
               Danışmanların müşteri taleplerini buraya ekleyerek portföylerle
               otomatik eşleştirme başlatabilirsin.
             </p>
@@ -3113,15 +3113,15 @@ function NotificationsCard({
                   {notification.message}
                 </p>
                 {portfolio ? (
-                  <div className="mt-3 rounded-2xl bg-white p-3">
-                    <p className="text-sm font-medium text-slate-950">
+                  <div className="mt-3 rounded-2xl bg-white p-3 dark:bg-[#080808]">
+                    <p className="text-sm font-medium text-slate-950 dark:text-slate-100">
                       {portfolio.title}
                     </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
                       {portfolio.location} · {money(portfolio.value)}
                     </p>
                     {searchRequest ? (
-                      <p className="mt-1 text-xs text-slate-400">
+                      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                         {searchRequest.consultantName} · {searchRequest.title}
                       </p>
                     ) : null}
@@ -3129,14 +3129,14 @@ function NotificationsCard({
                 ) : null}
                 <div className="mt-3 grid gap-1.5 min-[420px]:grid-cols-3">
                   <button
-                    className="inline-flex min-h-9 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                    className="inline-flex min-h-9 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-[#111111]"
                     type="button"
                     onClick={() => onOpenPortfolio(notification)}
                   >
                     Portföyü Aç
                   </button>
                   <button
-                    className="inline-flex min-h-9 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                    className="inline-flex min-h-9 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-[#111111]"
                     type="button"
                     onClick={() =>
                       searchRequest
@@ -3147,7 +3147,7 @@ function NotificationsCard({
                     WhatsApp
                   </button>
                   <button
-                    className="inline-flex min-h-9 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                    className="inline-flex min-h-9 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-[#111111]"
                     type="button"
                     onClick={() => onMarkRead(notification.id)}
                   >
@@ -3159,7 +3159,7 @@ function NotificationsCard({
           })}
         </div>
       ) : (
-        <p className="rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-4 text-sm leading-6 text-slate-500">
+        <p className="rounded-3xl border border-dashed border-slate-200 bg-stone-50 p-4 text-sm leading-6 text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
           Yeni eşleşme bildirimi yok.
         </p>
       )}
@@ -3602,21 +3602,21 @@ function SummaryCards({
   return (
     <section className="mt-5 grid min-w-0 gap-3 sm:mt-6 md:grid-cols-3">
       <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
-        <p className="text-sm text-slate-500">Toplam Portföy Değeri</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Toplam Portföy Değeri</p>
         <p className="mt-2 break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-2xl">
           {money(totalPortfolioValue)}
         </p>
       </div>
 
       <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
-        <p className="text-sm text-slate-500">Toplam Komisyon</p>
-        <p className="mt-2 break-words text-xl font-semibold tracking-tight text-emerald-700 sm:text-2xl">
+        <p className="text-sm text-slate-500 dark:text-slate-400">Toplam Komisyon</p>
+        <p className="mt-2 break-words text-xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300 sm:text-2xl">
           {money(totalCommission)}
         </p>
       </div>
 
       <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
-        <p className="text-sm text-slate-500">{dealCount === undefined ? "Potansiyel Komisyon" : "İşlem Kaydı"}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{dealCount === undefined ? "Potansiyel Komisyon" : "İşlem Kaydı"}</p>
         <p className="mt-2 break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-2xl">
           {dealCount === undefined ? money(potentialCommission) : dealCount}
         </p>
@@ -3706,11 +3706,11 @@ function AdvisorPerformanceCard({
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   if (!demoMode) {
     return (
-      <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <p className="text-sm font-semibold tracking-tight text-slate-950">
+      <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#080808] sm:p-5">
+        <p className="text-sm font-semibold tracking-tight text-slate-950 dark:text-slate-100">
           Performans Grafiğim
         </p>
-        <p className="mt-3 rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-sm leading-6 text-slate-500">
+        <p className="mt-3 rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-sm leading-6 text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
           Gerçek performans grafiği için işlem ve komisyon kayıtları bekleniyor.
         </p>
       </section>
@@ -3779,12 +3779,12 @@ function AdvisorPerformanceCard({
   }
 
   return (
-    <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#080808] sm:p-5">
       <div>
-        <p className="text-sm font-semibold tracking-tight text-slate-950">
+        <p className="text-sm font-semibold tracking-tight text-slate-950 dark:text-slate-100">
           Performans Grafiğim
         </p>
-        <p className="mt-1 text-sm leading-6 text-slate-500">
+        <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
           Takvim yılı içerisindeki satış hacmi ve kazanılan komisyon takibi.
         </p>
       </div>
@@ -3792,9 +3792,9 @@ function AdvisorPerformanceCard({
       <div className="mt-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs text-slate-500">Yıllık Satış Hacmi</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Yıllık Satış Hacmi</p>
             <div className="mt-1 flex flex-wrap items-baseline gap-2">
-              <p className="break-words text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
+              <p className="break-words text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-3xl">
                 {money(totalSalesVolume)}
               </p>
               <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
@@ -3804,14 +3804,14 @@ function AdvisorPerformanceCard({
             </div>
           </div>
           <div className="sm:text-right">
-            <p className="text-xs text-slate-500">Yıllık Kazanılan Komisyon</p>
-            <p className="mt-1 break-words text-lg font-semibold tracking-tight text-emerald-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Yıllık Kazanılan Komisyon</p>
+            <p className="mt-1 break-words text-lg font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">
               {money(totalCommission)}
             </p>
           </div>
         </div>
 
-        <div className="relative mt-6 min-w-0 overflow-hidden rounded-3xl bg-slate-50 p-3 sm:p-6">
+        <div className="relative mt-6 min-w-0 overflow-hidden rounded-3xl bg-slate-50 p-3 dark:bg-white/[0.04] sm:p-6">
           <svg
             className="h-56 w-full touch-pan-y select-none sm:h-64"
             viewBox="0 0 320 190"
@@ -3911,8 +3911,8 @@ function AdvisorPerformanceCard({
               }}
               className={`rounded-full px-2 py-2 text-xs font-medium transition sm:px-3 sm:py-1.5 ${
                 timeframe === item
-                  ? "bg-indigo-50 text-slate-950 shadow-sm"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                  ? "bg-indigo-50 text-slate-950 shadow-sm dark:bg-white/10 dark:text-slate-100"
+                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-200"
               }`}
             >
               {item}
@@ -3937,18 +3937,18 @@ function OpportunityCard({
     <button
       className={`w-full rounded-3xl border p-4 text-left transition ${
         active
-          ? "border-slate-950 bg-slate-50"
-          : "border-slate-200 bg-white hover:border-slate-300"
+          ? "border-slate-950 bg-slate-50 dark:border-white/20 dark:bg-white/[0.08]"
+          : "border-slate-200 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-[#080808] dark:hover:border-white/20"
       }`}
       type="button"
       onClick={onSelect}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h3 className="text-base font-semibold text-slate-950">
+          <h3 className="text-base font-semibold text-slate-950 dark:text-slate-100">
             {opportunity.title}
           </h3>
-          <p className="mt-1 break-words text-sm text-slate-500">
+          <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">
             {opportunity.location} · {opportunity.owner}
           </p>
         </div>
@@ -3958,7 +3958,7 @@ function OpportunityCard({
               ? getStatusPillClass(opportunity.stage)
               : opportunity.stage === "Kapandı"
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-slate-200 text-slate-600"
+              : "border-slate-200 text-slate-600 dark:border-white/10 dark:text-slate-300"
           }`}
         >
           {opportunity.stage}
@@ -4004,20 +4004,20 @@ function PropertyPhotoManager({
   const isUploading = progress !== null;
 
   return (
-    <div className="mt-6 rounded-3xl border border-slate-200 bg-stone-50 p-4">
+    <div className="mt-6 rounded-3xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-slate-950">Portföy Fotoğrafları</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">Portföy Fotoğrafları</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             {media.length}/{PROPERTY_PHOTO_LIMIT} · JPEG, PNG veya WebP · maksimum 10 MB
           </p>
         </div>
         {isUploading ? (
           <div
-            className="grid h-12 w-12 place-items-center rounded-full text-xs font-semibold text-slate-950"
+            className="grid h-12 w-12 place-items-center rounded-full text-xs font-semibold text-slate-950 dark:text-slate-100"
             style={{ background: `conic-gradient(#16a34a ${progress * 3.6}deg, #e5e7eb 0deg)` }}
           >
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-stone-50">
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-stone-50 dark:bg-[#080808]">
               {progress === 100 ? "✓" : `${progress}%`}
             </span>
           </div>
@@ -4026,7 +4026,7 @@ function PropertyPhotoManager({
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {media.map((item) => (
-          <div key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div key={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
             {item.signed_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -4035,17 +4035,17 @@ function PropertyPhotoManager({
                 className="h-32 w-full object-cover"
               />
             ) : (
-              <div className="grid h-32 place-items-center bg-slate-100 text-xs text-slate-500">
+              <div className="grid h-32 place-items-center bg-slate-100 text-xs text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">
                 Önizleme hazırlanıyor
               </div>
             )}
             <div className="flex items-center justify-between gap-2 px-3 py-2">
-              <span className="truncate text-xs text-slate-500">
+              <span className="truncate text-xs text-slate-500 dark:text-slate-400">
                 {item.is_cover ? "Kapak" : item.mime_type || "Fotoğraf"}
               </span>
               {!item.is_cover ? (
                 <button
-                  className="text-xs font-medium text-slate-700 transition hover:text-slate-950 disabled:opacity-50"
+                  className="text-xs font-medium text-slate-700 transition hover:text-slate-950 disabled:opacity-50 dark:text-slate-300 dark:hover:text-white"
                   type="button"
                   disabled={Boolean(markingCoverId)}
                   onClick={() => onMarkCover(item.id)}
@@ -4059,15 +4059,15 @@ function PropertyPhotoManager({
 
         <label
           htmlFor={uploadId}
-          className={`flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center transition ${
-            disabled || remaining === 0 ? "cursor-not-allowed opacity-60" : "hover:border-slate-500"
+          className={`flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center transition dark:border-white/10 dark:bg-[#080808] ${
+            disabled || remaining === 0 ? "cursor-not-allowed opacity-60" : "hover:border-slate-500 dark:hover:border-white/25"
           }`}
         >
-          <span className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 text-xl">↑</span>
-          <span className="mt-3 text-sm font-semibold text-slate-950">
+          <span className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 text-xl dark:border-white/10">↑</span>
+          <span className="mt-3 text-sm font-semibold text-slate-950 dark:text-slate-100">
             {remaining === 0 ? "Limit doldu" : "Fotoğraf yükle"}
           </span>
-          <span className="mt-1 text-xs text-slate-500">
+          <span className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             {loading ? "Fotoğraflar yükleniyor..." : `${remaining} hak kaldı`}
           </span>
           <input
@@ -4133,7 +4133,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm text-slate-600">{label}</span>
+      <span className="mb-1.5 block text-sm text-slate-600 dark:text-slate-300">{label}</span>
       {children}
     </label>
   );

@@ -549,10 +549,11 @@ function AuthScreen({
       <div className="relative mx-auto flex min-h-dvh max-w-7xl flex-col px-4 pt-5 sm:px-6 sm:py-7 lg:px-8">
         <header className="relative z-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-[#011c40] text-sm font-semibold shadow-sm dark:bg-white/[0.06]">
+            <span className="flex items-center justify-center rounded-[1.75rem] border border-white/10 bg-[#011c40] p-2 text-sm font-semibold shadow-sm dark:bg-white/[0.06]">
               <BrandLogo
                 variant="ocean-only"
-                className="h-8 w-8 object-contain"
+                size="sm"
+                className="max-w-20 sm:max-w-24"
                 fallbackClassName="text-sm font-semibold text-white"
               />
             </span>
@@ -575,12 +576,13 @@ function AuthScreen({
               Portföyleri, arayışları, eşleşmeleri ve danışman süreçlerini tek sade merkezde yönetin.
             </p>
             <StoreBadges />
-            <div className="relative mt-10 flex h-44 w-44 items-center justify-center sm:h-56 sm:w-56 lg:hidden">
+            <div className="relative mt-10 flex h-56 w-56 items-center justify-center sm:h-72 sm:w-72 lg:h-80 lg:w-80">
               <div className="absolute inset-4 animate-oos-liquid-ring rounded-full border border-slate-200/80 bg-white/50 shadow-[0_24px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]" />
-              <div className="animate-oos-liquid-float relative flex h-28 w-28 items-center justify-center border border-white/20 bg-[#011c40] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_24px_70px_rgba(15,23,42,0.16)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)] sm:h-36 sm:w-36">
+              <div className="animate-oos-liquid-float relative flex h-44 w-44 items-center justify-center border border-white/20 bg-[#011c40] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_24px_70px_rgba(15,23,42,0.16)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)] sm:h-56 sm:w-56 lg:h-72 lg:w-72">
                 <BrandLogo
                   variant="ocean-only"
-                  className="h-16 w-16 object-contain sm:h-20 sm:w-20"
+                  size="lg"
+                  className="max-w-40 sm:max-w-52 lg:max-w-64"
                   fallbackClassName="text-4xl font-semibold tracking-tight text-white sm:text-5xl"
                 />
               </div>
@@ -982,7 +984,7 @@ function OceanCorporateFooter() {
           <div>
             <BrandLogo
               variant="full"
-              className="h-8 w-auto max-w-[12rem] object-contain"
+              size="sm"
               fallbackClassName="text-2xl font-semibold tracking-tight"
             />
             <p className="mt-2 text-sm font-medium text-white/55">Star Girişim ve Yatırım A.Ş.</p>
@@ -1063,10 +1065,11 @@ function ProfileCompletionScreen({
   return (
     <ProfileShell theme={theme} onToggleTheme={onToggleTheme}>
       <div className="mb-6 text-center">
-        <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#011c40] text-sm font-semibold shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="mx-auto mb-4 flex h-44 w-44 items-center justify-center rounded-[2rem] border border-white/10 bg-[#011c40] text-sm font-semibold shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:h-56 sm:w-56">
           <BrandLogo
             variant="ocean-only"
-            className="h-7 w-7 object-contain"
+            size="md"
+            className="max-w-40 sm:max-w-52"
             fallbackClassName="text-sm font-semibold text-white"
           />
         </div>

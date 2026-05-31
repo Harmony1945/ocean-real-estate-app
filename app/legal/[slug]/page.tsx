@@ -45,7 +45,8 @@ export default async function LegalPage({ params }: LegalRouteProps) {
         <section className="mt-8 rounded-[2rem] border border-white/10 bg-black/35 p-5 shadow-[0_30px_100px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-8">
           <BrandLogo
             variant="full"
-            className="mx-auto h-9 w-auto max-w-[13rem] object-contain"
+            size="md"
+            className="mx-auto"
             fallbackClassName="text-xs font-medium uppercase tracking-[0.22em] text-white/45"
             fallbackText="STAR GİRİŞİM VE YATIRIM A.Ş."
           />

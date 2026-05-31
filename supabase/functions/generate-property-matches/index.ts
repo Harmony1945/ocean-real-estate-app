@@ -65,7 +65,7 @@ type MatchResult = {
 };
 
 const MATCH_THRESHOLD = 60;
-const ACTIVE_STATUSES = ["active", "Aktif"];
+const ACTIVE_STATUS = "active";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MUTABLE_MATCH_STATUSES = new Set(["new", "pending"]);
 const LOCKED_MATCH_STATUSES = new Set(["viewed", "contacted", "accepted", "rejected", "deal_started", "closed"]);
@@ -220,7 +220,7 @@ function loadProperties(supabase: ReturnType<typeof createClient>, propertyId?: 
     .from("properties")
     .select("id,advisor_id,title,property_type,usage_type,city,district,neighborhood,gross_area,net_area,asking_price,currency,status,is_public")
     .eq("is_public", true)
-    .in("status", ACTIVE_STATUSES);
+    .eq("status", ACTIVE_STATUS);
 
   if (propertyId) query = query.eq("id", propertyId);
 
@@ -231,7 +231,7 @@ function loadSearchRequests(supabase: ReturnType<typeof createClient>, searchReq
   let query = supabase
     .from("search_requests")
     .select("id,advisor_id,client_id,request_type,city,districts,property_types,min_price,max_price,currency,min_area,max_area,rooms,commercial_or_residential,must_have_features,nice_to_have_features,urgency,financing_status,notes,status")
-    .in("status", ACTIVE_STATUSES);
+    .eq("status", ACTIVE_STATUS);
 
   if (searchRequestId) query = query.eq("id", searchRequestId);
 
@@ -340,14 +340,14 @@ function isAreaCompatible(area: number | null, minArea: number | null, maxArea: 
 }
 
 function hasKeywordOverlap(property: PropertyRow, searchRequest: SearchRequestRow) {
-  const propertyTokens = tokenize([
+  const propertyTokens = new Set(tokenize([
     property.title,
     property.property_type,
     property.usage_type,
     property.city,
     property.district,
     property.neighborhood
-  ]);
+  ]));
   const requestTokens = tokenize([
     searchRequest.must_have_features,
     searchRequest.nice_to_have_features,
@@ -360,35 +360,36 @@ function hasKeywordOverlap(property: PropertyRow, searchRequest: SearchRequestRo
   return requestTokens.some((token) => propertyTokens.has(token));
 }
 
-function tokenize(values: Array<string | string[] | null>) {
-  const tokens = new Set<string>();
+function tokenize(value: unknown) {
+  const tokens: string[] = [];
 
-  for (const value of values.flatMap(toTextArray)) {
-    for (const token of normalize(value).split(/\s+/)) {
-      if (token.length >= 3) tokens.add(token);
+  for (const text of toTextArray(value)) {
+    for (const token of normalize(text).split(/\s+/)) {
+      if (token.length >= 3) tokens.push(token);
     }
   }
 
   return tokens;
 }
 
-function toTextArray(value: string | string[] | null) {
+function toTextArray(value: unknown): string[] {
   if (!value) return [];
-  if (Array.isArray(value)) return value.filter(Boolean);
+  if (Array.isArray(value)) return value.flatMap(toTextArray);
+  if (typeof value !== "string") return [];
   return value
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
 }
 
-function includesNormalized(values: string[], expected: string | null) {
+function includesNormalized(values: string[], expected: unknown) {
   const normalizedExpected = normalize(expected);
   if (!normalizedExpected) return false;
   return values.some((value) => normalize(value) === normalizedExpected);
 }
 
-function normalize(value: string | null | undefined) {
-  return (value ?? "").trim().toLocaleLowerCase("tr-TR");
+function normalize(value: unknown) {
+  return typeof value === "string" ? value.trim().toLocaleLowerCase("tr-TR") : "";
 }
 
 function pairKey(propertyId: string, searchRequestId: string) {

@@ -10,6 +10,7 @@ import {
   type AdvisorSearchRequestRow,
   type SearchRequestInput
 } from "@/lib/supabase/client";
+import { formatStatusLabel, getStatusPillClass } from "@/lib/oos/status-labels";
 
 type RequestCard = {
   id: string;
@@ -251,8 +252,8 @@ export default function RequestsRoutePage() {
                   <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{item.notes || "Not bekleniyor."}</p>
                   <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{item.location} · {formatCurrency(item.minPrice)} - {formatCurrency(item.maxPrice)}</p>
                 </div>
-                <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-[#111111] dark:text-slate-300">
-                  {item.status}
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusPillClass(item.status)}`}>
+                  {formatStatusLabel(item.status)}
                 </span>
               </div>
               <div className="mt-4 flex gap-2">
@@ -301,7 +302,7 @@ function fromRow(row: AdvisorSearchRequestRow): RequestCard {
     purpose: row.purpose || "Satın Alma",
     urgency: row.urgency || "Normal",
     notes: row.notes || "",
-    status: row.status || "Aktif"
+    status: formatStatusLabel(row.status || "Aktif")
   };
 }
 

@@ -19,6 +19,7 @@ import {
 } from "@/lib/supabase/client";
 import { createCheckoutSession } from "@/lib/oos/payments";
 import { demoShowcasePortfolios } from "@/lib/oos/demo-data";
+import { formatStatusLabel } from "@/lib/oos/status-labels";
 
 const mapLocations = [
   { district: "Sarıyer", title: "Yeniköy yalı dairesi", price: "₺92M", top: "22%", left: "42%" },
@@ -255,7 +256,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
             {commissionRows.map((commission) => (
               <article key={commission.id} className="oos-card rounded-[1.75rem] p-5">
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
-                  {commission.status || "Komisyon"}
+                  {formatStatusLabel(commission.status || "Komisyon")}
                 </p>
                 <h2 className="mt-2 text-lg font-semibold">
                   {formatCurrency(Number(commission.net_commission ?? commission.gross_commission ?? commission.commission ?? commission.amount ?? 0))}
@@ -332,7 +333,7 @@ function MatchCard({ match }: { match: AdvisorMatchRow }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
-            {match.status || "Eşleşme"}
+            {formatStatusLabel(match.status || "Eşleşme")}
           </p>
           <h2 className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-100">
             {searchTitle}

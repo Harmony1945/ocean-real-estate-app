@@ -19,6 +19,7 @@ import {
   type PropertyMediaRow
 } from "@/lib/supabase/client";
 import { demoSearchRequests, demoShowcasePortfolios } from "@/lib/oos/demo-data";
+import { formatStatusLabel, getStatusPillClass, isActiveStatus } from "@/lib/oos/status-labels";
 
 type Stage = "Lead" | "Yeni" | "Görüşme" | "Sözleşme" | "Kapanış" | "Kapandı";
 type Risk = "Düşük" | "Orta" | "Yüksek" | string;
@@ -34,7 +35,7 @@ type PortfolioStageFilter =
   | "Tahsilat"
   | "Kapandı";
 type PortfolioSort = "En Yeni" | "En Yüksek Değer" | "En Yüksek Komisyon" | "A-Z";
-type SearchStatus = "Aktif" | "Acil" | "Beklemede" | "Kapatıldı" | "Eşleşme Bulundu";
+type SearchStatus = "Aktif" | "Acil" | "Beklemede" | "Kapatıldı" | "Kapalı" | "Eşleşme Bulundu" | string;
 type SearchUrgency = "Acil" | "Normal" | "Düşük";
 type SearchCurrency = "TRY" | "USD" | "EUR" | "GBP";
 type SearchFilter =
@@ -511,7 +512,7 @@ function fromPropertyRow(row: AdvisorPropertyRow, consultant: Consultant): Oppor
     location: location || "Konum bekleniyor",
     owner: "OceanOS",
     value: Number(row.asking_price || 0),
-    stage: row.status === "active" ? "Yeni" : (row.status || "Yeni") as Stage,
+    stage: formatStatusLabel(row.status || "Yeni") as Stage,
     contractType: row.usage_type || "Satışa Aracılık",
     nextMove: row.is_public ? "Public görünürlük aktif" : "Görünürlük kontrolü bekleniyor",
     risk: "Düşük",
@@ -577,7 +578,7 @@ function fromSearchRequestRow(row: AdvisorSearchRequestRow, consultant: Consulta
     purpose: row.purpose || row.request_type || "Satın Alma",
     urgency: (row.urgency || "Normal") as SearchUrgency,
     notes: row.notes || "",
-    status: (row.status || "Aktif") as SearchStatus,
+    status: formatStatusLabel(row.status || "Aktif") as SearchStatus,
     createdAt: row.created_at?.slice(0, 10) || today()
   };
 }
@@ -2554,7 +2555,9 @@ function PortfolioListPage({
                       <td className="border-b border-slate-100 px-3 py-4">
                         <span
                           className={`rounded-full border px-2.5 py-1 text-xs ${
-                            opportunity.stage === "Kapandı"
+                            isActiveStatus(opportunity.stage)
+                              ? getStatusPillClass(opportunity.stage)
+                              : opportunity.stage === "Kapandı"
                               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                               : "border-slate-200 text-slate-600"
                           }`}
@@ -2608,7 +2611,9 @@ function PortfolioListPage({
                     </div>
                     <span
                       className={`shrink-0 rounded-full border px-2.5 py-1 text-xs ${
-                        opportunity.stage === "Kapandı"
+                        isActiveStatus(opportunity.stage)
+                          ? getStatusPillClass(opportunity.stage)
+                          : opportunity.stage === "Kapandı"
                           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                           : "border-slate-200 text-slate-600"
                       }`}
@@ -2700,17 +2705,19 @@ function Card({
 }
 
 function SearchStatusBadge({ status }: { status: SearchStatus }) {
-  const styles: Record<SearchStatus, string> = {
-    "Aktif": "bg-emerald-50 text-emerald-700",
+  const displayStatus = formatStatusLabel(status);
+  const styles: Record<string, string> = {
+    "Aktif": "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200",
     "Acil": "bg-red-50 text-red-700",
     "Beklemede": "bg-slate-100 text-slate-700",
+    "Kapalı": "bg-slate-100 text-slate-500",
     "Kapatıldı": "bg-slate-100 text-slate-500",
     "Eşleşme Bulundu": "bg-emerald-50 text-emerald-700"
   };
 
   return (
-    <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${styles[status]}`}>
-      {status}
+    <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${styles[displayStatus] || "bg-slate-100 text-slate-700"}`}>
+      {displayStatus}
     </span>
   );
 }
@@ -3947,7 +3954,9 @@ function OpportunityCard({
         </div>
         <span
           className={`w-fit rounded-full border px-3 py-1 text-xs ${
-            opportunity.stage === "Kapandı"
+            isActiveStatus(opportunity.stage)
+              ? getStatusPillClass(opportunity.stage)
+              : opportunity.stage === "Kapandı"
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : "border-slate-200 text-slate-600"
           }`}

@@ -11,6 +11,7 @@ import {
   type PortfolioInput
 } from "@/lib/supabase/client";
 import { demoShowcasePortfolios } from "@/lib/oos/demo-data";
+import { formatStatusLabel, getStatusPillClass } from "@/lib/oos/status-labels";
 
 type PortfolioCard = {
   id: string;
@@ -207,8 +208,8 @@ export default function PortfoliosRoutePage() {
                   <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{item.description || "Açıklama bekleniyor."}</p>
                   <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{item.location} · {formatCurrency(item.value)}</p>
                 </div>
-                <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-[#111111] dark:text-slate-300">
-                  {item.stage}
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusPillClass(item.stage)}`}>
+                  {formatStatusLabel(item.stage)}
                 </span>
               </div>
               <div className="mt-4 flex gap-2">
@@ -251,7 +252,7 @@ function fromRow(row: AdvisorPortfolioRow): PortfolioCard {
     location: row.location || "Konum bekleniyor",
     owner: row.owner || "Malik bekleniyor",
     value: Number(row.value || 0),
-    stage: row.stage || "Aktif",
+    stage: formatStatusLabel(row.stage || "Aktif"),
     propertyType: row.property_type || "Konut",
     description: row.description || ""
   };

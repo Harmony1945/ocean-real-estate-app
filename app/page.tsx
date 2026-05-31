@@ -6,6 +6,9 @@ import {
   createSupabaseAuthClient,
   getDataSetupMessage,
   isSupabaseConfigured,
+  type AdvisorCommissionRow,
+  type AdvisorDealRow,
+  type AdvisorMatchRow,
   type AdvisorPortfolioRow,
   type AdvisorSearchRequestRow,
   type AdvisorTaskRow
@@ -765,6 +768,7 @@ function downloadContract(fileUrl: string) {
 export default function Home() {
   const { user } = useAuthContext();
   const supabase = useMemo(() => createSupabaseAuthClient(), []);
+  const demoMode = !isSupabaseConfigured;
   const [isAuthenticated, setIsAuthenticated] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -789,14 +793,23 @@ export default function Home() {
         : String(defaultUser.id)
     )
   );
-  const [opportunities, setOpportunities] = useState(initialOpportunities);
-  const [activePage, setActivePage] = useState<ActivePage>("dashboard");
-  const [tasks, setTasks] = useState(initialTasks);
-  const [searchRequests, setSearchRequests] = useState(initialSearchRequests);
-  const [notifications, setNotifications] = useState<SearchNotification[]>(
-    buildInitialNotifications
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(
+    () => demoMode ? initialOpportunities : []
   );
-  const [selectedId, setSelectedId] = useState(initialOpportunities[0].id);
+  const [activePage, setActivePage] = useState<ActivePage>("dashboard");
+  const [tasks, setTasks] = useState<Task[]>(() => demoMode ? initialTasks : []);
+  const [searchRequests, setSearchRequests] = useState<SearchRequest[]>(
+    () => demoMode ? initialSearchRequests : []
+  );
+  const [notifications, setNotifications] = useState<SearchNotification[]>(
+    () => demoMode ? buildInitialNotifications() : []
+  );
+  const [matchRows, setMatchRows] = useState<AdvisorMatchRow[]>([]);
+  const [dealRows, setDealRows] = useState<AdvisorDealRow[]>([]);
+  const [commissionRows, setCommissionRows] = useState<AdvisorCommissionRow[]>([]);
+  const [selectedId, setSelectedId] = useState<EntityId>(
+    () => demoMode ? initialOpportunities[0].id : ""
+  );
   const [search, setSearch] = useState("");
   const [searchFilter, setSearchFilter] = useState<SearchFilter>("Tüm Arayışlar");
   const [searchFormOpen, setSearchFormOpen] = useState(false);
@@ -830,7 +843,7 @@ export default function Home() {
       supabase.getSearchRequests(),
       supabase.getTasks()
     ])
-      .then(([portfolioRows, requestRows, taskRows]) => {
+      .then(async ([portfolioRows, requestRows, taskRows]) => {
         if (!mounted) return;
         const nextPortfolios: Opportunity[] = portfolioRows.map((row: AdvisorPortfolioRow) =>
           fromPortfolioRow(row, currentUser)
@@ -838,14 +851,23 @@ export default function Home() {
         const nextRequests: SearchRequest[] = requestRows.map((row: AdvisorSearchRequestRow) =>
           fromSearchRequestRow(row, currentUser)
         );
+        const [matches, deals, commissions] = await Promise.allSettled([
+          supabase.getMatches(),
+          supabase.getDeals(),
+          supabase.getCommissions()
+        ]);
 
         setOpportunities(nextPortfolios);
         setSearchRequests(nextRequests);
         setTasks(taskRows.map(fromTaskRow));
-        setNotifications(nextRequests.flatMap((request) =>
-          createSearchNotifications(request, nextPortfolios, [])
-        ));
+        setNotifications([]);
+        setMatchRows(matches.status === "fulfilled" ? matches.value : []);
+        setDealRows(deals.status === "fulfilled" ? deals.value : []);
+        setCommissionRows(commissions.status === "fulfilled" ? commissions.value : []);
         setSelectedId(nextPortfolios[0]?.id ?? "");
+        const optionalError = [matches, deals, commissions]
+          .find((result) => result.status === "rejected") as PromiseRejectedResult | undefined;
+        setDataError(optionalError ? getDataSetupMessage(optionalError.reason?.message || "") : "");
       })
       .catch((error: Error) => {
         if (!mounted) return;
@@ -854,6 +876,9 @@ export default function Home() {
         setSearchRequests([]);
         setTasks([]);
         setNotifications([]);
+        setMatchRows([]);
+        setDealRows([]);
+        setCommissionRows([]);
         setSelectedId("");
         setDataError(getDataSetupMessage(error.message));
       })
@@ -910,7 +935,7 @@ export default function Home() {
       notification.recipientConsultantId === currentUser.id
   );
   const selectedPortfolioSearchMatches = selectedOpportunity
-    ? getPortfolioSearchMatches(selectedOpportunity, searchRequests)
+    ? demoMode ? getPortfolioSearchMatches(selectedOpportunity, searchRequests) : []
     : [];
   const filteredSearchRequests = searchRequests.filter((request) => {
     if (searchFilter === "Benim Arayışlarım") {
@@ -918,7 +943,7 @@ export default function Home() {
     }
 
     if (searchFilter === "Güçlü Eşleşmeler") {
-      return getSearchMatches(request, opportunities).some((match) => match.score >= 85);
+      return demoMode && getSearchMatches(request, opportunities).some((match) => match.score >= 85);
     }
 
     if (searchFilter === "Acil") {
@@ -939,19 +964,24 @@ export default function Home() {
   const myActiveSearchRequests = searchRequests.filter(
     (request) => request.consultantId === currentUser.id && request.status !== "Kapatıldı"
   );
-  const recentMatches = searchRequests
-    .flatMap((request) =>
-      getSearchMatches(request, opportunities).map((match) => ({
-        search: request,
-        ...match
-      }))
-    )
-    .filter(
-      (match) =>
-        match.search.consultantId === currentUser.id ||
-        match.portfolio.ownerConsultantId === currentUser.id
-    )
-    .slice(0, 5);
+  const recentMatches = demoMode
+    ? searchRequests
+        .flatMap((request) =>
+          getSearchMatches(request, opportunities).map((match) => ({
+            search: request,
+            ...match
+          }))
+        )
+        .filter(
+          (match) =>
+            match.search.consultantId === currentUser.id ||
+            match.portfolio.ownerConsultantId === currentUser.id
+        )
+        .slice(0, 5)
+    : [];
+  const realizedCommission = demoMode
+    ? undefined
+    : commissionRows.reduce((sum, row) => sum + getCommissionRowAmount(row), 0);
   const activePageTitle: Record<ActivePage, string> = {
     dashboard: "OCEAN BrokerageOS",
     portfolios: "Tüm Portföyler",
@@ -1191,11 +1221,9 @@ export default function Home() {
       }
     }
 
-    const nextNotifications = createSearchNotifications(
-      savedSearch,
-      opportunities,
-      notifications
-    );
+    const nextNotifications = demoMode
+      ? createSearchNotifications(savedSearch, opportunities, notifications)
+      : [];
 
     setSearchRequests((current) =>
       editingSearchId
@@ -1208,7 +1236,11 @@ export default function Home() {
     setSearchForm(emptySearchForm());
     setEditingSearchId(null);
     setSearchFormOpen(false);
-    setSearchSuccess("Arayış eklendi ve sistem portföy eşleşmelerini kontrol etti.");
+    setSearchSuccess(
+      demoMode
+        ? "Arayış eklendi ve sistem portföy eşleşmelerini kontrol etti."
+        : "Arayış kaydedildi."
+    );
     setActionLoading("");
   }
 
@@ -1498,6 +1530,7 @@ export default function Home() {
               filter={searchFilter}
               form={searchForm}
               formOpen={searchFormOpen}
+              demoMode={demoMode}
               opportunities={opportunities}
               searchRequests={filteredSearchRequests}
               successMessage={searchSuccess}
@@ -1540,6 +1573,7 @@ export default function Home() {
               currentUser={currentUser}
               activePortfolios={myActivePortfolios}
               activeSearchRequests={myActiveSearchRequests}
+              matchCount={demoMode ? recentMatches.length : matchRows.length}
               recentMatches={recentMatches}
               onAddPortfolio={openCreateForm}
               onAddSearchRequest={() => {
@@ -1562,6 +1596,7 @@ export default function Home() {
                 filter={searchFilter}
                 form={searchForm}
                 formOpen={searchFormOpen}
+                demoMode={demoMode}
                 opportunities={opportunities}
                 searchRequests={filteredSearchRequests}
                 successMessage={searchSuccess}
@@ -1583,7 +1618,11 @@ export default function Home() {
               />
             </div>
 
-            <SummaryCards deals={opportunities} />
+            <SummaryCards
+              deals={opportunities}
+              dealCount={demoMode ? undefined : dealRows.length}
+              realizedCommission={realizedCommission}
+            />
 
             <section className="mt-6 grid min-w-0 gap-4 sm:mt-8 sm:gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
           <div className="min-w-0 space-y-5">
@@ -1593,6 +1632,7 @@ export default function Home() {
                 filter={searchFilter}
                 form={searchForm}
                 formOpen={searchFormOpen}
+                demoMode={demoMode}
                 opportunities={opportunities}
                 searchRequests={filteredSearchRequests}
                 successMessage={searchSuccess}
@@ -1818,25 +1858,31 @@ export default function Home() {
               </div>
             </Card>
 
-            <AdvisorPerformanceCard currentUser={currentUser} />
+            <AdvisorPerformanceCard currentUser={currentUser} demoMode={demoMode} />
 
             <Card title="Danışmanlar">
-              <div className="space-y-3">
-                {consultants.map((consultant) => (
-                  <div
-                    key={consultant.id}
-                    className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3"
-                  >
-                    <p className="text-sm font-medium text-slate-950">
-                      {consultant.firstName} {consultant.lastName}
-                    </p>
-                    <p className="mt-1 break-words text-sm text-slate-500">{consultant.phone}</p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {consultant.portfolioCount} portföy
-                    </p>
-                  </div>
-                ))}
-              </div>
+              {demoMode ? (
+                <div className="space-y-3">
+                  {consultants.map((consultant) => (
+                    <div
+                      key={consultant.id}
+                      className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3"
+                    >
+                      <p className="text-sm font-medium text-slate-950">
+                        {consultant.firstName} {consultant.lastName}
+                      </p>
+                      <p className="mt-1 break-words text-sm text-slate-500">{consultant.phone}</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {consultant.portfolioCount} portföy
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-sm text-slate-500">
+                  Gerçek danışman profilleri için profil kayıtları bekleniyor.
+                </p>
+              )}
             </Card>
 
             <Card title="Sahibinden Intelligence">
@@ -2596,6 +2642,7 @@ function SearchRequestsCard({
   filter,
   form,
   formOpen,
+  demoMode,
   opportunities,
   searchRequests,
   successMessage,
@@ -2614,6 +2661,7 @@ function SearchRequestsCard({
   filter: SearchFilter;
   form: SearchForm;
   formOpen: boolean;
+  demoMode: boolean;
   opportunities: Opportunity[];
   searchRequests: SearchRequest[];
   successMessage: string;
@@ -2725,7 +2773,7 @@ function SearchRequestsCard({
         {searchRequests.length ? (
           <div className="space-y-4">
             {searchRequests.map((request) => {
-              const matches = getSearchMatches(request, opportunities);
+              const matches = demoMode ? getSearchMatches(request, opportunities) : [];
               const bestMatch = matches[0];
               const isExpanded = expandedSearchId === request.id;
               const displayStatus =
@@ -3121,6 +3169,7 @@ function AdvisorHomeScreen({
   currentUser,
   activePortfolios,
   activeSearchRequests,
+  matchCount,
   recentMatches,
   onAddPortfolio,
   onAddSearchRequest,
@@ -3130,6 +3179,7 @@ function AdvisorHomeScreen({
   currentUser: Consultant;
   activePortfolios: Opportunity[];
   activeSearchRequests: SearchRequest[];
+  matchCount: number;
   recentMatches: Array<ReturnType<typeof getSearchMatches>[number] & { search: SearchRequest }>;
   onAddPortfolio: () => void;
   onAddSearchRequest: () => void;
@@ -3172,7 +3222,7 @@ function AdvisorHomeScreen({
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <DashboardMetric label="Aktif portföyüm" value={activePortfolios.length} />
           <DashboardMetric label="Aktif arayışım" value={activeSearchRequests.length} />
-          <DashboardMetric label="Son eşleşme" value={recentMatches.length} />
+          <DashboardMetric label="Son eşleşme" value={matchCount} />
         </div>
 
         <div className="mt-5 grid gap-2 sm:grid-cols-3">
@@ -3258,7 +3308,9 @@ function DashboardMatchList({
           ))
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
-            Henüz eşleşme yok. İlk arayışı oluşturup portföylerle karşılaştır.
+            {demoMode
+              ? "Henüz eşleşme yok. İlk arayışı oluşturup portföylerle karşılaştır."
+              : "Henüz gerçek eşleşme kaydı yok."}
           </div>
         )}
       </div>
@@ -3338,13 +3390,21 @@ function DashboardList({
   );
 }
 
-function SummaryCards({ deals }: { deals: Opportunity[] }) {
+function SummaryCards({
+  deals,
+  dealCount,
+  realizedCommission
+}: {
+  deals: Opportunity[];
+  dealCount?: number;
+  realizedCommission?: number;
+}) {
   const totalPortfolioValue = deals.reduce(
     (sum, deal) => sum + Number(deal.value || 0),
     0
   );
 
-  const totalCommission = deals.reduce(
+  const totalCommission = realizedCommission ?? deals.reduce(
     (sum, deal) => sum + getOpportunityCommission(deal),
     0
   );
@@ -3370,13 +3430,17 @@ function SummaryCards({ deals }: { deals: Opportunity[] }) {
       </div>
 
       <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
-        <p className="text-sm text-slate-500">Potansiyel Komisyon</p>
+        <p className="text-sm text-slate-500">{dealCount === undefined ? "Potansiyel Komisyon" : "İşlem Kaydı"}</p>
         <p className="mt-2 break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-2xl">
-          {money(potentialCommission)}
+          {dealCount === undefined ? money(potentialCommission) : dealCount}
         </p>
       </div>
     </section>
   );
+}
+
+function getCommissionRowAmount(row: AdvisorCommissionRow) {
+  return Number(row.amount ?? row.net_commission ?? row.gross_commission ?? row.commission ?? 0);
 }
 
 function buildLineChart(values: number[]) {
@@ -3445,9 +3509,28 @@ function buildSmoothPathFromPoints(points: { x: number; y: number }[]) {
   }, `M ${firstPoint.x} ${firstPoint.y}`);
 }
 
-function AdvisorPerformanceCard({ currentUser }: { currentUser: Consultant }) {
+function AdvisorPerformanceCard({
+  currentUser,
+  demoMode
+}: {
+  currentUser: Consultant;
+  demoMode: boolean;
+}) {
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  if (!demoMode) {
+    return (
+      <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <p className="text-sm font-semibold tracking-tight text-slate-950">
+          Performans Grafiğim
+        </p>
+        <p className="mt-3 rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-sm leading-6 text-slate-500">
+          Gerçek performans grafiği için işlem ve komisyon kayıtları bekleniyor.
+        </p>
+      </section>
+    );
+  }
+
   const data =
     advisorPerformance.find((item) => item.advisorId === currentUser.id) ||
     advisorPerformance[0];

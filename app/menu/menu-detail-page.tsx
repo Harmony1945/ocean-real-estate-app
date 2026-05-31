@@ -10,6 +10,9 @@ import {
   getDataSetupMessage,
   getUserDisplayName,
   isSupabaseConfigured,
+  type AdvisorCommissionRow,
+  type AdvisorDealRow,
+  type AdvisorMatchRow,
   type AdvisorPortfolioRow,
   type AdvisorTaskRow
 } from "@/lib/supabase/client";
@@ -69,6 +72,9 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
     isSupabaseConfigured ? [] : demoPortfolios
   );
   const [tasks, setTasks] = useState<AdvisorTaskRow[]>([]);
+  const [matchRows, setMatchRows] = useState<AdvisorMatchRow[]>([]);
+  const [dealRows, setDealRows] = useState<AdvisorDealRow[]>([]);
+  const [commissionRows, setCommissionRows] = useState<AdvisorCommissionRow[]>([]);
   const [moduleMessage, setModuleMessage] = useState("");
   const [paymentNotice, setPaymentNotice] = useState("");
   const displayName = getUserDisplayName(user, profile) || "OOS Advisor";
@@ -81,23 +87,53 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
 
   useEffect(() => {
     if (!persistentMode || !supabase) return;
-    if (page.slug !== "map" && page.slug !== "tasks") return;
+    if (!["map", "tasks", "matches", "commissions"].includes(page.slug)) return;
 
+    let mounted = true;
     setModuleMessage("");
-    Promise.all([
-      page.slug === "map" ? supabase.getPortfolios() : Promise.resolve([]),
-      page.slug === "tasks" ? supabase.getTasks() : Promise.resolve([])
-    ])
-      .then(([portfolios, taskRows]: [AdvisorPortfolioRow[], AdvisorTaskRow[]]) => {
-        if (page.slug === "map") setPortfolioRows(portfolios);
-        if (page.slug === "tasks") setTasks(taskRows);
-      })
+
+    const loadModuleRows = async () => {
+      if (page.slug === "map") {
+        const portfolios = await supabase.getPortfolios();
+        if (mounted) setPortfolioRows(portfolios);
+      }
+
+      if (page.slug === "tasks") {
+        const taskRows = await supabase.getTasks();
+        if (mounted) setTasks(taskRows);
+      }
+
+      if (page.slug === "matches") {
+        const matches = await supabase.getMatches();
+        if (mounted) setMatchRows(matches);
+      }
+
+      if (page.slug === "commissions") {
+        const [deals, commissions] = await Promise.all([
+          supabase.getDeals(),
+          supabase.getCommissions()
+        ]);
+        if (mounted) {
+          setDealRows(deals);
+          setCommissionRows(commissions);
+        }
+      }
+    };
+
+    loadModuleRows()
       .catch((error: Error) => {
         console.error(error);
         setPortfolioRows([]);
         setTasks([]);
+        setMatchRows([]);
+        setDealRows([]);
+        setCommissionRows([]);
         setModuleMessage(getDataSetupMessage(error.message));
       });
+
+    return () => {
+      mounted = false;
+    };
   }, [page.slug, persistentMode, supabase]);
 
   async function showPaymentNotice() {
@@ -189,9 +225,55 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         {page.slug === "map" ? (
           <MapPanel
             portfolios={portfolioRows}
+            demoMode={!isSupabaseConfigured}
             selectedDistrict={selectedDistrict}
             onSelectDistrict={setSelectedDistrict}
           />
+        ) : null}
+
+        {page.slug === "matches" && isSupabaseConfigured ? (
+          <section className="mt-6 grid gap-4 md:grid-cols-2">
+            {matchRows.map((match) => (
+              <article key={match.id} className="oos-card rounded-[1.75rem] p-5">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                  {match.status || "Eşleşme"}
+                </p>
+                <h2 className="mt-2 text-lg font-semibold">
+                  {String(match.search_request_id || "Arayış kaydı")} → {String(match.portfolio_id || match.property_id || "Portföy kaydı")}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  Uyum skoru: %{Number(match.match_score ?? match.score ?? 0)}
+                </p>
+              </article>
+            ))}
+            {!matchRows.length ? (
+              <article className="rounded-[1.75rem] border border-dashed border-slate-200 p-5 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 md:col-span-2">
+                Henüz gerçek eşleşme kaydı yok.
+              </article>
+            ) : null}
+          </section>
+        ) : null}
+
+        {page.slug === "commissions" && isSupabaseConfigured ? (
+          <section className="mt-6 grid gap-4 md:grid-cols-2">
+            <InfoCard title="İşlem kaydı" value={String(dealRows.length)} />
+            <InfoCard title="Komisyon kaydı" value={String(commissionRows.length)} />
+            {commissionRows.map((commission) => (
+              <article key={commission.id} className="oos-card rounded-[1.75rem] p-5">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                  {commission.status || "Komisyon"}
+                </p>
+                <h2 className="mt-2 text-lg font-semibold">
+                  {formatCurrency(Number(commission.net_commission ?? commission.gross_commission ?? commission.commission ?? commission.amount ?? 0))}
+                </h2>
+              </article>
+            ))}
+            {!dealRows.length && !commissionRows.length ? (
+              <article className="rounded-[1.75rem] border border-dashed border-slate-200 p-5 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 md:col-span-2">
+                Henüz gerçek işlem veya komisyon kaydı yok.
+              </article>
+            ) : null}
+          </section>
         ) : null}
 
         {(moduleMessage || (!isSupabaseConfigured && ["map", "tasks"].includes(page.slug))) ? (
@@ -200,17 +282,19 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
           </p>
         ) : null}
 
-        <section className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {page.cards.map((card) => (
-            <article key={card.title} className="liquid-glass-strong rounded-[1.75rem] p-5">
-              <div className="flex items-start justify-between gap-3">
-                <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">{card.title}</h2>
-                {card.meta ? <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{card.meta}</span> : null}
-              </div>
-              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{card.body}</p>
-            </article>
-          ))}
-        </section>
+        {(!isSupabaseConfigured || !["matches", "commissions"].includes(page.slug)) ? (
+          <section className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {page.cards.map((card) => (
+              <article key={card.title} className="liquid-glass-strong rounded-[1.75rem] p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-lg font-semibold text-slate-950 dark:text-slate-100">{card.title}</h2>
+                  {card.meta ? <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{card.meta}</span> : null}
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{card.body}</p>
+              </article>
+            ))}
+          </section>
+        ) : null}
 
         {page.actions ? (
           <section className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -302,10 +386,12 @@ function PaymentPanel({
 
 function MapPanel({
   portfolios,
+  demoMode,
   selectedDistrict,
   onSelectDistrict
 }: {
   portfolios: AdvisorPortfolioRow[];
+  demoMode: boolean;
   selectedDistrict: string;
   onSelectDistrict: (district: string) => void;
 }) {
@@ -317,6 +403,9 @@ function MapPanel({
     .map((portfolio) => ({ portfolio, coordinates: getPortfolioCoordinates(portfolio) }))
     .filter((item): item is { portfolio: AdvisorPortfolioRow; coordinates: [number, number] } => Boolean(item.coordinates));
   const missing = portfolios.filter((portfolio) => !portfolio.latitude || !portfolio.longitude);
+  const missingLabels = missing.length
+    ? missing.map((item) => item.title)
+    : demoMode ? missingLocationItems : [];
   const selectedRows = portfolios.filter((portfolio) =>
     getPortfolioDistrict(portfolio) === selectedDistrict
   );
@@ -429,7 +518,7 @@ function MapPanel({
         </div>
         <h3 className="mt-6 text-sm font-semibold">Konumu eksik portföyler</h3>
         <ul className="mt-3 space-y-2 text-sm text-slate-500 dark:text-slate-400">
-          {(missing.length ? missing.map((item) => item.title) : missingLocationItems).map((item) => <li key={item}>• {item}</li>)}
+          {missingLabels.length ? missingLabels.map((item) => <li key={item}>• {item}</li>) : <li>Konumu eksik portföy yok.</li>}
         </ul>
       </article>
     </section>

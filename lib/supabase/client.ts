@@ -86,6 +86,41 @@ export type AdvisorTaskRow = {
   updated_at?: string;
 };
 
+export type AdvisorMatchRow = {
+  id: string;
+  property_id?: string | null;
+  portfolio_id?: string | null;
+  search_request_id?: string | null;
+  score?: number | null;
+  match_score?: number | null;
+  status?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+};
+
+export type AdvisorDealRow = {
+  id: string;
+  title?: string | null;
+  status?: string | null;
+  stage?: string | null;
+  value?: number | null;
+  amount?: number | null;
+  created_at?: string;
+  [key: string]: unknown;
+};
+
+export type AdvisorCommissionRow = {
+  id: string;
+  deal_id?: string | null;
+  amount?: number | null;
+  commission?: number | null;
+  gross_commission?: number | null;
+  net_commission?: number | null;
+  status?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+};
+
 export type PortfolioInput = Partial<Omit<AdvisorPortfolioRow, "id" | "owner_user_id" | "created_at" | "updated_at">> & {
   title: string;
 };
@@ -417,6 +452,32 @@ export function createSupabaseAuthClient(): any {
     }
   }
 
+  async function getOperationalRows<T>(table: "matches" | "deals" | "commissions") {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<T[]>(
+        `/rest/v1/${table}?select=*&order=created_at.desc`,
+        { method: "GET", token }
+      );
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function getMatches() {
+    return getOperationalRows<AdvisorMatchRow>("matches");
+  }
+
+  async function getDeals() {
+    return getOperationalRows<AdvisorDealRow>("deals");
+  }
+
+  async function getCommissions() {
+    return getOperationalRows<AdvisorCommissionRow>("commissions");
+  }
+
   async function createTask(task: TaskInput) {
     const stored = readStoredSession();
     if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
@@ -546,6 +607,12 @@ export function createSupabaseAuthClient(): any {
     deleteSearchRequest,
 
     getTasks,
+
+    getMatches,
+
+    getDeals,
+
+    getCommissions,
 
     createTask,
 

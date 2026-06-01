@@ -164,12 +164,12 @@ export default function PortfoliosRoutePage() {
     <main className="min-h-screen bg-stone-50 px-4 py-5 pb-[calc(env(safe-area-inset-bottom)+7rem)] text-slate-950 dark:bg-black dark:text-neutral-50 sm:px-6 md:pb-8 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <header className="border-b border-slate-200 pb-6 dark:border-white/10">
-          <div className="flex items-center gap-3">
+          <Link href="/" title="Ana sayfaya dön" aria-label="Ana sayfaya dön" className="inline-flex items-center gap-3 rounded-2xl transition hover:opacity-80">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm font-semibold shadow-sm dark:border-white/10 dark:bg-[#080808]">
               O
             </span>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Ocean Operating System</p>
-          </div>
+          </Link>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight sm:text-5xl">Portföylerim</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
             Danışmanın aktif portföyleri, eksik bilgi kontrolleri ve hızlı takip notları için kalıcı çalışma alanı.

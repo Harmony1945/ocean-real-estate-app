@@ -20,7 +20,7 @@ import {
   type PropertyMediaRow
 } from "@/lib/supabase/client";
 import { demoSearchRequests, demoShowcasePortfolios } from "@/lib/oos/demo-data";
-import { formatStatusLabel, getStatusPillClass, isActiveStatus } from "@/lib/oos/status-labels";
+import { formatStatusLabel, formatUrgencyLabel, getStatusPillClass, getUrgencyPillClass, isActiveStatus } from "@/lib/oos/status-labels";
 
 type Stage = "Lead" | "Yeni" | "Görüşme" | "Sözleşme" | "Kapanış" | "Kapandı";
 type Risk = "Düşük" | "Orta" | "Yüksek" | string;
@@ -37,7 +37,7 @@ type PortfolioStageFilter =
   | "Kapandı";
 type PortfolioSort = "En Yeni" | "En Yüksek Değer" | "En Yüksek Komisyon" | "A-Z";
 type SearchStatus = "Aktif" | "Acil" | "Beklemede" | "Kapatıldı" | "Kapalı" | "Eşleşme Bulundu" | string;
-type SearchUrgency = "Acil" | "Normal" | "Düşük";
+type SearchUrgency = "Acil" | "Yüksek" | "Orta" | "Normal" | "Düşük";
 type SearchCurrency = "TRY" | "USD" | "EUR" | "GBP";
 type SearchFilter =
   | "Tüm Arayışlar"
@@ -194,6 +194,8 @@ type SahibindenListing = {
 
 const commissionRates = [1, 1.5, 2, 3, 4];
 const searchCurrencies: SearchCurrency[] = ["TRY", "USD", "EUR", "GBP"];
+const requestTypeOptions = ["Satın Alma", "Kiralama", "Yatırım", "Arsa", "Ticari", "Kat Karşılığı"];
+const propertyTypeOptions = ["Konut", "Daire", "Villa", "Arsa", "Ticari", "Ofis", "Mağaza", "Rezidans"];
 
 const initialOpportunities: Opportunity[] = demoShowcasePortfolios.map((portfolio, index) => ({
   id: index + 1,
@@ -564,7 +566,7 @@ function fromSearchRequestRow(row: AdvisorSearchRequestRow, consultant: Consulta
     maxArea: Number(row.max_area || 0),
     rooms: row.rooms || "",
     purpose: row.purpose || row.request_type || "Satın Alma",
-    urgency: (row.urgency || "Normal") as SearchUrgency,
+    urgency: formatUrgencyLabel(row.urgency) as SearchUrgency,
     notes: row.notes || "",
     status: formatStatusLabel(row.status || "Aktif") as SearchStatus,
     createdAt: row.created_at?.slice(0, 10) || today()
@@ -1694,14 +1696,20 @@ export default function Home() {
       <div className="mx-auto max-w-6xl min-w-0">
         <header className="flex flex-col gap-5 border-b border-slate-200 pb-6 dark:border-slate-800 sm:gap-6 sm:pb-8 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
+            <button
+              type="button"
+              title="Ana sayfaya dön"
+              aria-label="Ana sayfaya dön"
+              onClick={() => setActivePage("dashboard")}
+              className="flex items-center gap-3 rounded-2xl text-left transition hover:opacity-80"
+            >
               <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 O
               </span>
               <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                OCEAN BrokerageOS
+                Ocean Operating System
               </span>
-            </div>
+            </button>
             <h1 className="mt-6 max-w-3xl break-words text-[2rem] font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100 sm:mt-8 sm:text-5xl">
               {activePageTitle[activePage]}
             </h1>
@@ -2804,6 +2812,14 @@ function SearchStatusBadge({ status }: { status: SearchStatus }) {
   );
 }
 
+function SearchUrgencyBadge({ urgency }: { urgency: SearchUrgency }) {
+  return (
+    <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${getUrgencyPillClass(urgency)}`}>
+      {formatUrgencyLabel(urgency)}
+    </span>
+  );
+}
+
 function MatchScoreBadge({ score }: { score: number }) {
   return (
     <span
@@ -2997,7 +3013,9 @@ function SearchRequestsCard({
             <div className="grid gap-3 sm:grid-cols-2">
               <input className="input" placeholder="Başlık" value={form.title} onChange={(event) => update("title", event.target.value)} />
               <input className="input" placeholder="Lokasyon" value={form.location} onChange={(event) => update("location", event.target.value)} />
-              <input className="input" placeholder="Portföy tipi" value={form.propertyType} onChange={(event) => update("propertyType", event.target.value)} />
+              <select className="input" value={form.propertyType} onChange={(event) => update("propertyType", event.target.value)}>
+                {propertyTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
               <input className="input" inputMode="numeric" placeholder="Min fiyat" value={form.minPrice} onChange={(event) => update("minPrice", event.target.value)} />
               <input className="input" inputMode="numeric" placeholder="Maks fiyat" value={form.maxPrice} onChange={(event) => update("maxPrice", event.target.value)} />
               <select className="input" value={form.currency} onChange={(event) => update("currency", event.target.value)}>
@@ -3008,9 +3026,11 @@ function SearchRequestsCard({
               <input className="input" inputMode="numeric" placeholder="Minimum yatak odası" value={form.minBedrooms} onChange={(event) => update("minBedrooms", event.target.value)} />
               <input className="input" inputMode="numeric" placeholder="Min m²" value={form.minArea} onChange={(event) => update("minArea", event.target.value)} />
               <input className="input" inputMode="numeric" placeholder="Maks m²" value={form.maxArea} onChange={(event) => update("maxArea", event.target.value)} />
-              <input className="input" placeholder="Amaç" value={form.purpose} onChange={(event) => update("purpose", event.target.value)} />
+              <select className="input" value={form.purpose} onChange={(event) => update("purpose", event.target.value)}>
+                {requestTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
               <select className="input" value={form.urgency} onChange={(event) => update("urgency", event.target.value)}>
-                {(["Acil", "Normal", "Düşük"] as SearchUrgency[]).map((item) => (
+                {(["Acil", "Yüksek", "Orta", "Normal", "Düşük"] as SearchUrgency[]).map((item) => (
                   <option key={item}>{item}</option>
                 ))}
               </select>
@@ -3059,7 +3079,7 @@ function SearchRequestsCard({
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {request.urgency === "Acil" ? <SearchStatusBadge status="Acil" /> : null}
+                      <SearchUrgencyBadge urgency={request.urgency} />
                       <SearchStatusBadge status={displayStatus} />
                     </div>
                   </div>

@@ -40,3 +40,55 @@ export function getStatusPillClass(status?: string | null) {
 
   return "border border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-[#111111] dark:text-slate-300";
 }
+
+const urgencyLabels: Record<string, string> = {
+  urgent: "Acil",
+  acil: "Acil",
+  high: "Yüksek",
+  yuksek: "Yüksek",
+  yüksek: "Yüksek",
+  sicak: "Yüksek",
+  sıcak: "Yüksek",
+  medium: "Orta",
+  orta: "Orta",
+  normal: "Normal",
+  low: "Düşük",
+  dusuk: "Düşük",
+  düşük: "Düşük"
+};
+
+function normalizeUrgency(urgency?: string | null) {
+  return String(urgency || "")
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i");
+}
+
+export function formatUrgencyLabel(urgency?: string | null) {
+  const normalized = normalizeUrgency(urgency);
+  if (!normalized) return "Belirtilmedi";
+
+  return urgencyLabels[normalized] || "Belirtilmedi";
+}
+
+export function getUrgencyPillClass(urgency?: string | null) {
+  const label = formatUrgencyLabel(urgency);
+
+  if (label === "Acil") {
+    return "border border-red-200 bg-red-50 text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-200";
+  }
+
+  if (label === "Yüksek") {
+    return "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200";
+  }
+
+  if (label === "Orta") {
+    return "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200";
+  }
+
+  if (label === "Normal") {
+    return "border border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300";
+  }
+
+  return "border border-slate-200 bg-slate-100 text-slate-500 dark:border-white/10 dark:bg-[#111111] dark:text-slate-400";
+}

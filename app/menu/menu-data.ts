@@ -41,23 +41,29 @@ export const menuPages: MenuPageData[] = [
   {
     slug: "notifications",
     title: "Bildirimler",
-    eyebrow: "Operasyon akışı",
-    description: "Eşleşme, ödeme ve portföy kontrol uyarıları tek sayfada izlenir.",
+    eyebrow: "Operasyon uyarıları",
+    description: "Yeni eşleşmeler, portföy hareketleri, görev hatırlatmaları ve onay süreçleri için profesyonel bildirim merkezi.",
     cards: [
-      { title: "Yeni eşleşme", body: "Bebek yalı dairesi arayışı için 2 güçlü portföy önerisi hazır.", meta: "Bugün" },
-      { title: "Ödeme hatırlatması", body: "Aylık profesyonel katılım ödeme günü yaklaşıyor.", meta: "3 gün" },
-      { title: "Portföy kontrolü", body: "Yetki belgesi eksik portföyleri kapatmadan önce tamamlayın.", meta: "Aksiyon" }
-    ]
+      { title: "Eşleşme Bildirimleri", body: "Yeni ve güçlü portföy-arayış eşleşmeleri burada öncelik sırasına göre görünür.", meta: "Fırsat" },
+      { title: "Portföy Güncellemeleri", body: "Fiyat, statü, görünürlük, fotoğraf ve kapak değişiklikleri danışman takibine düşer.", meta: "Portföy" },
+      { title: "Görev Hatırlatmaları", body: "Malik araması, fotoğraf tamamlama, müşteri dönüşü ve sözleşme aksiyonları için hatırlatma alanı.", meta: "Takip" },
+      { title: "Sistem Bildirimleri", body: "Migration, medya, paylaşım linki veya güvenlik gibi teknik durumlar sadece ilgili modülde gösterilir.", meta: "Sistem" },
+      { title: "Başvuru ve Onay Süreçleri", body: "Danışman başvuruları, admin onayları ve profil bağlama süreçleri yönetim akışında izlenir.", meta: "Onay" },
+      { title: "Henüz bildiriminiz yok", body: "Yeni eşleşmeler, görevler ve sistem uyarıları oluştuğunda burada görünecek.", meta: "Boş durum" }
+    ],
+    actions: ["Uygulama içi bildirimler", "E-posta uyarıları", "Önemli operasyon alarmı"]
   },
   {
     slug: "tasks",
     title: "Görevlerim",
-    eyebrow: "Bugünün listesi",
-    description: "Günlük danışman aksiyonları ve kapanışa yakın işler için sade görev alanı.",
+    eyebrow: "Danışman takip alanı",
+    description: "Günlük operasyon, yaklaşan takipler, geciken işler ve tamamlanan aksiyonlar için sade görev çalışma alanı.",
     cards: [
-      { title: "Arayışları gözden geçir", body: "Yeni talepleri bütçe, bölge ve aciliyet sinyallerine göre sırala.", meta: "09:30" },
-      { title: "Eksik malik bilgisi", body: "Adres ve tapu teyidi bekleyen portföyleri tamamla.", meta: "Öncelikli" },
-      { title: "Müşteri dönüşü", body: "Güçlü eşleşmeleri kısa notla müşteriye ilet.", meta: "Bugün" }
+      { title: "Bugünkü Görevler", body: "Portföy fotoğrafı ekle, malik araması yap ve yeni arayışları güncelle.", meta: "Bugün" },
+      { title: "Yaklaşan Takipler", body: "Yer gösterimi, teklif dönüşü, tapu evrakı ve müşteri görüşmeleri için takip listesi.", meta: "Planlı" },
+      { title: "Geciken İşler", body: "Eksik yetki, geciken müşteri dönüşü veya tamamlanmamış sözleşme evrakı burada öne çıkar.", meta: "Kontrol" },
+      { title: "Tamamlananlar", body: "Kapanan görevler danışmanın operasyon geçmişi ve ekip görünürlüğü için kayıt altında tutulur.", meta: "Arşiv" },
+      { title: "Süreç Notları", body: "Portföy fotoğrafı ekle, malik araması yap, müşteri arayışını güncelle ve eşleşme kontrolü yap gibi aksiyonlar tek yerde toparlanır.", meta: "Operasyon" }
     ],
     actions: ["3 açık görev", "1 yüksek öncelik", "2 tamamlanabilir aksiyon"]
   },
@@ -129,56 +135,79 @@ export const menuPages: MenuPageData[] = [
   {
     slug: "security",
     title: "Hesap ve Güvenlik",
-    eyebrow: "Oturum güvenliği",
-    description: "E-posta, oturum, rol ve güvenlik ayarlarının danışman odaklı özeti.",
+    eyebrow: "Hesap, rol ve veri güvenliği",
+    description: "Danışman hesabı, rol görünürlüğü, oturum güvenliği ve dış paylaşım güvenliği için iç kontrol merkezi.",
     cards: [
-      { title: "E-posta", body: "E-posta Supabase Auth üzerinden yönetilir ve doğrulama akışına bağlıdır.", meta: "Auth" },
-      { title: "Rol", body: "Rol sistem tarafından atanır; kullanıcı arayüzünde düzenlenmez.", meta: "Kilitli" },
-      { title: "Oturum", body: "Çıkış işlemi tüm OOS ekranlarındaki ortak oturum akışını kullanır.", meta: "Güvenli" }
+      { title: "Giriş Bilgileri", body: "E-posta Supabase Auth üzerinden yönetilir. Hassas oturum bilgileri arayüzde gösterilmez.", meta: "Auth" },
+      { title: "Hesap Rolü", body: "Danışman, admin ve izleyici rolleri yetki kontrolü için sistem tarafından atanır.", meta: "Kilitli" },
+      { title: "Veri Güvenliği", body: "Müşteri kimliği, özel notlar, komisyon ve operasyon verileri yetkisiz kişilerle paylaşılmaz.", meta: "Koruma" },
+      { title: "Oturum Güvenliği", body: "Çıkış işlemi tüm OceanOS ekranlarında ortak oturum akışını kullanır.", meta: "Güvenli" },
+      { title: "Medya Güvenliği", body: "Portföy fotoğrafları korumalı depoda tutulur; public paylaşım sadece güvenli çıktı üretir.", meta: "Storage" },
+      { title: "Dış Paylaşım", body: "Paylaşım linkleri yalnızca temizlenmiş portföy bilgisini gösterir; iç notlar ve müşteri verisi görünmez.", meta: "Share" }
     ]
   },
   {
     slug: "settings",
     title: "Ayarlar",
     eyebrow: "Uygulama tercihleri",
-    description: "Tema, bildirim ve mobil kullanım tercihleri için sade ayar merkezi.",
+    description: "OceanOS görünüm, bildirim, çalışma alanı, bölge ve varsayılan portföy tercihleri için yapılandırma merkezi.",
     cards: [
-      { title: "Tema", body: "Koyu/açık tema tercihi cihazda saklanır ve tüm sayfalara uygulanır.", meta: "Aktif" },
-      { title: "Navigasyon", body: "Mobil alt navigasyon ana akışta korunur.", meta: "Mobil" },
-      { title: "Bildirim tercihleri", body: "Operasyon bildirimleri ileride kanal bazlı ayrıştırılabilir.", meta: "Hazır alan" }
+      { title: "Görünüm", body: "Tema tercihi global düğmeden yönetilir; bu sayfada ikinci bir tema anahtarı gösterilmez.", meta: "Aktif" },
+      { title: "Bildirim Tercihleri", body: "Eşleşme, görev, başvuru ve sistem uyarıları kanal bazlı yönetilecek şekilde hazırlanır.", meta: "Hazır alan" },
+      { title: "Çalışma Alanı", body: "Danışmanın varsayılan menü, hızlı aksiyon ve portföy çalışma düzeni burada toplanır.", meta: "OceanOS" },
+      { title: "Dil ve Bölge", body: "Varsayılan dil Türkçe, bölge formatı Türkiye ve para birimi TRY olarak tasarlanır.", meta: "TR" },
+      { title: "Varsayılan Portföy Tercihleri", body: "Portföy görünürlüğü, fotoğraf sınırı ve varsayılan durum tercihleri ürün standardına bağlıdır.", meta: "Portföy" }
     ]
   },
   {
     slug: "support",
     title: "Yardım ve Destek",
     eyebrow: "Destek merkezi",
-    description: "Operasyon soruları, hesap yardımı ve platform iş akışları için destek sayfası.",
+    description: "Portföy girişi, medya, eşleşme, paylaşım linki, PDF çıktısı ve giriş sorunları için danışman destek merkezi.",
     cards: [
-      { title: "Destek iletişimi", body: "support@oceanos.example üzerinden çalışma saatlerinde destek alın.", meta: "09:00-18:00" },
-      { title: "İş akışı yardımı", body: "Portföy, arayış ve eşleşme süreçleri için kısa rehberler burada toplanır.", meta: "Rehber" },
-      { title: "Acil işlem", body: "Kapanışa yakın işlem sorularında ofis yöneticinizle iletişime geçin.", meta: "Öncelik" }
+      { title: "Portföy Girişi", body: "Başlık, fiyat, lokasyon, metrekare ve durum bilgilerini eksiksiz girerek eşleşme kalitesini artırın.", meta: "Rehber" },
+      { title: "Fotoğraf ve Watermark", body: "En fazla 12 gerçek portföy fotoğrafı yüklenir; Ocean watermark otomatik uygulanır.", meta: "Medya" },
+      { title: "Eşleşmeler", body: "Eşleşme skoru lokasyon, tip, bütçe, alan ve ihtiyaç sinyallerini birlikte değerlendirir.", meta: "Fırsat" },
+      { title: "Paylaşım Linkleri", body: "Dış paylaşım linkleri sadece güvenli portföy sunum bilgisini gösterir.", meta: "Share" },
+      { title: "PDF Çıktısı", body: "PDF çıktısı WhatsApp veya e-posta ile paylaşılabilecek sade satış materyali üretir.", meta: "PDF" },
+      { title: "Danışman Başvuruları", body: "Başvurular sözleşme, kırmızı çizgiler ve komisyon modeli kabulüyle admin onayına gider.", meta: "Onay" },
+      { title: "Sistem ve Giriş Sorunları", body: "Destek için Ocean Real Estate operasyon ekibiyle info@oceanrealestate.com.tr üzerinden iletişime geçebilirsiniz.", meta: "Destek" }
     ]
   },
   {
     slug: "faq",
     title: "Sıkça Sorulan Sorular",
     eyebrow: "Danışman rehberi",
-    description: "OOS içinde en sık gelen pratik danışman soruları ve kısa yanıtları.",
+    description: "OceanOS içindeki portföy, arayış, eşleşme, medya, paylaşım ve başvuru süreçleri için kısa yanıtlar.",
     cards: [
-      { title: "Portföy nasıl eklenir?", body: "Ana sayfadaki hızlı aksiyonlar portföy ekleme akışına bağlanır.", meta: "Portföy" },
-      { title: "Eşleşmeler nasıl sıralanır?", body: "Bütçe, lokasyon, portföy tipi ve aciliyet sinyalleri beraber değerlendirilir.", meta: "Eşleşme" },
-      { title: "Vergi sonucu kesin midir?", body: "Hayır. Hesaplayıcı ön bilgi verir; mali müşavir teyidi gerekir.", meta: "Vergi" }
+      { title: "Portföy nasıl eklenir?", body: "Portföylerim ekranından başlık, lokasyon, fiyat ve tip bilgisiyle yeni portföy oluşturulur.", meta: "Portföy" },
+      { title: "Fotoğraf yükleme sınırı nedir?", body: "Her portföy için en fazla 12 JPEG, PNG veya WebP fotoğraf yüklenir.", meta: "Medya" },
+      { title: "Watermark otomatik mi eklenir?", body: "Evet. Yüklenen portföy fotoğrafları Ocean watermark ile işlenir.", meta: "Watermark" },
+      { title: "Eşleşme skoru nasıl çalışır?", body: "Lokasyon, mülk tipi, bütçe, alan ve özellik uyumu birlikte puanlanır.", meta: "Eşleşme" },
+      { title: "Paylaşım linki hangi bilgileri gösterir?", body: "Sadece dışarıya uygun portföy sunum bilgilerini gösterir; iç not ve müşteri verisi göstermez.", meta: "Share" },
+      { title: "PDF çıktısında hangi bilgiler yer alır?", body: "Başlık, ana görsel, fiyat, lokasyon, temel özellikler ve güvenli danışman iletişimi yer alır.", meta: "PDF" },
+      { title: "Tüm Portföyler ile Portföylerim arasındaki fark nedir?", body: "Portföylerim kişisel yönetim alanıdır; Tüm Portföyler ofis içi envanter taramasıdır.", meta: "Envanter" },
+      { title: "Arayış nasıl oluşturulur?", body: "Arayışlarım ekranında lokasyon, bütçe, mülk tipi, aciliyet ve notlar girilir.", meta: "Arayış" },
+      { title: "Kat Karşılığı arayışı nasıl girilir?", body: "Arayış türü seçiminde Kat Karşılığı seçilerek bölge, arsa tipi ve beklenti notu eklenir.", meta: "Kat Karşılığı" },
+      { title: "Danışman başvurusu nasıl değerlendirilir?", body: "Başvuru admin tarafından incelenir, onaylanırsa mevcut profil ile danışman kaydı bağlanır.", meta: "Başvuru" },
+      { title: "Komisyon modeli nerede belirlenir?", body: "Danışman başvurusunda Ocean Elite veya Ocean Core modeli açık kabul ile seçilir.", meta: "Komisyon" },
+      { title: "Veriler kimlere görünür?", body: "Fırsat datası paylaşılır; müşteri kimliği, belgeler, özel notlar ve para datası korunur.", meta: "Güvenlik" }
     ]
   },
   {
     slug: "legal-corporate",
     title: "Yasal ve Kurumsal",
-    eyebrow: "Şirket bilgileri",
-    description: "Star Girişim ve Yatırım A.Ş. kurumsal bilgileri ve yasal bağlantıları.",
+    eyebrow: "Kurumsal standartlar",
+    description: "Ocean Real Estate ve Star Girişim ve Yatırım A.Ş. için iç yasal, kurumsal ve operasyon standardı merkezi.",
     cards: [
-      { title: "Kullanım koşulları", body: "OOS çalışma alanı kullanım ilkeleri ve danışman sorumlulukları.", meta: "Yasal" },
-      { title: "Gizlilik ve KVKK", body: "Kişisel veri ve müşteri bilgisi işleme prensipleri.", meta: "KVKK" },
-      { title: "Komisyon ilkeleri", body: "İşlem ve komisyon süreçleri için kurumsal yönlendirme.", meta: "Kurumsal" }
+      { title: "Şirket Bilgileri", body: "OCEAN REAL ESTATE, STAR GİRİŞİM VE YATIRIM A.Ş. çatısı altında faaliyet gösterir. Yetki Belgesi No: YB0378.", meta: "Kurumsal" },
+      { title: "Yetki ve Temsil", body: "Danışman temsil dili, portföy sunumu ve müşteri iletişimi şirket standartlarına uygun yürütülür.", meta: "Temsil" },
+      { title: "Danışmanlık Esasları", body: "Danışman, portföy ve arayış bilgisini doğru, güncel ve ölçülebilir şekilde sisteme işler.", meta: "Operasyon" },
+      { title: "Komisyon Paylaşım Esasları", body: "Ocean Elite ve Ocean Core modelleri başvuru ve onay süreçlerinde açık kabul ile kaydedilir.", meta: "Komisyon" },
+      { title: "Kırmızı Çizgiler", body: "Yetkisiz görsel, yanıltıcı fiyat, müşteri bilgisi ifşası ve kayıt dışı işlem Ocean standardına aykırıdır.", meta: "Etik" },
+      { title: "KVKK ve Veri Güvenliği", body: "Kişisel veriler, müşteri bilgisi ve iç operasyon notları yetki bazlı korunur.", meta: "KVKK" },
+      { title: "Paylaşım Linkleri ve Dışa Aktarım", body: "Dış link ve PDF çıktıları yalnızca güvenli, temizlenmiş portföy sunum verilerini içerir.", meta: "Dış çıktı" },
+      { title: "Sorumluluk Sınırları", body: "Bu alan iç operasyon bilgisidir; nihai hukuki değerlendirme için ilgili public yasal metinler ve profesyonel danışmanlık esas alınır.", meta: "Bilgilendirme" }
     ]
   }
 ];

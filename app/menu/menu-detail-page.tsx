@@ -136,7 +136,9 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         setMatchRows([]);
         setDealRows([]);
         setCommissionRows([]);
-        setModuleMessage(getDataSetupMessage(error.message, { optional: page.slug === "commissions" }));
+        setModuleMessage(page.slug === "tasks"
+          ? "Görev altyapısı henüz etkin değil. Manuel takip alanı yakında kullanılabilir olacak."
+          : getDataSetupMessage(error.message, { optional: page.slug === "commissions" }));
       });
 
     return () => {

@@ -72,7 +72,7 @@ export default function AllPortfoliosPage() {
       <div className="mx-auto max-w-6xl">
         <header className="border-b border-slate-200 pb-6 dark:border-white/10">
           <Link href="/" className="mini-action">Dashboard’a Dön</Link>
-          <p className="mt-7 text-sm font-medium text-slate-500 dark:text-slate-400">Office-wide portföy envanteri</p>
+          <p className="mt-7 text-sm font-medium text-slate-500 dark:text-slate-400">Ofis geneli portföy envanteri</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-5xl">
             Tüm Portföyler
           </h1>

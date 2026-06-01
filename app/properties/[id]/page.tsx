@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuthContext } from "../../auth-context";
 import {
   createSupabaseAuthClient,
@@ -85,7 +85,6 @@ export default function PropertyDetailPage() {
       return Number(a.sort_order || 0) - Number(b.sort_order || 0);
     });
   }, [media]);
-  const activePhoto = orderedMedia[activePhotoIndex] ?? orderedMedia[0] ?? null;
 
   const shareUrl = shareLink
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/share/${shareLink.token}`
@@ -195,40 +194,6 @@ export default function PropertyDetailPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400">OceanOS portföy detayı</p>
         </header>
 
-        <section className="mt-5 flex flex-col gap-2 rounded-[2rem] border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#080808] sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-950 dark:text-slate-100">Dış paylaşım ve PDF</p>
-            <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-              {shareUrl || "Harici satış materyali için güvenli çıktı oluşturun."}
-            </p>
-          </div>
-          <div className="flex flex-row items-center gap-2">
-            <button
-              className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-400 hover:text-slate-950 disabled:opacity-50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-200 dark:hover:border-white/25 dark:hover:text-white"
-              type="button"
-              disabled={shareLoading}
-              onClick={createOrCopyShareLink}
-              title={shareLink ? "Paylaşım linkini kopyala" : "Paylaşım linki"}
-              aria-label={shareLink ? "Paylaşım linkini kopyala" : "Paylaşım linki oluştur"}
-            >
-              <ShareIcon />
-            </button>
-            {shareLink ? (
-              <button className="btn-secondary" type="button" disabled={shareLoading} onClick={disableShareLink}>
-                Paylaşımı Kapat
-              </button>
-            ) : null}
-            <Link
-              href={`/properties/${property.id}/print`}
-              target="_blank"
-              className="btn-secondary"
-              onClick={() => logPropertyActivity("property_pdf_exported", "PDF dışa aktarımı başlatıldı.")}
-            >
-              PDF Olarak Dışa Aktar
-            </Link>
-          </div>
-        </section>
-
         {shareMessage ? (
           <p className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-[#080808] dark:text-slate-300">
             {shareMessage}
@@ -256,12 +221,43 @@ export default function PropertyDetailPage() {
         <section className="mt-6">
           <PropertyGallery
             media={orderedMedia}
-            activePhoto={activePhoto}
             activePhotoIndex={activePhotoIndex}
             propertyTitle={property.title}
             onSelectPhoto={setActivePhotoIndex}
+            actions={
+              <>
+                <button
+                  className="grid h-11 w-11 place-items-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur transition hover:bg-black/65 disabled:opacity-50"
+                  type="button"
+                  disabled={shareLoading}
+                  onClick={createOrCopyShareLink}
+                  title="Paylaş"
+                  aria-label="Paylaş"
+                >
+                  <ShareIcon />
+                </button>
+                <Link
+                  href={`/properties/${property.id}/print`}
+                  target="_blank"
+                  className="grid h-11 min-w-11 place-items-center rounded-full bg-black/45 px-3 text-xs font-semibold text-white shadow-sm backdrop-blur transition hover:bg-black/65"
+                  onClick={() => logPropertyActivity("property_pdf_exported", "PDF dışa aktarımı başlatıldı.")}
+                  aria-label="PDF indir"
+                  title="PDF indir"
+                >
+                  PDF
+                </Link>
+              </>
+            }
           />
         </section>
+
+        {shareLink ? (
+          <div className="mt-3 flex justify-end">
+            <button className="mini-action" type="button" disabled={shareLoading} onClick={disableShareLink}>
+              Paylaşımı Kapat
+            </button>
+          </div>
+        ) : null}
 
         <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0">
@@ -399,45 +395,116 @@ function toPublicSharePayload(property: AdvisorPropertyRow, photoCount: number):
 }
 
 function PropertyGallery({
-  activePhoto,
   activePhotoIndex,
+  actions,
   media,
   propertyTitle,
   onSelectPhoto
 }: {
-  activePhoto: PropertyMediaRow | null;
   activePhotoIndex: number;
+  actions?: ReactNode;
   media: PropertyMediaRow[];
   propertyTitle: string;
   onSelectPhoto: (index: number) => void;
 }) {
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
-  const galleryItems = media.length ? media : [];
-  const activeUrl = activePhoto?.signed_url || DEMO_PROPERTY_IMAGE;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const galleryItems = media.length
+    ? media
+    : [{
+        id: "demo-property-image",
+        signed_url: DEMO_PROPERTY_IMAGE,
+        file_name: `${propertyTitle} örnek fotoğrafı`
+      } as PropertyMediaRow];
   const hasMultiplePhotos = galleryItems.length > 1;
-  const visibleCount = galleryItems.length || 1;
+  const visibleCount = galleryItems.length;
+  const safeActivePhotoIndex = Math.min(activePhotoIndex, Math.max(visibleCount - 1, 0));
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, []);
+
+  function scrollToPhoto(index: number, behavior: ScrollBehavior = "smooth") {
+    const container = scrollRef.current;
+    if (!container) {
+      onSelectPhoto(index);
+      return;
+    }
+
+    container.scrollTo({
+      left: container.clientWidth * index,
+      behavior
+    });
+    onSelectPhoto(index);
+  }
+
+  function handleScroll() {
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    animationFrameRef.current = requestAnimationFrame(() => {
+      const container = scrollRef.current;
+      if (!container) return;
+      const nextIndex = Math.round(container.scrollLeft / Math.max(container.clientWidth, 1));
+      if (nextIndex !== safeActivePhotoIndex && nextIndex >= 0 && nextIndex < visibleCount) {
+        onSelectPhoto(nextIndex);
+      }
+    });
+  }
 
   function showPrevious() {
     if (!hasMultiplePhotos) return;
-    onSelectPhoto(activePhotoIndex === 0 ? galleryItems.length - 1 : activePhotoIndex - 1);
+    scrollToPhoto(safeActivePhotoIndex === 0 ? galleryItems.length - 1 : safeActivePhotoIndex - 1);
   }
 
   function showNext() {
     if (!hasMultiplePhotos) return;
-    onSelectPhoto(activePhotoIndex === galleryItems.length - 1 ? 0 : activePhotoIndex + 1);
+    scrollToPhoto(safeActivePhotoIndex === galleryItems.length - 1 ? 0 : safeActivePhotoIndex + 1);
   }
 
-  if (!media.length) {
-    return (
-      <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
-        <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={DEMO_PROPERTY_IMAGE}
-            alt={`${propertyTitle} örnek fotoğrafı`}
-            className="h-[320px] w-full object-cover sm:h-[520px]"
-          />
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+  return (
+    <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
+      <div className="relative">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {galleryItems.map((item, index) => {
+            const url = item.signed_url || DEMO_PROPERTY_IMAGE;
+            const hasFailed = failedImages[item.id];
+
+            return (
+              <div key={item.id} className="relative min-w-full snap-center">
+                {url && !hasFailed ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={url}
+                    alt={item.file_name || propertyTitle}
+                    className="h-[320px] w-full select-none object-cover sm:h-[520px]"
+                    draggable={false}
+                    loading={index === 0 ? "eager" : "lazy"}
+                    onError={() => setFailedImages((current) => ({ ...current, [item.id]: true }))}
+                  />
+                ) : (
+                  <div className="grid h-[320px] place-items-center bg-slate-100 px-4 text-center text-sm text-slate-500 dark:bg-white/[0.06] dark:text-slate-400 sm:h-[520px]">
+                    Fotoğraf önizlemesi hazırlanamadı.
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {actions ? <div className="absolute right-3 top-3 z-10 flex items-center gap-2">{actions}</div> : null}
+
+        <div className="absolute left-4 top-4 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur">
+          {safeActivePhotoIndex + 1}/{Math.min(visibleCount, 12)} Fotoğraf
+        </div>
+
+        {!media.length ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4">
             <span className="rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur">
               Örnek görsel
             </span>
@@ -445,31 +512,7 @@ function PropertyGallery({
               Bu portföy için gerçek fotoğraf yüklendiğinde galeri otomatik olarak güvenli medya kayıtlarını gösterir.
             </p>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
-      <div className="relative">
-        {activeUrl && !failedImages[activePhoto?.id || ""] ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={activeUrl}
-            alt={activePhoto?.file_name || propertyTitle}
-            className="h-[320px] w-full object-cover sm:h-[520px]"
-            onError={() => activePhoto && setFailedImages((current) => ({ ...current, [activePhoto.id]: true }))}
-          />
-        ) : (
-          <div className="grid h-[320px] place-items-center bg-slate-100 px-4 text-center text-sm text-slate-500 dark:bg-white/[0.06] dark:text-slate-400 sm:h-[520px]">
-            Fotoğraf önizlemesi hazırlanamadı.
-          </div>
-        )}
-
-        <div className="absolute left-4 top-4 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur">
-          {activePhotoIndex + 1}/{Math.min(visibleCount, 12)} Fotoğraf
-        </div>
+        ) : null}
 
         {hasMultiplePhotos ? (
           <>
@@ -498,9 +541,9 @@ function PropertyGallery({
               key={item.id}
               type="button"
               aria-label={`${index + 1}. fotoğrafı göster`}
-              onClick={() => onSelectPhoto(index)}
+              onClick={() => scrollToPhoto(index)}
               className={`h-1.5 rounded-full transition ${
-                index === activePhotoIndex ? "w-7 bg-white" : "w-1.5 bg-white/45 hover:bg-white/70"
+                index === safeActivePhotoIndex ? "w-7 bg-white" : "w-1.5 bg-white/45 hover:bg-white/70"
               }`}
             />
           ))}

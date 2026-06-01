@@ -514,6 +514,21 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality = 0.88) {
   });
 }
 
+function drawRoundedRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + safeRadius, y);
+  context.lineTo(x + width - safeRadius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  context.lineTo(x + width, y + height - safeRadius);
+  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  context.lineTo(x + safeRadius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  context.lineTo(x, y + safeRadius);
+  context.quadraticCurveTo(x, y, x + safeRadius, y);
+  context.closePath();
+}
+
 async function addOceanWatermark(file: File) {
   if (typeof window === "undefined" || typeof document === "undefined") return file;
 
@@ -536,11 +551,22 @@ async function addOceanWatermark(file: File) {
     canvas.height = height;
     context.drawImage(sourceImage, 0, 0, width, height);
 
-    const watermarkWidth = Math.min(Math.max(width * 0.18, 96), 320);
+    const watermarkWidth = Math.min(Math.max(width * 0.22, 140), 380);
     const watermarkHeight = watermarkWidth * (watermarkImage.naturalHeight / watermarkImage.naturalWidth);
     const margin = Math.max(width, height) * 0.035;
+    const pillPadding = Math.max(14, watermarkWidth * 0.08);
+    const pillX = width - watermarkWidth - margin - pillPadding;
+    const pillY = height - watermarkHeight - margin - pillPadding;
+    const pillWidth = watermarkWidth + pillPadding * 2;
+    const pillHeight = watermarkHeight + pillPadding * 2;
     context.save();
-    context.globalAlpha = 0.72;
+    context.shadowColor = "rgba(0,0,0,0.28)";
+    context.shadowBlur = Math.max(8, width * 0.008);
+    context.fillStyle = "rgba(0,0,0,0.22)";
+    drawRoundedRect(context, pillX, pillY, pillWidth, pillHeight, Math.max(12, pillHeight * 0.28));
+    context.fill();
+    context.shadowBlur = 0;
+    context.globalAlpha = 0.88;
     context.drawImage(
       watermarkImage,
       width - watermarkWidth - margin,
@@ -564,8 +590,8 @@ async function preparePropertyPhotoForUpload(file: File) {
   try {
     return await addOceanWatermark(file);
   } catch (error) {
-    console.warn("Ocean watermark could not be applied; uploading original photo.", error);
-    return file;
+    console.warn("Ocean watermark could not be applied.", error);
+    throw new Error("Ocean watermark uygulanamadı. Fotoğraf yükleme tekrar denenmeli.");
   }
 }
 
@@ -598,6 +624,16 @@ function uploadStorageObject(path: string, file: File, token: string, onProgress
     };
     uploadRequest.onerror = () => reject(new Error("Fotoğraf yüklenemedi."));
     uploadRequest.send(file);
+  });
+}
+
+async function deleteStorageObjects(paths: string[], token: string) {
+  if (!paths.length) return;
+
+  await request(`/storage/v1/object/${PROPERTY_IMAGE_BUCKET}`, {
+    method: "DELETE",
+    token,
+    body: JSON.stringify({ prefixes: paths })
   });
 }
 
@@ -1204,6 +1240,56 @@ export function createSupabaseAuthClient(): any {
     }
   }
 
+  async function deletePropertyMedia(propertyId: string, mediaId: string) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<PropertyMediaRow[]>(
+        `/rest/v1/property_media?id=eq.${encodeURIComponent(mediaId)}&property_id=eq.${encodeURIComponent(propertyId)}&select=*&limit=1`,
+        { method: "GET", token }
+      );
+      const media = rows[0] ?? null;
+      if (!media) throw new Error("Fotoğraf kaydı bulunamadı.");
+
+      await deleteStorageObjects(
+        Array.from(new Set([media.display_storage_path, media.original_storage_path, media.storage_path].filter(Boolean) as string[])),
+        token
+      );
+      await request(
+        `/rest/v1/property_media?id=eq.${encodeURIComponent(mediaId)}&property_id=eq.${encodeURIComponent(propertyId)}`,
+        { method: "DELETE", token }
+      );
+
+      const remainingRows = await request<PropertyMediaRow[]>(
+        `/rest/v1/property_media?property_id=eq.${encodeURIComponent(propertyId)}&select=*&order=sort_order.asc,created_at.asc`,
+        { method: "GET", token }
+      );
+      if (media.is_cover && remainingRows[0]?.id) {
+        await markPropertyMediaCover(propertyId, remainingRows[0].id);
+      }
+
+      void logActivity({
+        action: "property_photo_removed",
+        entity_type: "property",
+        entity_id: propertyId,
+        entity_title: media.file_name || "Portföy fotoğrafı",
+        summary: "Portföy fotoğrafı kaldırıldı.",
+        metadata: {
+          media_id: media.id,
+          mime_type: media.mime_type,
+          file_size: media.file_size
+        }
+      });
+
+      return withSignedImageUrls(media.is_cover && remainingRows[0]?.id
+        ? remainingRows.map((row, index) => ({ ...row, is_cover: index === 0 }))
+        : remainingRows);
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
   async function getActivePropertyShareLink(propertyId: string) {
     const token = getAccessToken();
     if (!token) return null;
@@ -1581,6 +1667,8 @@ export function createSupabaseAuthClient(): any {
     uploadPropertyPhoto,
 
     markPropertyMediaCover,
+
+    deletePropertyMedia,
 
     getActivePropertyShareLink,
 

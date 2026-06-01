@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "../auth-context";
 import {
   createSupabaseAuthClient,
@@ -24,6 +24,17 @@ import {
   yesNoTextOptions
 } from "@/lib/oos/property-fields";
 import { PropertyListingCard, formatPropertyLocation, formatPropertyPrice } from "../property-listing-card";
+import {
+  PropertyPhotoManager,
+  validatePropertyPhotoFiles,
+  type PropertyPhotoPreviewItem
+} from "../property-photo-manager";
+
+type PendingPortfolioPhoto = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
 
 const demoPortfolios: AdvisorPropertyRow[] = demoShowcasePortfolios.slice(0, 2).map((portfolio) => ({
   id: portfolio.id,
@@ -78,6 +89,10 @@ export default function PortfoliosRoutePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [mediaMessage, setMediaMessage] = useState("");
+  const [pendingPhotos, setPendingPhotos] = useState<PendingPortfolioPhoto[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [markingCoverId, setMarkingCoverId] = useState("");
+  const [removingPhotoId, setRemovingPhotoId] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -129,6 +144,11 @@ export default function PortfoliosRoutePage() {
               ? current.map((item) => (item.id === editingId ? row : item))
               : [row, ...current]
           );
+          if (!editingId && pendingPhotos.length) {
+            const nextMedia = await uploadFilesForProperty(row.id, pendingPhotos.map((photo) => photo.file), []);
+            setMediaByProperty((current) => ({ ...current, [row.id]: nextMedia }));
+            setMediaMessage("Portföy kaydedildi ve fotoğraflar yüklendi.");
+          }
         }
         setMessage("");
       } catch (error) {
@@ -144,6 +164,7 @@ export default function PortfoliosRoutePage() {
       );
     }
 
+    clearPendingPhotos();
     setForm(emptyForm);
     setEditingId(null);
     setSaving(false);
@@ -166,12 +187,15 @@ export default function PortfoliosRoutePage() {
     if (editingId === id) {
       setEditingId(null);
       setForm(emptyForm);
+      clearPendingPhotos();
     }
     setDeletingId(null);
   }
 
   function editPortfolio(item: AdvisorPropertyRow) {
     setEditingId(item.id);
+    clearPendingPhotos();
+    setMediaMessage("");
     setForm({
       title: item.title,
       location: formatPropertyLocation(item),
@@ -196,6 +220,147 @@ export default function PortfoliosRoutePage() {
       exchangeAvailable: item.exchange_available === true ? "Var" : item.exchange_available === false ? "Yok" : "Belirtilmedi",
       moreOpen: false
     });
+  }
+
+  function clearPendingPhotos() {
+    pendingPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+    setPendingPhotos([]);
+    setUploadProgress(null);
+  }
+
+  const pendingMedia: PropertyPhotoPreviewItem[] = pendingPhotos.map((photo, index) => ({
+    id: photo.id,
+    property_id: "pending",
+    storage_bucket: "property-images",
+    storage_path: "",
+    display_storage_path: null,
+    original_storage_path: null,
+    file_name: photo.file.name,
+    file_size: photo.file.size,
+    mime_type: photo.file.type,
+    sort_order: index,
+    is_cover: index === 0,
+    visibility: "internal",
+    uploaded_by: null,
+    created_at: new Date().toISOString(),
+    updated_at: undefined,
+    preview_url: photo.previewUrl,
+    is_pending: true
+  }));
+
+  function addPendingPhotos(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!files.length) return;
+
+    if (!persistentMode || !supabase) {
+      setMediaMessage("Fotoğraf yükleme için Supabase bağlantısı gerekli.");
+      return;
+    }
+
+    const validationMessage = validatePropertyPhotoFiles(files, pendingPhotos.length);
+    if (validationMessage) {
+      setMediaMessage(validationMessage);
+      return;
+    }
+
+    setPendingPhotos((current) => [
+      ...current,
+      ...files.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: URL.createObjectURL(file)
+      }))
+    ]);
+    setMediaMessage("Fotoğraflar portföy kaydedilince yüklenecek.");
+  }
+
+  async function uploadFilesForProperty(propertyId: string, files: File[], existingMedia: PropertyMediaRow[]) {
+    if (!supabase) return existingMedia;
+    let nextMedia = existingMedia;
+
+    for (let index = 0; index < files.length; index += 1) {
+      setUploadProgress(Math.round((index / files.length) * 90));
+      nextMedia = await supabase.uploadPropertyPhoto(propertyId, files[index], nextMedia.length);
+    }
+
+    setUploadProgress(100);
+    return nextMedia;
+  }
+
+  async function uploadPortfolioPhotos(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!files.length || !editingId) return;
+
+    if (!persistentMode || !supabase) {
+      setMediaMessage("Fotoğraf yükleme için Supabase bağlantısı gerekli.");
+      return;
+    }
+
+    const currentMedia = mediaByProperty[editingId] ?? [];
+    const validationMessage = validatePropertyPhotoFiles(files, currentMedia.length);
+    if (validationMessage) {
+      setMediaMessage(validationMessage);
+      return;
+    }
+
+    setSaving(true);
+    setMediaMessage("");
+    setUploadProgress(0);
+    try {
+      const nextMedia = await uploadFilesForProperty(editingId, files, currentMedia);
+      setMediaByProperty((current) => ({ ...current, [editingId]: nextMedia }));
+      setMediaMessage("Fotoğraflar yüklendi.");
+    } catch (error) {
+      console.error(error);
+      setMediaMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Fotoğraf yüklenemedi.");
+    } finally {
+      setSaving(false);
+      setTimeout(() => setUploadProgress(null), 800);
+    }
+  }
+
+  async function markPhotoAsCover(mediaId: string) {
+    if (!editingId || !persistentMode || !supabase) return;
+    setMarkingCoverId(mediaId);
+    setMediaMessage("");
+
+    try {
+      await supabase.markPropertyMediaCover(editingId, mediaId);
+      setMediaByProperty((current) => ({
+        ...current,
+        [editingId]: (current[editingId] ?? []).map((media) => ({
+          ...media,
+          is_cover: media.id === mediaId
+        }))
+      }));
+      setMediaMessage("Kapak fotoğrafı güncellendi.");
+    } catch (error) {
+      console.error(error);
+      setMediaMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Kapak fotoğrafı güncellenemedi.");
+    } finally {
+      setMarkingCoverId("");
+    }
+  }
+
+  async function removePropertyPhoto(mediaId: string) {
+    if (!editingId || !persistentMode || !supabase) return;
+    const confirmed = window.confirm("Fotoğraf kaldırılsın mı?");
+    if (!confirmed) return;
+
+    setRemovingPhotoId(mediaId);
+    setMediaMessage("");
+    try {
+      const nextMedia = await supabase.deletePropertyMedia(editingId, mediaId);
+      setMediaByProperty((current) => ({ ...current, [editingId]: nextMedia }));
+      setMediaMessage("Fotoğraf kaldırıldı.");
+    } catch (error) {
+      console.error(error);
+      setMediaMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Fotoğraf kaldırılamadı.");
+    } finally {
+      setRemovingPhotoId("");
+    }
   }
 
   const activeCount = items.filter((item) => item.status !== "archived").length;
@@ -288,8 +453,21 @@ export default function PortfoliosRoutePage() {
               </select>
             </div>
           </details>
+          <PropertyPhotoManager
+            disabled={!persistentMode || saving}
+            loading={saving}
+            markingCoverId={markingCoverId}
+            media={editingId ? mediaByProperty[editingId] ?? [] : pendingMedia}
+            message={mediaMessage}
+            progress={uploadProgress}
+            removingId={removingPhotoId}
+            uploadId={editingId ? "portfolio-edit-photo-upload" : "portfolio-create-photo-upload"}
+            onMarkCover={editingId ? markPhotoAsCover : () => undefined}
+            onRemove={editingId ? removePropertyPhoto : undefined}
+            onUpload={editingId ? uploadPortfolioPhotos : addPendingPhotos}
+          />
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            {editingId ? <button className="btn-secondary" type="button" disabled={saving} onClick={() => { setEditingId(null); setForm(emptyForm); }}>Vazgeç</button> : null}
+            {editingId ? <button className="btn-secondary" type="button" disabled={saving} onClick={() => { setEditingId(null); setForm(emptyForm); clearPendingPhotos(); setMediaMessage(""); }}>Vazgeç</button> : null}
             <button className="btn-primary" type="button" disabled={saving} onClick={savePortfolio}>{saving ? "Kaydediliyor..." : "Kaydet"}</button>
           </div>
         </section>

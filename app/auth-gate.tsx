@@ -42,7 +42,8 @@ const publicRoutePrefixes = [
   "/careers",
   "/support",
   "/tools/tax-calculator",
-  "/legal"
+  "/legal",
+  "/share"
 ];
 
 function isPublicRoute(pathname: string) {

@@ -171,6 +171,37 @@ export type PropertyMediaRow = {
   signed_url?: string;
 };
 
+export type PropertySharePayload = {
+  title: string;
+  price: number | null;
+  currency: string | null;
+  city: string | null;
+  district: string | null;
+  neighborhood: string | null;
+  property_type: string | null;
+  usage_type: string | null;
+  gross_area: number | null;
+  net_area: number | null;
+  status: string | null;
+  photo_count: number;
+  advisor_name?: string | null;
+  advisor_title?: string | null;
+  advisor_phone?: string | null;
+  advisor_email?: string | null;
+};
+
+export type PropertyShareLinkRow = {
+  id: string;
+  property_id: string;
+  token: string;
+  created_by: string | null;
+  public_payload: PropertySharePayload;
+  is_active: boolean;
+  created_at?: string;
+  disabled_at?: string | null;
+  expires_at?: string | null;
+};
+
 export type PortfolioInput = Partial<Omit<AdvisorPortfolioRow, "id" | "owner_user_id" | "created_at" | "updated_at">> & {
   title: string;
 };
@@ -306,6 +337,16 @@ function getImageExtension(file: File) {
   if (file.type === "image/png") return "png";
   if (file.type === "image/webp") return "webp";
   return "jpg";
+}
+
+function createShareToken() {
+  if (typeof crypto !== "undefined" && "getRandomValues" in crypto) {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 18)}`;
 }
 
 function loadImageElement(src: string) {
@@ -874,6 +915,86 @@ export function createSupabaseAuthClient(): any {
     }
   }
 
+  async function getActivePropertyShareLink(propertyId: string) {
+    const token = getAccessToken();
+    if (!token) return null;
+
+    try {
+      const rows = await request<PropertyShareLinkRow[]>(
+        `/rest/v1/property_share_links?property_id=eq.${encodeURIComponent(propertyId)}&is_active=eq.true&select=*&order=created_at.desc&limit=1`,
+        { method: "GET", token }
+      );
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function createPropertyShareLink(propertyId: string, publicPayload: PropertySharePayload) {
+    const stored = readStoredSession();
+    if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<PropertyShareLinkRow[]>("/rest/v1/property_share_links", {
+        method: "POST",
+        token: stored.access_token,
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          property_id: propertyId,
+          token: createShareToken(),
+          created_by: stored.user.id,
+          public_payload: publicPayload,
+          is_active: true
+        })
+      });
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function disablePropertyShareLink(shareLinkId: string) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<PropertyShareLinkRow[]>(
+        `/rest/v1/property_share_links?id=eq.${encodeURIComponent(shareLinkId)}`,
+        {
+          method: "PATCH",
+          token,
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ is_active: false, disabled_at: new Date().toISOString() })
+        }
+      );
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function getPublicPropertyShare(token: string) {
+    try {
+      const rows = await request<PropertyShareLinkRow[]>(
+        "/rest/v1/rpc/get_public_property_share",
+        {
+          method: "POST",
+          body: JSON.stringify({ input_token: token })
+        }
+      );
+
+      const row = rows[0] ?? null;
+      if (!row) return null;
+      if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) return null;
+      return row;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
   async function createTask(task: TaskInput) {
     const stored = readStoredSession();
     if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
@@ -1025,6 +1146,14 @@ export function createSupabaseAuthClient(): any {
     uploadPropertyPhoto,
 
     markPropertyMediaCover,
+
+    getActivePropertyShareLink,
+
+    createPropertyShareLink,
+
+    disablePropertyShareLink,
+
+    getPublicPropertyShare,
 
     createTask,
 

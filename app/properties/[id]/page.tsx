@@ -8,7 +8,9 @@ import {
   createSupabaseAuthClient,
   getDataSetupMessage,
   type AdvisorPropertyRow,
-  type PropertyMediaRow
+  type PropertyMediaRow,
+  type PropertyShareLinkRow,
+  type PropertySharePayload
 } from "@/lib/supabase/client";
 import { DEMO_PROPERTY_IMAGE, formatPropertyLocation, formatPropertyPrice } from "@/app/property-listing-card";
 import { formatStatusLabel, getStatusPillClass } from "@/lib/oos/status-labels";
@@ -27,6 +29,9 @@ export default function PropertyDetailPage() {
   const [activeTab, setActiveTab] = useState<PropertyTab>("Genel Bilgiler");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [shareLink, setShareLink] = useState<PropertyShareLinkRow | null>(null);
+  const [shareMessage, setShareMessage] = useState("");
+  const [shareLoading, setShareLoading] = useState(false);
   const propertyId = params?.id || "";
 
   useEffect(() => {
@@ -42,12 +47,14 @@ export default function PropertyDetailPage() {
 
     Promise.all([
       supabase.getProperty(propertyId),
-      supabase.getPropertyMedia(propertyId).catch(() => [])
+      supabase.getPropertyMedia(propertyId).catch(() => []),
+      supabase.getActivePropertyShareLink(propertyId).catch(() => null)
     ])
-      .then(([propertyRow, mediaRows]: [AdvisorPropertyRow | null, PropertyMediaRow[]]) => {
+      .then(([propertyRow, mediaRows, activeShareLink]: [AdvisorPropertyRow | null, PropertyMediaRow[], PropertyShareLinkRow | null]) => {
         if (!mounted) return;
         setProperty(propertyRow);
         setMedia(mediaRows);
+        setShareLink(activeShareLink);
         if (!propertyRow) {
           setMessage("Portföy bulunamadı. Bu portföye erişim yetkiniz olmayabilir.");
         }
@@ -76,6 +83,49 @@ export default function PropertyDetailPage() {
     });
   }, [media]);
   const activePhoto = orderedMedia[activePhotoIndex] ?? orderedMedia[0] ?? null;
+
+  const shareUrl = shareLink
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/share/${shareLink.token}`
+    : "";
+
+  async function createOrCopyShareLink() {
+    if (!property || !supabase) return;
+    setShareLoading(true);
+    setShareMessage("");
+
+    try {
+      const activeShareLink =
+        shareLink || (await supabase.createPropertyShareLink(property.id, toPublicSharePayload(property, orderedMedia.length)));
+      if (activeShareLink) {
+        setShareLink(activeShareLink);
+        const url = `${window.location.origin}/share/${activeShareLink.token}`;
+        await navigator.clipboard?.writeText(url);
+        setShareMessage("Paylaşım linki kopyalandı.");
+      }
+    } catch (error) {
+      console.error(error);
+      setShareMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Paylaşım linki oluşturulamadı.");
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
+  async function disableShareLink() {
+    if (!shareLink || !supabase) return;
+    setShareLoading(true);
+    setShareMessage("");
+
+    try {
+      await supabase.disablePropertyShareLink(shareLink.id);
+      setShareLink(null);
+      setShareMessage("Paylaşım kapatıldı.");
+    } catch (error) {
+      console.error(error);
+      setShareMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Paylaşım kapatılamadı.");
+    } finally {
+      setShareLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -115,6 +165,34 @@ export default function PropertyDetailPage() {
           <Link href="/" className="mini-action w-fit">Dashboard’a Dön</Link>
           <p className="text-sm text-slate-500 dark:text-slate-400">OceanOS portföy detayı</p>
         </header>
+
+        <section className="mt-5 flex flex-col gap-2 rounded-[2rem] border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#080808] sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-950 dark:text-slate-100">Dış paylaşım ve PDF</p>
+            <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+              {shareUrl || "Harici satış materyali için güvenli çıktı oluşturun."}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button className="btn-secondary" type="button" disabled={shareLoading} onClick={createOrCopyShareLink}>
+              {shareLoading ? "Hazırlanıyor..." : shareLink ? "Paylaşım Linkini Kopyala" : "Paylaşım Linki Oluştur"}
+            </button>
+            {shareLink ? (
+              <button className="btn-secondary" type="button" disabled={shareLoading} onClick={disableShareLink}>
+                Paylaşımı Kapat
+              </button>
+            ) : null}
+            <Link href={`/properties/${property.id}/print`} target="_blank" className="btn-secondary">
+              PDF Olarak Dışa Aktar
+            </Link>
+          </div>
+        </section>
+
+        {shareMessage ? (
+          <p className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-[#080808] dark:text-slate-300">
+            {shareMessage}
+          </p>
+        ) : null}
 
         <section className="mt-6">
           <PropertyGallery
@@ -176,6 +254,23 @@ export default function PropertyDetailPage() {
       </div>
     </main>
   );
+}
+
+function toPublicSharePayload(property: AdvisorPropertyRow, photoCount: number): PropertySharePayload {
+  return {
+    title: property.title || "Ocean Real Estate portföyü",
+    price: property.asking_price,
+    currency: property.currency,
+    city: property.city,
+    district: property.district,
+    neighborhood: property.neighborhood,
+    property_type: property.property_type,
+    usage_type: property.usage_type,
+    gross_area: property.gross_area,
+    net_area: property.net_area,
+    status: property.status,
+    photo_count: photoCount
+  };
 }
 
 function PropertyGallery({

@@ -10,5 +10,14 @@ export const metadata: Metadata = {
 };
 
 export default function CareersPage() {
-  return <PublicPageShell page={page} />;
+  return (
+    <PublicPageShell
+      page={page}
+      action={{
+        href: "/apply-advisor",
+        label: "Danışman Başvurusu Yap",
+        secondaryLabel: "İletişime Geç"
+      }}
+    />
+  );
 }

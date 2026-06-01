@@ -2814,7 +2814,7 @@ function SearchStatusBadge({ status }: { status: SearchStatus }) {
 
 function SearchUrgencyBadge({ urgency }: { urgency: SearchUrgency }) {
   return (
-    <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${getUrgencyPillClass(urgency)}`}>
+    <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${getUrgencyPillClass(urgency)}`}>
       {formatUrgencyLabel(urgency)}
     </span>
   );

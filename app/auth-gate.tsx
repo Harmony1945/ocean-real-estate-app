@@ -951,7 +951,8 @@ function OceanCorporateFooter() {
         { label: "Ocean Elite", href: "/ocean-elite" },
         { label: "Star Girişim ve Yatırım A.Ş.", href: "/star-girisim-ve-yatirim" },
         { label: "İletişim", href: "/contact" },
-        { label: "Kariyer", href: "/careers" }
+        { label: "Kariyer", href: "/careers" },
+        { label: "Danışman Başvurusu Yap", href: "/apply-advisor" }
       ]
     },
     {

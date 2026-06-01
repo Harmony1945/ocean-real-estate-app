@@ -32,6 +32,7 @@ export default function PropertyDetailPage() {
   const [message, setMessage] = useState("");
   const [shareLink, setShareLink] = useState<PropertyShareLinkRow | null>(null);
   const [shareMessage, setShareMessage] = useState("");
+  const [manualShareUrl, setManualShareUrl] = useState("");
   const [shareLoading, setShareLoading] = useState(false);
   const propertyId = params?.id || "";
 
@@ -93,6 +94,7 @@ export default function PropertyDetailPage() {
     if (!property || !supabase) return;
     setShareLoading(true);
     setShareMessage("");
+    setManualShareUrl("");
 
     try {
       const activeShareLink =
@@ -100,8 +102,17 @@ export default function PropertyDetailPage() {
       if (activeShareLink) {
         setShareLink(activeShareLink);
         const url = `${window.location.origin}/share/${activeShareLink.token}`;
-        await navigator.clipboard?.writeText(url);
-        setShareMessage("Paylaşım linki kopyalandı.");
+        const result = await sharePropertyUrl(url, property.title);
+        if (result === "shared") {
+          setShareMessage("Paylaşım penceresi açıldı.");
+        } else if (result === "copied") {
+          setShareMessage("Paylaşım linki kopyalandı.");
+        } else if (result === "manual") {
+          setManualShareUrl(url);
+          setShareMessage("Paylaşım linki hazır. Aşağıdan manuel kopyalayabilirsiniz.");
+        } else if (result === "cancelled") {
+          setShareMessage("Paylaşım iptal edildi.");
+        }
       }
     } catch (error) {
       console.error(error);
@@ -202,6 +213,15 @@ export default function PropertyDetailPage() {
           </p>
         ) : null}
 
+        {manualShareUrl ? (
+          <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#080808] sm:flex-row">
+            <input className="input min-w-0 flex-1" readOnly value={manualShareUrl} aria-label="Paylaşım linki" />
+            <button className="btn-secondary" type="button" onClick={() => copyManualShareUrl(manualShareUrl, setShareMessage)}>
+              Linki Kopyala
+            </button>
+          </div>
+        ) : null}
+
         <section className="mt-6">
           <PropertyGallery
             media={orderedMedia}
@@ -272,6 +292,42 @@ function ShareIcon() {
       <path d="M6 14v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4" />
     </svg>
   );
+}
+
+async function sharePropertyUrl(url: string, propertyTitle?: string | null) {
+  const shareData = {
+    title: propertyTitle || "Ocean Real Estate portföyü",
+    text: "Ocean Real Estate portföyünü inceleyebilirsiniz.",
+    url
+  };
+
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    try {
+      await navigator.share(shareData);
+      return "shared" as const;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return "cancelled" as const;
+      }
+    }
+  }
+
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+    return "copied" as const;
+  }
+
+  return "manual" as const;
+}
+
+async function copyManualShareUrl(url: string, setMessage: (message: string) => void) {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+    setMessage("Paylaşım linki kopyalandı.");
+    return;
+  }
+
+  setMessage("Paylaşım linki hazır. Link alanından manuel kopyalayabilirsiniz.");
 }
 
 function toPublicSharePayload(property: AdvisorPropertyRow, photoCount: number): PropertySharePayload {

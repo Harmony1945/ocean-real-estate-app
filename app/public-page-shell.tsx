@@ -2,7 +2,17 @@ import Link from "next/link";
 import ThemeToggle from "./theme-toggle";
 import type { PublicContentPage } from "@/lib/oos/footer-public-pages";
 
-export default function PublicPageShell({ page }: { page: PublicContentPage }) {
+export default function PublicPageShell({
+  page,
+  action
+}: {
+  page: PublicContentPage;
+  action?: {
+    href: string;
+    label: string;
+    secondaryLabel?: string;
+  };
+}) {
   return (
     <main className="min-h-screen bg-black px-4 py-5 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
@@ -20,6 +30,18 @@ export default function PublicPageShell({ page }: { page: PublicContentPage }) {
           <p className="mt-5 max-w-3xl text-sm leading-7 text-white/70 sm:text-base">
             {page.intro}
           </p>
+          {action ? (
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Link href={action.href} className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black transition hover:bg-white/90">
+                {action.label}
+              </Link>
+              {action.secondaryLabel ? (
+                <Link href="/contact" className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-white/75 transition hover:border-white/30 hover:text-white">
+                  {action.secondaryLabel}
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <section className="space-y-12 py-14 sm:py-16">

@@ -75,20 +75,20 @@ export function getUrgencyPillClass(urgency?: string | null) {
   const label = formatUrgencyLabel(urgency);
 
   if (label === "Acil") {
-    return "border border-red-200 bg-red-50 text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-200";
+    return "border border-red-300 bg-red-100 text-red-800 shadow-sm shadow-red-950/5 dark:border-red-400/30 dark:bg-red-400/15 dark:text-red-100";
   }
 
   if (label === "Yüksek") {
-    return "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200";
+    return "border border-emerald-300 bg-emerald-100 text-emerald-800 shadow-sm shadow-emerald-950/5 dark:border-emerald-400/30 dark:bg-emerald-400/15 dark:text-emerald-100";
   }
 
   if (label === "Orta") {
-    return "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200";
+    return "border border-amber-300 bg-amber-100 text-amber-800 shadow-sm shadow-amber-950/5 dark:border-amber-400/30 dark:bg-amber-400/15 dark:text-amber-100";
   }
 
   if (label === "Normal") {
-    return "border border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300";
+    return "border border-sky-200 bg-sky-50 text-sky-700 shadow-sm shadow-sky-950/5 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-200";
   }
 
-  return "border border-slate-200 bg-slate-100 text-slate-500 dark:border-white/10 dark:bg-[#111111] dark:text-slate-400";
+  return "border border-slate-200 bg-slate-100 text-slate-600 shadow-sm dark:border-white/10 dark:bg-[#111111] dark:text-slate-300";
 }

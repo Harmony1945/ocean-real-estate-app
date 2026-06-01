@@ -281,7 +281,7 @@ export default function RequestsRoutePage() {
                   {item.notes ? <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">{item.notes}</p> : null}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${getUrgencyPillClass(item.urgency)}`}>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getUrgencyPillClass(item.urgency)}`}>
                     {formatUrgencyLabel(item.urgency)}
                   </span>
                   <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusPillClass(item.status)}`}>

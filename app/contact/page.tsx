@@ -45,6 +45,17 @@ export default function ContactPage() {
             </p>
           </div>
         </section>
+
+        <section className="border-t border-white/10 py-10">
+          <p className="text-xs uppercase tracking-[0.18em] text-white/40">Başvuru</p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight">Ocean’a danışman olarak katılın</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-white/65">
+            Ocean Real Estate danışman modeli için başvurunuzu dijital form üzerinden iletebilirsiniz.
+          </p>
+          <Link href="/apply-advisor" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black transition hover:bg-white/90">
+            Ocean’a Danışman Olarak Katıl
+          </Link>
+        </section>
       </div>
     </main>
   );

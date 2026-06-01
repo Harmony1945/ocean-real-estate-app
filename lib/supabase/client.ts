@@ -244,6 +244,32 @@ export type AdvisorApplicationInput = Pick<
   | "kvkk_accepted"
 >;
 
+export type ActivityLogRow = {
+  id: string;
+  actor_profile_id: string | null;
+  actor_advisor_id: string | null;
+  actor_email: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  entity_title: string | null;
+  status: string;
+  summary: string | null;
+  metadata: Record<string, unknown>;
+  created_at?: string;
+};
+
+export type ActivityLogInput = {
+  action: string;
+  entity_type: string;
+  entity_id?: string | null;
+  entity_title?: string | null;
+  status?: string;
+  summary?: string | null;
+  metadata?: Record<string, unknown>;
+  actor_email?: string | null;
+};
+
 export type PortfolioInput = Partial<Omit<AdvisorPortfolioRow, "id" | "owner_user_id" | "created_at" | "updated_at">> & {
   title: string;
 };
@@ -416,6 +442,28 @@ function createShareToken() {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 18)}`;
 }
 
+function isUuid(value?: string | null) {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+}
+
+function sanitizeActivityMetadata(metadata: ActivityLogInput["metadata"] = {}) {
+  const blockedKeyPattern = /(token|signed|secret|key|url|path|private|note)/i;
+  const safeMetadata: Record<string, unknown> = {};
+
+  Object.entries(metadata).forEach(([key, value]) => {
+    if (blockedKeyPattern.test(key)) return;
+    if (
+      value === null ||
+      ["string", "number", "boolean"].includes(typeof value) ||
+      (Array.isArray(value) && value.every((item) => ["string", "number", "boolean"].includes(typeof item)))
+    ) {
+      safeMetadata[key] = value;
+    }
+  });
+
+  return safeMetadata;
+}
+
 function loadImageElement(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -539,6 +587,45 @@ export function createSupabaseAuthClient(): any {
 
   function getAccessToken() {
     return readStoredSession()?.access_token || "";
+  }
+
+  async function logActivity(input: ActivityLogInput) {
+    try {
+      const token = getAccessToken();
+      const row = await request<ActivityLogRow[] | ActivityLogRow>("/rest/v1/rpc/log_activity", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          input_action: input.action,
+          input_entity_type: input.entity_type,
+          input_entity_id: isUuid(input.entity_id) ? input.entity_id : null,
+          input_entity_title: input.entity_title ?? null,
+          input_status: input.status || "success",
+          input_summary: input.summary ?? null,
+          input_metadata: sanitizeActivityMetadata(input.metadata),
+          input_actor_email: input.actor_email ?? null
+        })
+      });
+
+      return Array.isArray(row) ? row[0] ?? null : row;
+    } catch (error) {
+      console.warn("Activity log failed.", error);
+      return null;
+    }
+  }
+
+  async function getActivityLogs() {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<ActivityLogRow[]>(
+        "/rest/v1/activity_logs?select=*&order=created_at.desc&limit=100",
+        { method: "GET", token }
+      );
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
   }
 
   async function getProfile(userId: string) {
@@ -674,7 +761,23 @@ export function createSupabaseAuthClient(): any {
         body: JSON.stringify({ ...searchRequest, owner_user_id: stored.user.id })
       });
 
-      return rows[0] ?? null;
+      const row = rows[0] ?? null;
+      if (row) {
+        void logActivity({
+          action: "search_request_created",
+          entity_type: "search_request",
+          entity_id: row.id,
+          entity_title: row.title || row.request_type || "Arayış",
+          summary: "Arayış oluşturuldu.",
+          metadata: {
+            request_type: row.request_type || row.purpose,
+            status: row.status,
+            urgency: row.urgency
+          }
+        });
+      }
+
+      return row;
     } catch (error) {
       throw new Error(dataError(error));
     }
@@ -695,7 +798,23 @@ export function createSupabaseAuthClient(): any {
         }
       );
 
-      return rows[0] ?? null;
+      const row = rows[0] ?? null;
+      if (row) {
+        void logActivity({
+          action: "search_request_updated",
+          entity_type: "search_request",
+          entity_id: row.id,
+          entity_title: row.title || row.request_type || "Arayış",
+          summary: "Arayış güncellendi.",
+          metadata: {
+            request_type: row.request_type || row.purpose,
+            status: row.status,
+            urgency: row.urgency
+          }
+        });
+      }
+
+      return row;
     } catch (error) {
       throw new Error(dataError(error));
     }
@@ -802,7 +921,24 @@ export function createSupabaseAuthClient(): any {
         body: JSON.stringify({ ...property, advisor_id: advisorId })
       });
 
-      return rows[0] ?? null;
+      const row = rows[0] ?? null;
+      if (row) {
+        void logActivity({
+          action: "property_created",
+          entity_type: "property",
+          entity_id: row.id,
+          entity_title: row.title,
+          summary: "Portföy oluşturuldu.",
+          metadata: {
+            status: row.status,
+            city: row.city,
+            district: row.district,
+            property_type: row.property_type
+          }
+        });
+      }
+
+      return row;
     } catch (error) {
       throw new Error(dataError(error));
     }
@@ -823,7 +959,24 @@ export function createSupabaseAuthClient(): any {
         }
       );
 
-      return rows[0] ?? null;
+      const row = rows[0] ?? null;
+      if (row) {
+        void logActivity({
+          action: "property_updated",
+          entity_type: "property",
+          entity_id: row.id,
+          entity_title: row.title,
+          summary: "Portföy güncellendi.",
+          metadata: {
+            status: row.status,
+            city: row.city,
+            district: row.district,
+            property_type: row.property_type
+          }
+        });
+      }
+
+      return row;
     } catch (error) {
       throw new Error(dataError(error));
     }
@@ -947,7 +1100,24 @@ export function createSupabaseAuthClient(): any {
       });
 
       const signedRows = await withSignedImageUrls(rows);
-      return signedRows[0] ?? null;
+      const row = signedRows[0] ?? null;
+      if (row) {
+        void logActivity({
+          action: "property_photo_uploaded",
+          entity_type: "property",
+          entity_id: propertyId,
+          entity_title: file.name,
+          summary: "Portföy fotoğrafı yüklendi.",
+          metadata: {
+            media_id: row.id,
+            mime_type: row.mime_type,
+            file_size: row.file_size,
+            is_cover: row.is_cover
+          }
+        });
+      }
+
+      return row;
     } catch (error) {
       throw new Error(dataError(error));
     }
@@ -976,7 +1146,22 @@ export function createSupabaseAuthClient(): any {
         }
       );
 
-      return withSignedImageUrls(rows);
+      const signedRows = await withSignedImageUrls(rows);
+      const row = signedRows[0] ?? null;
+      if (row) {
+        void logActivity({
+          action: "property_cover_updated",
+          entity_type: "property",
+          entity_id: propertyId,
+          entity_title: row.file_name || "Kapak fotoğrafı",
+          summary: "Kapak fotoğrafı değiştirildi.",
+          metadata: {
+            media_id: row.id
+          }
+        });
+      }
+
+      return signedRows;
     } catch (error) {
       throw new Error(dataError(error));
     }
@@ -1016,7 +1201,21 @@ export function createSupabaseAuthClient(): any {
         })
       });
 
-      return rows[0] ?? null;
+      const row = rows[0] ?? null;
+      if (row) {
+        void logActivity({
+          action: "property_share_created",
+          entity_type: "property",
+          entity_id: propertyId,
+          entity_title: publicPayload.title,
+          summary: "Paylaşım linki oluşturuldu.",
+          metadata: {
+            photo_count: publicPayload.photo_count
+          }
+        });
+      }
+
+      return row;
     } catch (error) {
       throw new Error(dataError(error));
     }
@@ -1037,7 +1236,21 @@ export function createSupabaseAuthClient(): any {
         }
       );
 
-      return rows[0] ?? null;
+      const row = rows[0] ?? null;
+      if (row) {
+        void logActivity({
+          action: "property_share_deactivated",
+          entity_type: "property",
+          entity_id: row.property_id,
+          entity_title: "Paylaşım linki",
+          summary: "Paylaşım kapatıldı.",
+          metadata: {
+            share_link_id: row.id
+          }
+        });
+      }
+
+      return row;
     } catch (error) {
       throw new Error(dataError(error));
     }
@@ -1070,7 +1283,24 @@ export function createSupabaseAuthClient(): any {
         body: JSON.stringify(application)
       });
 
-      return rows[0] ?? null;
+      const row = rows[0] ?? null;
+      if (row) {
+        void logActivity({
+          action: "advisor_application_submitted",
+          entity_type: "advisor_application",
+          entity_id: row.id,
+          entity_title: row.full_name,
+          actor_email: row.email,
+          summary: "Danışman başvurusu gönderildi.",
+          metadata: {
+            preferred_model: row.preferred_model,
+            city: row.city,
+            district: row.district
+          }
+        });
+      }
+
+      return row;
     } catch (error) {
       throw new Error(dataError(error));
     }
@@ -1108,7 +1338,52 @@ export function createSupabaseAuthClient(): any {
         }
       );
 
-      return Array.isArray(rows) ? rows[0] ?? null : rows;
+      const row = Array.isArray(rows) ? rows[0] ?? null : rows;
+      if (row) {
+        const action =
+          status === "approved"
+            ? "advisor_application_approved"
+            : status === "rejected"
+              ? "advisor_application_rejected"
+              : "admin_reviewed_advisor_application";
+
+        void logActivity({
+          action,
+          entity_type: "advisor_application",
+          entity_id: row.id,
+          entity_title: row.full_name,
+          actor_email: row.email,
+          summary:
+            status === "approved"
+              ? "Danışman başvurusu onaylandı."
+              : status === "rejected"
+                ? "Danışman başvurusu reddedildi."
+                : "Danışman başvurusu inceleniyor.",
+          metadata: {
+            review_status: status,
+            preferred_model: row.preferred_model,
+            linked_profile: Boolean(row.linked_profile_id),
+            linked_advisor: Boolean(row.linked_advisor_id)
+          }
+        });
+        if (action !== "admin_reviewed_advisor_application") {
+          void logActivity({
+            action: "admin_reviewed_advisor_application",
+            entity_type: "advisor_application",
+            entity_id: row.id,
+            entity_title: row.full_name,
+            actor_email: row.email,
+            summary: "Danışman başvurusu admin tarafından incelendi.",
+            metadata: {
+              review_status: status,
+              linked_profile: Boolean(row.linked_profile_id),
+              linked_advisor: Boolean(row.linked_advisor_id)
+            }
+          });
+        }
+      }
+
+      return row;
     } catch (error) {
       throw new Error(dataError(error));
     }
@@ -1225,6 +1500,10 @@ export function createSupabaseAuthClient(): any {
     getProfile,
 
     saveProfile,
+
+    logActivity,
+
+    getActivityLogs,
 
     getPortfolios,
 

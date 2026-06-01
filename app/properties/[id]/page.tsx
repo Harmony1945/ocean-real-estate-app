@@ -105,8 +105,10 @@ export default function PropertyDetailPage() {
         const result = await sharePropertyUrl(url, property.title);
         if (result === "shared") {
           setShareMessage("Paylaşım penceresi açıldı.");
+          logPropertyActivity("property_share_copied", "Paylaşım linki paylaşıldı.", { delivery: "native_share" });
         } else if (result === "copied") {
           setShareMessage("Paylaşım linki kopyalandı.");
+          logPropertyActivity("property_share_copied", "Paylaşım linki kopyalandı.", { delivery: "clipboard" });
         } else if (result === "manual") {
           setManualShareUrl(url);
           setShareMessage("Paylaşım linki hazır. Aşağıdan manuel kopyalayabilirsiniz.");
@@ -120,6 +122,19 @@ export default function PropertyDetailPage() {
     } finally {
       setShareLoading(false);
     }
+  }
+
+  function logPropertyActivity(action: string, summary: string, metadata: Record<string, unknown> = {}) {
+    if (!property || !supabase) return;
+
+    void supabase.logActivity({
+      action,
+      entity_type: "property",
+      entity_id: property.id,
+      entity_title: property.title,
+      summary,
+      metadata
+    });
   }
 
   async function disableShareLink() {
@@ -201,7 +216,12 @@ export default function PropertyDetailPage() {
                 Paylaşımı Kapat
               </button>
             ) : null}
-            <Link href={`/properties/${property.id}/print`} target="_blank" className="btn-secondary">
+            <Link
+              href={`/properties/${property.id}/print`}
+              target="_blank"
+              className="btn-secondary"
+              onClick={() => logPropertyActivity("property_pdf_exported", "PDF dışa aktarımı başlatıldı.")}
+            >
               PDF Olarak Dışa Aktar
             </Link>
           </div>
@@ -216,7 +236,16 @@ export default function PropertyDetailPage() {
         {manualShareUrl ? (
           <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#080808] sm:flex-row">
             <input className="input min-w-0 flex-1" readOnly value={manualShareUrl} aria-label="Paylaşım linki" />
-            <button className="btn-secondary" type="button" onClick={() => copyManualShareUrl(manualShareUrl, setShareMessage)}>
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={async () => {
+                const copied = await copyManualShareUrl(manualShareUrl, setShareMessage);
+                if (copied) {
+                  logPropertyActivity("property_share_copied", "Paylaşım linki kopyalandı.", { delivery: "manual_clipboard" });
+                }
+              }}
+            >
               Linki Kopyala
             </button>
           </div>
@@ -324,10 +353,11 @@ async function copyManualShareUrl(url: string, setMessage: (message: string) => 
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(url);
     setMessage("Paylaşım linki kopyalandı.");
-    return;
+    return true;
   }
 
   setMessage("Paylaşım linki hazır. Link alanından manuel kopyalayabilirsiniz.");
+  return false;
 }
 
 function toPublicSharePayload(property: AdvisorPropertyRow, photoCount: number): PropertySharePayload {

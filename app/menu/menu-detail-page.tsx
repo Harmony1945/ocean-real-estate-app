@@ -9,6 +9,7 @@ import {
   getDataSetupMessage,
   getUserDisplayName,
   isSupabaseConfigured,
+  type ActivityLogRow,
   type AdvisorCommissionRow,
   type AdvisorDealRow,
   type AdvisorMatchRow,
@@ -77,6 +78,8 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   const [matchRows, setMatchRows] = useState<AdvisorMatchRow[]>([]);
   const [dealRows, setDealRows] = useState<AdvisorDealRow[]>([]);
   const [commissionRows, setCommissionRows] = useState<AdvisorCommissionRow[]>([]);
+  const [activityRows, setActivityRows] = useState<ActivityLogRow[]>([]);
+  const [activityFilter, setActivityFilter] = useState("all");
   const [moduleMessage, setModuleMessage] = useState("");
   const [paymentNotice, setPaymentNotice] = useState("");
   const displayName = getUserDisplayName(user, profile) || "OOS Advisor";
@@ -85,11 +88,15 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
     const incomeTax = Math.round(commission * (incomeTaxRate / 100));
     return { vat, incomeTax, net: commission - incomeTax };
   }, [commission, incomeTaxRate]);
+  const filteredActivityRows = useMemo(() => {
+    if (activityFilter === "all") return activityRows;
+    return activityRows.filter((row) => getActivityFilterKey(row) === activityFilter);
+  }, [activityFilter, activityRows]);
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
   useEffect(() => {
     if (!persistentMode || !supabase) return;
-    if (!["map", "tasks", "matches", "commissions"].includes(page.slug)) return;
+    if (!["map", "tasks", "matches", "commissions", "activity"].includes(page.slug)) return;
 
     let mounted = true;
     setModuleMessage("");
@@ -126,6 +133,11 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
           setCommissionRows(commissions);
         }
       }
+
+      if (page.slug === "activity") {
+        const rows = await supabase.getActivityLogs();
+        if (mounted) setActivityRows(rows);
+      }
     };
 
     loadModuleRows()
@@ -136,6 +148,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         setMatchRows([]);
         setDealRows([]);
         setCommissionRows([]);
+        setActivityRows([]);
         setModuleMessage(page.slug === "tasks"
           ? "Görev altyapısı henüz etkin değil. Manuel takip alanı yakında kullanılabilir olacak."
           : getDataSetupMessage(error.message, { optional: page.slug === "commissions" }));
@@ -284,13 +297,44 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
           </section>
         ) : null}
 
+        {page.slug === "activity" && isSupabaseConfigured ? (
+          <section className="mt-6">
+            <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {activityFilters.map((filter) => (
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() => setActivityFilter(filter.value)}
+                  className={`shrink-0 rounded-full px-3 py-2 text-xs font-medium transition ${
+                    activityFilter === filter.value
+                      ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/[0.06] dark:text-slate-300 dark:hover:bg-white/[0.1]"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3">
+              {filteredActivityRows.map((activity) => (
+                <ActivityLogCard key={activity.id} activity={activity} />
+              ))}
+              {!filteredActivityRows.length ? (
+                <article className="rounded-[1.75rem] border border-dashed border-slate-200 p-5 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
+                  Henüz aktivite kaydı yok. Kritik işlemler yapıldıkça burada görünecek.
+                </article>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
         {(moduleMessage || (!isSupabaseConfigured && ["map", "tasks"].includes(page.slug))) ? (
           <p className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
             {moduleMessage || getDataSetupMessage()}
           </p>
         ) : null}
 
-        {(!isSupabaseConfigured || !["matches", "commissions"].includes(page.slug)) ? (
+        {(!isSupabaseConfigured || !["matches", "commissions", "activity"].includes(page.slug)) ? (
           <section className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {page.cards.map((card) => (
               <article key={card.title} className="liquid-glass-strong rounded-[1.75rem] p-5">
@@ -321,6 +365,111 @@ function InfoCard({ title, value }: { title: string; value: string }) {
       <p className="mt-2 break-words text-xl font-semibold">{value}</p>
     </article>
   );
+}
+
+const activityFilters = [
+  { value: "all", label: "Tümü" },
+  { value: "property", label: "Portföy" },
+  { value: "search_request", label: "Arayış" },
+  { value: "share", label: "Paylaşım" },
+  { value: "advisor_application", label: "Başvuru" },
+  { value: "media", label: "Medya" }
+];
+
+function ActivityLogCard({ activity }: { activity: ActivityLogRow }) {
+  return (
+    <article className="oos-card rounded-[1.75rem] p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+            {formatActivityTime(activity.created_at)}
+          </p>
+          <h2 className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-100">
+            {formatActivityAction(activity.action)}
+          </h2>
+          <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">
+            {activity.entity_title || formatActivityEntityType(activity.entity_type)}
+          </p>
+        </div>
+        <span className={`w-fit rounded-full border px-3 py-1 text-xs font-medium ${getActivityStatusClass(activity.status)}`}>
+          {formatActivityStatus(activity.status)}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-2 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
+        <p><span className="text-slate-400">Kullanıcı:</span> {activity.actor_email || "Sistem / anonim başvuru"}</p>
+        <p><span className="text-slate-400">Varlık:</span> {formatActivityEntityType(activity.entity_type)}</p>
+      </div>
+      {activity.summary ? (
+        <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">{activity.summary}</p>
+      ) : null}
+    </article>
+  );
+}
+
+function getActivityFilterKey(activity: ActivityLogRow) {
+  if (activity.action.includes("share")) return "share";
+  if (activity.action.includes("photo") || activity.action.includes("cover")) return "media";
+  return activity.entity_type;
+}
+
+function formatActivityAction(action: string) {
+  const labels: Record<string, string> = {
+    property_created: "Portföy oluşturuldu",
+    property_updated: "Portföy güncellendi",
+    property_photo_uploaded: "Fotoğraf yüklendi",
+    property_cover_updated: "Kapak fotoğrafı değiştirildi",
+    property_share_created: "Paylaşım linki oluşturuldu",
+    property_share_copied: "Paylaşım linki kopyalandı",
+    property_share_deactivated: "Paylaşım kapatıldı",
+    property_pdf_exported: "PDF dışa aktarıldı",
+    search_request_created: "Arayış oluşturuldu",
+    search_request_updated: "Arayış güncellendi",
+    advisor_application_submitted: "Danışman başvurusu gönderildi",
+    advisor_application_approved: "Danışman başvurusu onaylandı",
+    advisor_application_rejected: "Danışman başvurusu reddedildi",
+    admin_reviewed_advisor_application: "Danışman başvurusu incelendi"
+  };
+
+  return labels[action] || action;
+}
+
+function formatActivityEntityType(entityType: string) {
+  const labels: Record<string, string> = {
+    property: "Portföy",
+    search_request: "Arayış",
+    advisor_application: "Danışman başvurusu",
+    match: "Eşleşme",
+    system: "Sistem"
+  };
+
+  return labels[entityType] || entityType;
+}
+
+function formatActivityStatus(status: string) {
+  if (status === "success") return "Başarılı";
+  if (status === "failed") return "Başarısız";
+  return formatStatusLabel(status);
+}
+
+function getActivityStatusClass(status: string) {
+  if (status === "failed") {
+    return "border-red-200 bg-red-50 text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-200";
+  }
+
+  return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200";
+}
+
+function formatActivityTime(createdAt?: string | null) {
+  if (!createdAt) return "Tarih yok";
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return "Tarih yok";
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
 }
 
 function MatchCard({ match }: { match: AdvisorMatchRow }) {

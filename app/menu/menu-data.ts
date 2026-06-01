@@ -12,7 +12,8 @@ export type MenuPageSlug =
   | "settings"
   | "support"
   | "faq"
-  | "legal-corporate";
+  | "legal-corporate"
+  | "activity";
 
 export type MenuPageData = {
   slug: MenuPageSlug;
@@ -130,6 +131,17 @@ export const menuPages: MenuPageData[] = [
       { title: "Yeni portföy", body: "Bu hafta 6 yeni portföy çalışma alanına eklendi.", meta: "+6" },
       { title: "Arayış dönüşümü", body: "Aktif arayışların %34'ü güçlü eşleşme aldı.", meta: "%34" },
       { title: "Kapanış hattı", body: "3 işlem teklif veya kapora aşamasında.", meta: "3 işlem" }
+    ]
+  },
+  {
+    slug: "activity",
+    title: "Aktivite Kayıtları",
+    eyebrow: "Audit trail",
+    description: "Portföy, arayış, paylaşım, başvuru ve sistem aksiyonları burada kayıt altına alınır.",
+    cards: [
+      { title: "Kritik işlem geçmişi", body: "Portföy, fotoğraf, paylaşım linki, PDF ve başvuru aksiyonları zaman sırasıyla izlenir.", meta: "Kontrol" },
+      { title: "Sorumluluk görünürlüğü", body: "Kim, neyi, ne zaman yaptı sorusuna operasyonel yanıt verir.", meta: "Audit" },
+      { title: "Güvenli kayıt", body: "Token, imzalı URL, gizli anahtar ve özel müşteri notları aktivite kayıtlarına yazılmaz.", meta: "Güvenlik" }
     ]
   },
   {

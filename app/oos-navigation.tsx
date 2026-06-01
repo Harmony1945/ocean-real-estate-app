@@ -35,7 +35,8 @@ export type IconName =
   | "settings"
   | "support"
   | "faq"
-  | "legal";
+  | "legal"
+  | "activity";
 
 const navItems = [
   { href: "/", label: "Ana Sayfa", icon: HomeIcon },
@@ -70,6 +71,7 @@ const menuGroups: Array<{ title: string; items: MenuItem[] }> = [
       { label: "Harita", href: "/menu/map", icon: "map" },
       { label: "Bildirimler", href: "/menu/notifications", icon: "bell" },
       { label: "Görevlerim", href: "/menu/tasks", icon: "task" },
+      { label: "Aktivite Kayıtları", href: "/menu/activity", icon: "activity" },
       { label: "Hesap ve Güvenlik", href: "/menu/security", icon: "shield" },
       { label: "Ayarlar", href: "/menu/settings", icon: "settings" }
     ]
@@ -283,7 +285,8 @@ export function MenuItemIcon({ name }: { name: IconName }) {
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a8 8 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5A7 7 0 0 0 5 12a7 7 0 0 0 .1 1l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.3 3.1h5l.3-3.1a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z" /></>,
     support: <><circle cx="12" cy="12" r="8" /><path d="M8 13a4 4 0 0 0 8 0M9 9h.01M15 9h.01" /></>,
     faq: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.7 2.7 0 0 1 5 1.4c0 2-2.5 2-2.5 4" /><path d="M12 18h.01" /></>,
-    legal: <><path d="M12 3v18M6 7h12" /><path d="m6 7-3 6h6zM18 7l-3 6h6z" /></>
+    legal: <><path d="M12 3v18M6 7h12" /><path d="m6 7-3 6h6zM18 7l-3 6h6z" /></>,
+    activity: <><path d="M5 5h14v14H5z" /><path d="M8 9h8M8 13h5M8 17h7" /><path d="M17 3v4M7 3v4" /></>
   };
 
   return (

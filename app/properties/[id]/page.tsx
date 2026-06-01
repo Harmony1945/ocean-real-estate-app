@@ -10,6 +10,7 @@ import {
   type AdvisorPropertyRow,
   type PropertyMediaRow
 } from "@/lib/supabase/client";
+import { DEMO_PROPERTY_IMAGE, formatPropertyLocation, formatPropertyPrice } from "@/app/property-listing-card";
 import { formatStatusLabel, getStatusPillClass } from "@/lib/oos/status-labels";
 
 type PropertyTab = "Genel Bilgiler" | "Konum" | "Özellikler" | "Medya" | "Operasyon";
@@ -104,7 +105,7 @@ export default function PropertyDetailPage() {
     );
   }
 
-  const location = [property.city, property.district, property.neighborhood].filter(Boolean).join(" / ");
+  const location = formatPropertyLocation(property);
   const area = property.gross_area || property.net_area;
 
   return (
@@ -191,69 +192,99 @@ function PropertyGallery({
   onSelectPhoto: (index: number) => void;
 }) {
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
-  const activeUrl = activePhoto?.signed_url || "";
+  const galleryItems = media.length ? media : [];
+  const activeUrl = activePhoto?.signed_url || DEMO_PROPERTY_IMAGE;
+  const hasMultiplePhotos = galleryItems.length > 1;
+  const visibleCount = galleryItems.length || 1;
+
+  function showPrevious() {
+    if (!hasMultiplePhotos) return;
+    onSelectPhoto(activePhotoIndex === 0 ? galleryItems.length - 1 : activePhotoIndex - 1);
+  }
+
+  function showNext() {
+    if (!hasMultiplePhotos) return;
+    onSelectPhoto(activePhotoIndex === galleryItems.length - 1 ? 0 : activePhotoIndex + 1);
+  }
 
   if (!media.length) {
     return (
-      <div className="grid min-h-[260px] place-items-center rounded-[2rem] border border-dashed border-slate-200 bg-white p-6 text-center dark:border-white/10 dark:bg-[#080808] sm:min-h-[360px]">
-        <div>
-          <p className="text-lg font-semibold text-slate-950 dark:text-slate-100">Fotoğraf bekleniyor</p>
-          <p className="mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Bu portföyün galerisi danışman çalışma alanından yüklenecek fotoğraflarla oluşur.
-          </p>
+      <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={DEMO_PROPERTY_IMAGE}
+            alt={`${propertyTitle} örnek fotoğrafı`}
+            className="h-[320px] w-full object-cover sm:h-[520px]"
+          />
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+            <span className="rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur">
+              Örnek görsel
+            </span>
+            <p className="mt-3 max-w-md text-sm leading-6 text-white/85">
+              Bu portföy için gerçek fotoğraf yüklendiğinde galeri otomatik olarak güvenli medya kayıtlarını gösterir.
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px]">
-      <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
+    <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
+      <div className="relative">
         {activeUrl && !failedImages[activePhoto?.id || ""] ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={activeUrl}
             alt={activePhoto?.file_name || propertyTitle}
-            className="h-[280px] w-full object-cover sm:h-[460px]"
+            className="h-[320px] w-full object-cover sm:h-[520px]"
             onError={() => activePhoto && setFailedImages((current) => ({ ...current, [activePhoto.id]: true }))}
           />
         ) : (
-          <div className="grid h-[280px] place-items-center bg-slate-100 px-4 text-center text-sm text-slate-500 dark:bg-white/[0.06] dark:text-slate-400 sm:h-[460px]">
+          <div className="grid h-[320px] place-items-center bg-slate-100 px-4 text-center text-sm text-slate-500 dark:bg-white/[0.06] dark:text-slate-400 sm:h-[520px]">
             Fotoğraf önizlemesi hazırlanamadı.
           </div>
         )}
-      </div>
 
-      <div className="grid grid-cols-4 gap-2 lg:grid-cols-1">
-        {media.slice(0, 8).map((item, index) => {
-          const thumbUrl = item.signed_url || "";
-          return (
+        <div className="absolute left-4 top-4 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur">
+          {activePhotoIndex + 1}/{Math.min(visibleCount, 12)} Fotoğraf
+        </div>
+
+        {hasMultiplePhotos ? (
+          <>
+            <button
+              type="button"
+              aria-label="Önceki fotoğraf"
+              onClick={showPrevious}
+              className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-xl text-white backdrop-blur transition hover:bg-black/60"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              aria-label="Sonraki fotoğraf"
+              onClick={showNext}
+              className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-xl text-white backdrop-blur transition hover:bg-black/60"
+            >
+              ›
+            </button>
+          </>
+        ) : null}
+
+        <div className="absolute inset-x-0 bottom-4 flex justify-center gap-1.5">
+          {galleryItems.map((item, index) => (
             <button
               key={item.id}
               type="button"
+              aria-label={`${index + 1}. fotoğrafı göster`}
               onClick={() => onSelectPhoto(index)}
-              className={`overflow-hidden rounded-2xl border bg-white text-left transition dark:bg-[#080808] ${
-                activePhotoIndex === index
-                  ? "border-slate-950 dark:border-white"
-                  : "border-slate-200 hover:border-slate-400 dark:border-white/10 dark:hover:border-white/25"
+              className={`h-1.5 rounded-full transition ${
+                index === activePhotoIndex ? "w-7 bg-white" : "w-1.5 bg-white/45 hover:bg-white/70"
               }`}
-            >
-              {thumbUrl && !failedImages[item.id] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={thumbUrl}
-                  alt={item.file_name || `${propertyTitle} fotoğrafı`}
-                  className="h-20 w-full object-cover lg:h-[5.7rem]"
-                  onError={() => setFailedImages((current) => ({ ...current, [item.id]: true }))}
-                />
-              ) : (
-                <span className="grid h-20 place-items-center text-xs text-slate-500 dark:text-slate-400 lg:h-[5.7rem]">
-                  Görsel yok
-                </span>
-              )}
-            </button>
-          );
-        })}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -268,7 +299,7 @@ function PropertyTabContent({
   mediaCount: number;
   property: AdvisorPropertyRow;
 }) {
-  const location = [property.city, property.district, property.neighborhood].filter(Boolean).join(" / ");
+  const location = formatPropertyLocation(property);
 
   if (activeTab === "Konum") {
     return (
@@ -325,20 +356,6 @@ function DetailLine({ label, value }: { label: string; value: string }) {
       <p className="mt-2 break-words text-sm font-medium text-slate-950 dark:text-slate-100">{value}</p>
     </div>
   );
-}
-
-function formatPropertyPrice(value: number | null, currency: string | null) {
-  if (!value) return "Fiyat bekleniyor";
-  const normalizedCurrency = currency || "TRY";
-  if (normalizedCurrency === "TRY") {
-    return new Intl.NumberFormat("tr-TR", {
-      style: "currency",
-      currency: "TRY",
-      maximumFractionDigits: 0
-    }).format(value);
-  }
-
-  return `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(value)} ${normalizedCurrency}`;
 }
 
 function formatDate(value?: string) {

@@ -7,51 +7,50 @@ import {
   createSupabaseAuthClient,
   getDataSetupMessage,
   isSupabaseConfigured,
-  type AdvisorPortfolioRow,
-  type PortfolioInput
+  type AdvisorPropertyRow,
+  type PropertyInput,
+  type PropertyMediaRow
 } from "@/lib/supabase/client";
 import { demoShowcasePortfolios } from "@/lib/oos/demo-data";
-import { formatStatusLabel, getStatusPillClass } from "@/lib/oos/status-labels";
+import { PropertyListingCard, formatPropertyLocation, formatPropertyPrice } from "../property-listing-card";
 
-type PortfolioCard = {
-  id: string;
-  title: string;
-  location: string;
-  owner: string;
-  value: number;
-  stage: string;
-  propertyType: string;
-  description: string;
-};
-
-const demoPortfolios: PortfolioCard[] = demoShowcasePortfolios.map((portfolio) => ({
+const demoPortfolios: AdvisorPropertyRow[] = demoShowcasePortfolios.slice(0, 2).map((portfolio) => ({
   id: portfolio.id,
+  advisor_id: null,
   title: portfolio.title,
-  location: portfolio.location,
-  owner: portfolio.owner,
-  value: portfolio.value,
-  stage: portfolio.stage,
-  propertyType: portfolio.propertyType,
-  description: portfolio.description
+  property_type: portfolio.propertyType,
+  usage_type: portfolio.contractType,
+  city: portfolio.location.split("/")[0]?.trim() || "İstanbul",
+  district: portfolio.district || portfolio.location.split("/")[1]?.trim() || null,
+  neighborhood: portfolio.location.split("/")[2]?.trim() || null,
+  gross_area: Number(String(portfolio.area || "").replace(/[^0-9]/g, "")) || null,
+  net_area: null,
+  asking_price: portfolio.value,
+  currency: "TRY",
+  status: "active",
+  is_public: true,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
 }));
 
 const emptyForm = {
   title: "",
   location: "",
-  owner: "",
   value: "",
-  stage: "Aktif",
+  status: "active",
   propertyType: "Konut",
-  description: ""
+  area: ""
 };
 
 export default function PortfoliosRoutePage() {
   const { user } = useAuthContext();
   const supabase = useMemo(() => createSupabaseAuthClient(), []);
-  const [items, setItems] = useState<PortfolioCard[]>(isSupabaseConfigured ? [] : demoPortfolios);
+  const [items, setItems] = useState<AdvisorPropertyRow[]>(isSupabaseConfigured ? [] : demoPortfolios);
+  const [mediaByProperty, setMediaByProperty] = useState<Record<string, PropertyMediaRow[]>>({});
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [mediaMessage, setMediaMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -61,8 +60,20 @@ export default function PortfoliosRoutePage() {
     if (!persistentMode || !supabase) return;
     setLoading(true);
     setMessage("");
-    supabase.getPortfolios()
-      .then((rows: AdvisorPortfolioRow[]) => setItems(rows.map(fromRow)))
+    supabase.getProperties()
+      .then(async (rows: AdvisorPropertyRow[]) => {
+        setItems(rows);
+        const mediaEntries = await Promise.all(
+          rows.map(async (row) => [
+            row.id,
+            await supabase.getPropertyMedia(row.id).catch(() => {
+              setMediaMessage("Bazı portföy fotoğrafları şu anda yüklenemedi.");
+              return [];
+            })
+          ] as const)
+        );
+        setMediaByProperty(Object.fromEntries(mediaEntries));
+      })
       .catch((error: Error) => {
         console.error(error);
         setItems([]);
@@ -77,28 +88,19 @@ export default function PortfoliosRoutePage() {
       return;
     }
 
-    const payload: PortfolioInput = {
-      title: form.title.trim(),
-      location: form.location.trim(),
-      district: form.location.split("/")[0]?.trim() || null,
-      owner: form.owner.trim(),
-      value: Number(form.value || 0),
-      stage: form.stage,
-      property_type: form.propertyType.trim(),
-      description: form.description.trim()
-    };
+    const payload = toPropertyInput(form);
 
     setSaving(true);
     if (persistentMode && supabase) {
       try {
         const row = editingId
-          ? await supabase.updatePortfolio(editingId, payload)
-          : await supabase.createPortfolio(payload);
+          ? await supabase.updateProperty(editingId, payload)
+          : await supabase.createProperty(payload);
         if (row) {
           setItems((current) =>
             editingId
-              ? current.map((item) => (item.id === editingId ? fromRow(row) : item))
-              : [fromRow(row), ...current]
+              ? current.map((item) => (item.id === editingId ? row : item))
+              : [row, ...current]
           );
         }
         setMessage("");
@@ -124,7 +126,7 @@ export default function PortfoliosRoutePage() {
     setDeletingId(id);
     if (persistentMode && supabase) {
       try {
-        await supabase.deletePortfolio(id);
+        await supabase.deleteProperty(id);
       } catch (error) {
         console.error(error);
         setMessage(error instanceof Error ? getDataSetupMessage(error.message) : "Portföy silinemedi.");
@@ -141,21 +143,22 @@ export default function PortfoliosRoutePage() {
     setDeletingId(null);
   }
 
-  function editPortfolio(item: PortfolioCard) {
+  function editPortfolio(item: AdvisorPropertyRow) {
     setEditingId(item.id);
     setForm({
       title: item.title,
-      location: item.location,
-      owner: item.owner,
-      value: String(item.value || ""),
-      stage: item.stage,
-      propertyType: item.propertyType,
-      description: item.description
+      location: formatPropertyLocation(item),
+      value: String(item.asking_price || ""),
+      status: item.status || "active",
+      propertyType: item.property_type || "Konut",
+      area: item.gross_area ? String(item.gross_area) : ""
     });
   }
 
-  const activeCount = items.filter((item) => item.stage !== "Kapandı").length;
-  const missingCount = items.filter((item) => !item.location || !item.owner).length;
+  const activeCount = items.filter((item) => item.status !== "archived").length;
+  const missingCount = items.filter((item) => !formatPropertyLocation(item) || !item.asking_price).length;
+  const showingDemoFallback = !items.length && !loading;
+  const displayItems = showingDemoFallback ? demoPortfolios : items;
 
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-5 pb-[calc(env(safe-area-inset-bottom)+7rem)] text-slate-950 dark:bg-black dark:text-neutral-50 sm:px-6 md:pb-8 lg:px-8">
@@ -179,52 +182,64 @@ export default function PortfoliosRoutePage() {
         <section className="mt-6 grid gap-4 md:grid-cols-3">
           <Metric label="Aktif portföy" value={activeCount} />
           <Metric label="Eksik bilgi" value={missingCount} />
-          <Metric label="Toplam değer" value={formatCurrency(items.reduce((sum, item) => sum + item.value, 0))} />
+          <Metric label="Toplam değer" value={formatPropertyPrice(items.reduce((sum, item) => sum + Number(item.asking_price || 0), 0), "TRY")} />
         </section>
 
         <section className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#080808]">
           <h2 className="text-lg font-semibold">{editingId ? "Portföyü düzenle" : "İlk portföyünü ekle"}</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <input className="input" placeholder="Başlık" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-            <input className="input" placeholder="Lokasyon" value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} />
-            <input className="input" placeholder="Malik / kaynak" value={form.owner} onChange={(event) => setForm({ ...form, owner: event.target.value })} />
-            <input className="input" inputMode="numeric" placeholder="Değer" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
-            <input className="input" placeholder="Aşama" value={form.stage} onChange={(event) => setForm({ ...form, stage: event.target.value })} />
+            <input className="input" placeholder="Şehir / İlçe / Mahalle" value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} />
+            <input className="input" inputMode="numeric" placeholder="Fiyat" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
+            <input className="input" inputMode="numeric" placeholder="Brüt m²" value={form.area} onChange={(event) => setForm({ ...form, area: event.target.value })} />
             <input className="input" placeholder="Portföy tipi" value={form.propertyType} onChange={(event) => setForm({ ...form, propertyType: event.target.value })} />
+            <select className="input" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
+              <option value="active">Aktif</option>
+              <option value="draft">Taslak</option>
+              <option value="reserved">Rezerve</option>
+              <option value="sold">Satıldı</option>
+              <option value="rented">Kiralandı</option>
+              <option value="hidden">Gizli</option>
+              <option value="archived">Arşiv</option>
+            </select>
           </div>
-          <textarea className="input mt-3 min-h-24 resize-none" placeholder="Kısa açıklama" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
             {editingId ? <button className="btn-secondary" type="button" disabled={saving} onClick={() => { setEditingId(null); setForm(emptyForm); }}>Vazgeç</button> : null}
             <button className="btn-primary" type="button" disabled={saving} onClick={savePortfolio}>{saving ? "Kaydediliyor..." : "Kaydet"}</button>
           </div>
         </section>
 
+        {mediaMessage ? (
+          <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
+            {mediaMessage}
+          </p>
+        ) : null}
+
+        {showingDemoFallback ? (
+          <p className="mt-5 rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-500 dark:border-white/10 dark:bg-[#080808] dark:text-slate-400">
+            Henüz gerçek portföy yok. Aşağıdaki örnek kartlar çalışma alanının galeri görünümünü gösterir.
+          </p>
+        ) : null}
+
         <section className="mt-6 grid gap-4 md:grid-cols-2">
-          {items.length ? items.map((item) => (
-            <article key={item.id} className="liquid-glass-strong rounded-[2rem] p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold">{item.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{item.description || "Açıklama bekleniyor."}</p>
-                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{item.location} · {formatCurrency(item.value)}</p>
-                </div>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusPillClass(item.stage)}`}>
-                  {formatStatusLabel(item.stage)}
-                </span>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <button className="mini-action" type="button" onClick={() => editPortfolio(item)}>Düzenle</button>
-                <button className="mini-action !text-red-600" type="button" disabled={deletingId === item.id} onClick={() => deletePortfolio(item.id)}>{deletingId === item.id ? "Siliniyor..." : "Sil"}</button>
-              </div>
-            </article>
-          )) : (
-            <article className="rounded-[2rem] border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 md:col-span-2">
-              <p>İlk portföyünü ekle.</p>
-              <button className="btn-primary mt-4" type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-                Portföy ekle
-              </button>
-            </article>
-          )}
+          {displayItems.map((item) => (
+            <PropertyListingCard
+              key={item.id}
+              demo={showingDemoFallback || !isSupabaseConfigured}
+              property={item}
+              media={mediaByProperty[item.id] ?? []}
+              actions={
+                showingDemoFallback || !isSupabaseConfigured ? null : (
+                  <>
+                    <button className="mini-action" type="button" onClick={() => editPortfolio(item)}>Düzenle</button>
+                    <button className="mini-action !text-red-600" type="button" disabled={deletingId === item.id} onClick={() => deletePortfolio(item.id)}>
+                      {deletingId === item.id ? "Siliniyor..." : "Sil"}
+                    </button>
+                  </>
+                )
+              }
+            />
+          ))}
         </section>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -245,30 +260,49 @@ function SetupNotice({ message }: { message: string }) {
   );
 }
 
-function fromRow(row: AdvisorPortfolioRow): PortfolioCard {
+function toPropertyInput(form: typeof emptyForm): PropertyInput {
+  const [city, district, neighborhood] = parseLocation(form.location);
   return {
-    id: row.id,
-    title: row.title,
-    location: row.location || "Konum bekleniyor",
-    owner: row.owner || "Malik bekleniyor",
-    value: Number(row.value || 0),
-    stage: formatStatusLabel(row.stage || "Aktif"),
-    propertyType: row.property_type || "Konut",
-    description: row.description || ""
+    title: form.title.trim(),
+    property_type: form.propertyType.trim() || "Konut",
+    usage_type: "Satış",
+    city: city || null,
+    district: district || null,
+    neighborhood: neighborhood || null,
+    gross_area: Number(form.area || 0) || null,
+    net_area: null,
+    asking_price: Number(form.value || 0) || null,
+    currency: "TRY",
+    status: form.status || "active",
+    is_public: true
   };
 }
 
-function fromForm(form: typeof emptyForm): PortfolioCard {
+function fromForm(form: typeof emptyForm): AdvisorPropertyRow {
+  const [city, district, neighborhood] = parseLocation(form.location);
   return {
     id: "",
+    advisor_id: null,
     title: form.title.trim() || "İsimsiz portföy",
-    location: form.location.trim() || "Konum bekleniyor",
-    owner: form.owner.trim() || "Malik bekleniyor",
-    value: Number(form.value || 0),
-    stage: form.stage || "Aktif",
-    propertyType: form.propertyType || "Konut",
-    description: form.description
+    property_type: form.propertyType || "Konut",
+    usage_type: "Satış",
+    city: city || null,
+    district: district || null,
+    neighborhood: neighborhood || null,
+    gross_area: Number(form.area || 0) || null,
+    net_area: null,
+    asking_price: Number(form.value || 0) || null,
+    currency: "TRY",
+    status: form.status || "active",
+    is_public: true
   };
+}
+
+function parseLocation(value: string) {
+  return value
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
 function Metric({ label, value }: { label: string; value: string | number }) {
@@ -278,8 +312,4 @@ function Metric({ label, value }: { label: string; value: string | number }) {
       <p className="mt-2 text-3xl font-semibold">{value}</p>
     </div>
   );
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(value || 0);
 }

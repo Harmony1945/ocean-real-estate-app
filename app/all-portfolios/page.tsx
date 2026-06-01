@@ -7,16 +7,19 @@ import {
   createSupabaseAuthClient,
   getDataSetupMessage,
   isSupabaseConfigured,
-  type AdvisorPropertyRow
+  type AdvisorPropertyRow,
+  type PropertyMediaRow
 } from "@/lib/supabase/client";
-import { formatStatusLabel, getStatusPillClass } from "@/lib/oos/status-labels";
+import { PropertyListingCard } from "../property-listing-card";
 
 export default function AllPortfoliosPage() {
   const { user } = useAuthContext();
   const supabase = useMemo(() => createSupabaseAuthClient(), []);
   const [items, setItems] = useState<AdvisorPropertyRow[]>([]);
+  const [mediaByProperty, setMediaByProperty] = useState<Record<string, PropertyMediaRow[]>>({});
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
+  const [mediaMessage, setMediaMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
@@ -26,7 +29,19 @@ export default function AllPortfoliosPage() {
     setLoading(true);
     setMessage("");
     supabase.getProperties()
-      .then((rows: AdvisorPropertyRow[]) => setItems(rows))
+      .then(async (rows: AdvisorPropertyRow[]) => {
+        setItems(rows);
+        const mediaEntries = await Promise.all(
+          rows.map(async (row) => [
+            row.id,
+            await supabase.getPropertyMedia(row.id).catch(() => {
+              setMediaMessage("Bazı portföy fotoğrafları şu anda yüklenemedi.");
+              return [];
+            })
+          ] as const)
+        );
+        setMediaByProperty(Object.fromEntries(mediaEntries));
+      })
       .catch((error: Error) => {
         console.error(error);
         setItems([]);
@@ -97,31 +112,19 @@ export default function AllPortfoliosPage() {
           <p className="mt-5 text-sm text-slate-500 dark:text-slate-400">Portföyler yükleniyor...</p>
         ) : null}
 
+        {mediaMessage ? (
+          <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
+            {mediaMessage}
+          </p>
+        ) : null}
+
         <section className="mt-6 grid gap-4 md:grid-cols-2">
           {filteredItems.length ? filteredItems.map((item) => (
-            <article key={item.id} className="rounded-[2rem] border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-[#080808]">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <h2 className="break-words text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-                    {item.title || "İsimsiz portföy"}
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    {[item.city, item.district, item.neighborhood].filter(Boolean).join(" / ") || "Konum bekleniyor"}
-                  </p>
-                </div>
-                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs ${getStatusPillClass(item.status || "")}`}>
-                  {formatStatusLabel(item.status || "Durum yok")}
-                </span>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <Info label="Tip" value={item.property_type || "Belirtilmedi"} />
-                <Info label="Fiyat" value={formatPropertyPrice(item.asking_price, item.currency)} />
-                <Info label="Alan" value={item.gross_area || item.net_area ? `${item.gross_area || item.net_area} m²` : "Belirtilmedi"} />
-              </div>
-              <div className="mt-4 flex justify-end">
-                <Link href={`/properties/${item.id}`} className="mini-action">Aç</Link>
-              </div>
-            </article>
+            <PropertyListingCard
+              key={item.id}
+              property={item}
+              media={mediaByProperty[item.id] ?? []}
+            />
           )) : (
             <article className="rounded-[2rem] border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 md:col-span-2">
               Office-wide görünür portföy bulunamadı.
@@ -131,27 +134,4 @@ export default function AllPortfoliosPage() {
       </div>
     </main>
   );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-stone-50 p-3 dark:bg-white/[0.04]">
-      <p className="text-xs text-slate-400 dark:text-slate-500">{label}</p>
-      <p className="mt-1 break-words text-sm font-medium text-slate-950 dark:text-slate-100">{value}</p>
-    </div>
-  );
-}
-
-function formatPropertyPrice(value: number | null, currency: string | null) {
-  if (!value) return "Fiyat bekleniyor";
-  const normalizedCurrency = currency || "TRY";
-  if (normalizedCurrency === "TRY") {
-    return new Intl.NumberFormat("tr-TR", {
-      style: "currency",
-      currency: "TRY",
-      maximumFractionDigits: 0
-    }).format(value);
-  }
-
-  return `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 0 }).format(value)} ${normalizedCurrency}`;
 }

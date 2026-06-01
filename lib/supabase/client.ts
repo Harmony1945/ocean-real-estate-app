@@ -202,6 +202,48 @@ export type PropertyShareLinkRow = {
   expires_at?: string | null;
 };
 
+export type AdvisorApplicationRow = {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  city: string | null;
+  district: string | null;
+  experience_level: string | null;
+  current_company: string | null;
+  preferred_model: "ocean_elite" | "ocean_core" | string;
+  motivation: string | null;
+  contract_accepted: boolean;
+  red_lines_accepted: boolean;
+  commission_model_accepted: boolean;
+  kvkk_accepted: boolean;
+  status: "new" | "in_review" | "approved" | "rejected" | string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  linked_profile_id?: string | null;
+  linked_advisor_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AdvisorApplicationInput = Pick<
+  AdvisorApplicationRow,
+  | "full_name"
+  | "email"
+  | "phone"
+  | "city"
+  | "district"
+  | "experience_level"
+  | "current_company"
+  | "preferred_model"
+  | "motivation"
+  | "contract_accepted"
+  | "red_lines_accepted"
+  | "commission_model_accepted"
+  | "kvkk_accepted"
+>;
+
 export type PortfolioInput = Partial<Omit<AdvisorPortfolioRow, "id" | "owner_user_id" | "created_at" | "updated_at">> & {
   title: string;
 };
@@ -246,6 +288,31 @@ function dataError(error: unknown) {
   }
 
   return message || "Supabase veri işlemi tamamlanamadı.";
+}
+
+export function getShareLinkSetupMessage(errorMessage = "") {
+  const normalized = errorMessage.toLocaleLowerCase("tr-TR");
+  if (
+    normalized.includes("property_share_links") ||
+    normalized.includes("get_public_property_share") ||
+    normalized.includes("schema cache") ||
+    normalized.includes("relation") ||
+    normalized.includes("function") ||
+    normalized.includes("pgrst")
+  ) {
+    return "Paylaşım altyapısı henüz etkin değil. Migration uygulanmalı.";
+  }
+
+  if (
+    normalized.includes("row-level") ||
+    normalized.includes("permission") ||
+    normalized.includes("not authorized") ||
+    normalized.includes("violates row-level security")
+  ) {
+    return "Bu portföy için paylaşım linki oluşturma yetkiniz yok.";
+  }
+
+  return errorMessage || "Paylaşım linki işlemi tamamlanamadı.";
 }
 
 export function getDataSetupMessage(errorMessage = "", options: { optional?: boolean } = {}) {
@@ -995,6 +1062,58 @@ export function createSupabaseAuthClient(): any {
     }
   }
 
+  async function submitAdvisorApplication(application: AdvisorApplicationInput) {
+    try {
+      const rows = await request<AdvisorApplicationRow[]>("/rest/v1/advisor_applications", {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify(application)
+      });
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function getAdvisorApplications() {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<AdvisorApplicationRow[]>(
+        "/rest/v1/advisor_applications?select=*&order=created_at.desc",
+        { method: "GET", token }
+      );
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function reviewAdvisorApplication(id: string, status: "approved" | "rejected" | "in_review", note: string) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<AdvisorApplicationRow[]>(
+        "/rest/v1/rpc/review_advisor_application",
+        {
+          method: "POST",
+          token,
+          body: JSON.stringify({
+            application_id: id,
+            next_status: status,
+            note
+          })
+        }
+      );
+
+      return Array.isArray(rows) ? rows[0] ?? null : rows;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
   async function createTask(task: TaskInput) {
     const stored = readStoredSession();
     if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
@@ -1154,6 +1273,12 @@ export function createSupabaseAuthClient(): any {
     disablePropertyShareLink,
 
     getPublicPropertyShare,
+
+    submitAdvisorApplication,
+
+    getAdvisorApplications,
+
+    reviewAdvisorApplication,
 
     createTask,
 

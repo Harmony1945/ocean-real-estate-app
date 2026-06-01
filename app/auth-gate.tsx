@@ -41,6 +41,7 @@ const publicRoutePrefixes = [
   "/contact",
   "/careers",
   "/support",
+  "/apply-advisor",
   "/tools/tax-calculator",
   "/legal",
   "/share"

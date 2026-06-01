@@ -7,6 +7,7 @@ import { useAuthContext } from "../../auth-context";
 import {
   createSupabaseAuthClient,
   getDataSetupMessage,
+  getShareLinkSetupMessage,
   type AdvisorPropertyRow,
   type PropertyMediaRow,
   type PropertyShareLinkRow,
@@ -104,7 +105,7 @@ export default function PropertyDetailPage() {
       }
     } catch (error) {
       console.error(error);
-      setShareMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Paylaşım linki oluşturulamadı.");
+      setShareMessage(error instanceof Error ? getShareLinkSetupMessage(error.message) : "Paylaşım linki oluşturulamadı.");
     } finally {
       setShareLoading(false);
     }
@@ -121,7 +122,7 @@ export default function PropertyDetailPage() {
       setShareMessage("Paylaşım kapatıldı.");
     } catch (error) {
       console.error(error);
-      setShareMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Paylaşım kapatılamadı.");
+      setShareMessage(error instanceof Error ? getShareLinkSetupMessage(error.message) : "Paylaşım kapatılamadı.");
     } finally {
       setShareLoading(false);
     }
@@ -173,9 +174,16 @@ export default function PropertyDetailPage() {
               {shareUrl || "Harici satış materyali için güvenli çıktı oluşturun."}
             </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button className="btn-secondary" type="button" disabled={shareLoading} onClick={createOrCopyShareLink}>
-              {shareLoading ? "Hazırlanıyor..." : shareLink ? "Paylaşım Linkini Kopyala" : "Paylaşım Linki Oluştur"}
+          <div className="flex flex-row items-center gap-2">
+            <button
+              className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-400 hover:text-slate-950 disabled:opacity-50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-200 dark:hover:border-white/25 dark:hover:text-white"
+              type="button"
+              disabled={shareLoading}
+              onClick={createOrCopyShareLink}
+              title={shareLink ? "Paylaşım linkini kopyala" : "Paylaşım linki"}
+              aria-label={shareLink ? "Paylaşım linkini kopyala" : "Paylaşım linki oluştur"}
+            >
+              <ShareIcon />
             </button>
             {shareLink ? (
               <button className="btn-secondary" type="button" disabled={shareLoading} onClick={disableShareLink}>
@@ -253,6 +261,16 @@ export default function PropertyDetailPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 16V4" />
+      <path d="m7 9 5-5 5 5" />
+      <path d="M6 14v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4" />
+    </svg>
   );
 }
 

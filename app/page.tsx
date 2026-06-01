@@ -905,9 +905,7 @@ export default function Home() {
         setDealRows(deals.status === "fulfilled" ? deals.value : []);
         setCommissionRows(commissions.status === "fulfilled" ? commissions.value : []);
         setSelectedId(nextPortfolios[0]?.id ?? "");
-        const optionalError = [tasks, deals, commissions]
-          .find((result) => result.status === "rejected") as PromiseRejectedResult | undefined;
-        setDataError(optionalError ? getDataSetupMessage(optionalError.reason?.message || "", { optional: true }) : "");
+        setDataError("");
       })
       .catch((error: Error) => {
         if (!mounted) return;

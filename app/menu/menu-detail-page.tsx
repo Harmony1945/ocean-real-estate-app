@@ -177,6 +177,17 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
                 Rol bilgisi güvenlik ve yetki kontrolü için sistem tarafından yönetilir; bu ekrandan düzenlenemez.
               </p>
             </article>
+            <article className="oos-card rounded-[1.75rem] p-5 md:col-span-2">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Onboarding</p>
+              <h2 className="mt-2 text-xl font-semibold">Danışman başlangıç listesi</h2>
+              <div className="mt-4 grid gap-2 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
+                <ChecklistItem label="Sözleşme kabul edildi" done />
+                <ChecklistItem label="Kırmızı çizgiler kabul edildi" done />
+                <ChecklistItem label="Komisyon modeli kabul edildi" done />
+                <ChecklistItem label="Profil bilgileri tamamlandı" done={Boolean(profile?.full_name && profile?.phone && profile?.company)} />
+                <ChecklistItem label="İlk portföy eklendi" note="Portföylerim üzerinden takip edilir" />
+              </div>
+            </article>
           </section>
         ) : null}
 
@@ -767,6 +778,20 @@ function Result({ label, value }: { label: string; value: string }) {
     <div className="mt-4 rounded-2xl bg-slate-50 p-4 dark:bg-white/[0.04]">
       <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function ChecklistItem({ label, done, note }: { label: string; done?: boolean; note?: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-white/[0.04]">
+      <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${done ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-200" : "bg-slate-200 text-slate-500 dark:bg-white/10 dark:text-slate-300"}`}>
+        {done ? "✓" : "•"}
+      </span>
+      <span>
+        <span className="block font-medium">{label}</span>
+        {note ? <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{note}</span> : null}
+      </span>
     </div>
   );
 }

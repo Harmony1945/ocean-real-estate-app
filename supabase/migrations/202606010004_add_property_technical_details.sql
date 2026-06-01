@@ -1,0 +1,15 @@
+alter table public.properties
+  add column if not exists listing_type text,
+  add column if not exists room_count text,
+  add column if not exists building_age text,
+  add column if not exists floor text,
+  add column if not exists total_floors text,
+  add column if not exists heating_type text,
+  add column if not exists bathroom_count text,
+  add column if not exists balcony_count text,
+  add column if not exists parking_type text,
+  add column if not exists has_elevator boolean,
+  add column if not exists in_site boolean,
+  add column if not exists dues_amount numeric,
+  add column if not exists deed_status text,
+  add column if not exists exchange_available boolean;

@@ -86,7 +86,7 @@ export default function AdvisorApplicationPage() {
         <Link href="/careers" className="mini-action">Kariyere Dön</Link>
 
         <header className="mt-10 border-b border-slate-200 pb-8 dark:border-white/10">
-          <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Danışman Başvurusu</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Danışman Başvurusu</p>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">OceanOS Advisor Application</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
             Ocean Real Estate danışman ağına katılmak için bilgilerinizi ve çalışma prensipleri kabulünüzü iletin.

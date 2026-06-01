@@ -186,14 +186,14 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
             <InfoCard title="Telefon" value={profile?.phone || "Telefon bilgisi bekleniyor"} />
             <InfoCard title="Şirket" value={profile?.company || "Şirket bilgisi bekleniyor"} />
             <article className="oos-card rounded-[1.75rem] p-5 md:col-span-2">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Rol</p>
+              <p className="text-xs font-medium text-slate-400">Rol</p>
               <h2 className="mt-2 text-xl font-semibold">Danışman</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
                 Rol bilgisi güvenlik ve yetki kontrolü için sistem tarafından yönetilir; bu ekrandan düzenlenemez.
               </p>
             </article>
             <article className="oos-card rounded-[1.75rem] p-5 md:col-span-2">
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Onboarding</p>
+              <p className="text-xs font-medium text-slate-400">Onboarding</p>
               <h2 className="mt-2 text-xl font-semibold">Danışman başlangıç listesi</h2>
               <div className="mt-4 grid gap-2 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
                 <ChecklistItem label="Sözleşme kabul edildi" done />
@@ -239,7 +239,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
           <section className="mt-6 grid gap-4 md:grid-cols-2">
             {(tasks.length ? tasks : []).map((task) => (
               <article key={task.id} className="oos-card rounded-[1.75rem] p-5">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                <p className="text-xs font-medium text-slate-400">
                   {task.done ? "Tamamlandı" : "Açık görev"}
                 </p>
                 <h2 className="mt-2 text-lg font-semibold">{task.title}</h2>
@@ -281,7 +281,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
             <InfoCard title="Komisyon kaydı" value={String(commissionRows.length)} />
             {commissionRows.map((commission) => (
               <article key={commission.id} className="oos-card rounded-[1.75rem] p-5">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                <p className="text-xs font-medium text-slate-400">
                   {formatStatusLabel(commission.status || "Komisyon")}
                 </p>
                 <h2 className="mt-2 text-lg font-semibold">
@@ -361,7 +361,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
 function InfoCard({ title, value }: { title: string; value: string }) {
   return (
     <article className="oos-card rounded-[1.75rem] p-5">
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">{title}</p>
+      <p className="text-xs font-medium text-slate-400">{title}</p>
       <p className="mt-2 break-words text-xl font-semibold">{value}</p>
     </article>
   );
@@ -381,7 +381,7 @@ function ActivityLogCard({ activity }: { activity: ActivityLogRow }) {
     <article className="oos-card rounded-[1.75rem] p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+          <p className="text-xs font-medium text-slate-400">
             {formatActivityTime(activity.created_at)}
           </p>
           <h2 className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-100">
@@ -705,7 +705,7 @@ function PaymentPanel({
         <div className="flex min-h-52 flex-col justify-between rounded-[1.5rem] border border-white/10 bg-[linear-gradient(135deg,#050505,#111111)] p-5">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-white/45">Ocean Elite</p>
+              <p className="text-xs text-white/45">Ocean Elite</p>
               <h2 className="mt-2 text-2xl font-semibold">7.200 TL</h2>
             </div>
             <div className="flex gap-2">

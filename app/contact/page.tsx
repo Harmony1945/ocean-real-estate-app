@@ -27,19 +27,19 @@ export default function ContactPage() {
 
         <section className="grid gap-x-10 gap-y-8 py-14 text-sm leading-7 text-white/75 sm:grid-cols-2 sm:py-16">
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-white/40">Çalışma Saatleri</p>
+            <p className="text-xs text-white/40">Çalışma Saatleri</p>
             <p className="mt-2 font-medium text-white">Pazartesi-Cumartesi: 08:30 - 19:00</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-white/40">Telefon</p>
+            <p className="text-xs text-white/40">Telefon</p>
             <p className="mt-2 font-medium text-white">+90 (216) 280 01 00</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-white/40">E-posta</p>
+            <p className="text-xs text-white/40">E-posta</p>
             <p className="mt-2 font-medium text-white">info@oceanrealestate.com.tr</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-white/40">Adres</p>
+            <p className="text-xs text-white/40">Adres</p>
             <p className="mt-2 max-w-md font-medium text-white">
               Acarlar Mahallesi, Acarkent Sitesi 9. Cadde, Coliseum 5. Kat, Archerson, 34820 Beykoz / İstanbul
             </p>
@@ -47,7 +47,7 @@ export default function ContactPage() {
         </section>
 
         <section className="border-t border-white/10 py-10">
-          <p className="text-xs uppercase tracking-[0.18em] text-white/40">Başvuru</p>
+          <p className="text-xs text-white/40">Başvuru</p>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight">Ocean’a danışman olarak katılın</h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-white/65">
             Ocean Real Estate danışman modeli için başvurunuzu dijital form üzerinden iletebilirsiniz.

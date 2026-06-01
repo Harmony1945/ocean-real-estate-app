@@ -560,7 +560,7 @@ function AuthScreen({
 
         <section className="grid flex-1 items-center gap-8 pb-0 pt-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)] lg:pb-10 lg:pt-10">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <p className="text-xs font-medium uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
               OOS advisor workspace
             </p>
             <h1 className="mt-5 max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100 sm:text-6xl lg:text-7xl">
@@ -575,7 +575,7 @@ function AuthScreen({
           <section className="min-h-[34rem] rounded-[2.5rem] border border-slate-200 bg-slate-950 p-4 text-white shadow-[0_30px_100px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-[#050505] dark:shadow-[0_30px_100px_rgba(0,0,0,0.62)]">
             <div className="flex h-full flex-col justify-center rounded-[2rem] border border-white/10 bg-black px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-6 sm:py-7 lg:px-7">
               <div className="mb-6">
-                <p className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-white/40">
+                <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/40">
                   Güvenli giriş
                   <LockIcon className="h-3.5 w-3.5 text-emerald-400/90" />
                 </p>
@@ -795,7 +795,7 @@ function LandingShowcaseSections() {
       <div className="mx-auto max-w-7xl space-y-8">
         <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
           <article className="oos-card rounded-[2rem] p-6 sm:p-8">
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Hızlı başlangıç</p>
+            <p className="text-xs font-medium text-slate-400">Hızlı başlangıç</p>
             <h2 className="mt-4 max-w-2xl text-3xl font-semibold tracking-tight sm:text-5xl">
               Dakikalar içinde danışman operasyonunu başlat.
             </h2>
@@ -813,7 +813,7 @@ function LandingShowcaseSections() {
           </article>
 
           <article className="oos-card rounded-[2rem] p-6 sm:p-8">
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Tek sistem</p>
+            <p className="text-xs font-medium text-slate-400">Tek sistem</p>
             <h2 className="text-2xl font-semibold tracking-tight">Portföy ve arayışlar tek sistemde.</h2>
             <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
               Danışmanlar ne aradığını yükler, portföy sahipleri güçlü eşleşmeleri görür. Ofis içi bilgi doğru zamanda doğru danışmana ulaşır.
@@ -867,7 +867,7 @@ function LandingShowcaseSections() {
           </article>
 
           <article className="rounded-[2rem] border border-white/10 bg-black p-6 text-white shadow-[0_24px_90px_rgba(0,0,0,0.35)]">
-            <p className="text-xs uppercase tracking-[0.24em] text-white/45">Ocean Elite</p>
+            <p className="text-xs text-white/45">Ocean Elite</p>
             <h2 className="mt-4 text-3xl font-semibold">Premium danışman operasyonu</h2>
             <p className="mt-3 text-sm leading-6 text-white/55">
               Portföy, arayış, eşleşme, ödeme ve işlem disiplinini tek sistemde yönetin.
@@ -889,7 +889,7 @@ function LandingShowcaseSections() {
         <article className="oos-card rounded-[2rem] p-6 sm:p-8">
           <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-400">Güven ve disiplin</p>
+              <p className="text-xs font-medium text-slate-400">Güven ve disiplin</p>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
                 OceanOS, kurumsal standartla çalışan danışman operasyonu kurar.
               </h2>

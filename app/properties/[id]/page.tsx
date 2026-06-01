@@ -15,6 +15,7 @@ import {
 } from "@/lib/supabase/client";
 import { DEMO_PROPERTY_IMAGE, formatPropertyLocation, formatPropertyPrice } from "@/app/property-listing-card";
 import { formatStatusLabel, getStatusPillClass } from "@/lib/oos/status-labels";
+import { booleanToText, formatDuesAmount, formatSquareMeters } from "@/lib/oos/property-fields";
 
 type PropertyTab = "Genel Bilgiler" | "Konum" | "Özellikler" | "Medya" | "Operasyon";
 
@@ -183,7 +184,8 @@ export default function PropertyDetailPage() {
   }
 
   const location = formatPropertyLocation(property);
-  const area = property.gross_area || property.net_area;
+  const primaryDetails = getPrimaryPropertyDetails(property, location);
+  const secondaryDetails = getSecondaryPropertyDetails(property);
 
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-5 pb-[calc(env(safe-area-inset-bottom)+7rem)] text-slate-950 dark:bg-black dark:text-neutral-50 sm:px-6 md:pb-8 lg:px-8">
@@ -280,10 +282,9 @@ export default function PropertyDetailPage() {
               {formatPropertyPrice(property.asking_price, property.currency)}
             </p>
             <div className="mt-5 grid gap-3">
-              <DetailLine label="Tip" value={property.property_type || "Belirtilmedi"} />
-              <DetailLine label="Kullanım" value={property.usage_type || "Belirtilmedi"} />
-              <DetailLine label="Alan" value={area ? `${area} m²` : "Belirtilmedi"} />
-              <DetailLine label="Görünürlük" value={property.is_public ? "Office-wide görünür" : "İç kullanım"} />
+              {primaryDetails.slice(1).map((item) => (
+                <DetailLine key={item.label} label={item.label} value={item.value} />
+              ))}
             </div>
           </aside>
         </section>
@@ -306,7 +307,13 @@ export default function PropertyDetailPage() {
             ))}
           </div>
 
-          <PropertyTabContent property={property} mediaCount={orderedMedia.length} activeTab={activeTab} />
+          <PropertyTabContent
+            property={property}
+            mediaCount={orderedMedia.length}
+            activeTab={activeTab}
+            primaryDetails={primaryDetails}
+            secondaryDetails={secondaryDetails}
+          />
         </section>
       </div>
     </main>
@@ -368,10 +375,24 @@ function toPublicSharePayload(property: AdvisorPropertyRow, photoCount: number):
     city: property.city,
     district: property.district,
     neighborhood: property.neighborhood,
+    listing_type: property.listing_type,
     property_type: property.property_type,
     usage_type: property.usage_type,
+    room_count: property.room_count,
     gross_area: property.gross_area,
     net_area: property.net_area,
+    building_age: property.building_age,
+    floor: property.floor,
+    total_floors: property.total_floors,
+    heating_type: property.heating_type,
+    bathroom_count: property.bathroom_count,
+    balcony_count: property.balcony_count,
+    parking_type: property.parking_type,
+    has_elevator: property.has_elevator,
+    in_site: property.in_site,
+    dues_amount: property.dues_amount,
+    deed_status: property.deed_status,
+    exchange_available: property.exchange_available,
     status: property.status,
     photo_count: photoCount
   };
@@ -492,11 +513,15 @@ function PropertyGallery({
 function PropertyTabContent({
   activeTab,
   mediaCount,
-  property
+  primaryDetails,
+  property,
+  secondaryDetails
 }: {
   activeTab: PropertyTab;
   mediaCount: number;
+  primaryDetails: PropertyDetailItem[];
   property: AdvisorPropertyRow;
+  secondaryDetails: PropertyDetailItem[];
 }) {
   const location = formatPropertyLocation(property);
 
@@ -513,9 +538,13 @@ function PropertyTabContent({
   if (activeTab === "Özellikler") {
     return (
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <DetailLine label="Mülk tipi" value={property.property_type || "Belirtilmedi"} />
-        <DetailLine label="Brüt alan" value={property.gross_area ? `${property.gross_area} m²` : "Belirtilmedi"} />
-        <DetailLine label="Net alan" value={property.net_area ? `${property.net_area} m²` : "Belirtilmedi"} />
+        {secondaryDetails.length ? secondaryDetails.map((item) => (
+          <DetailLine key={item.label} label={item.label} value={item.value} />
+        )) : (
+          <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 sm:col-span-3">
+            Ek teknik özellik girilmemiş.
+          </p>
+        )}
       </div>
     );
   }
@@ -539,11 +568,24 @@ function PropertyTabContent({
   }
 
   return (
-    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <DetailLine label="Başlık" value={property.title || "Belirtilmedi"} />
-      <DetailLine label="Lokasyon" value={location || "Belirtilmedi"} />
-      <DetailLine label="Fiyat" value={formatPropertyPrice(property.asking_price, property.currency)} />
-      <DetailLine label="Durum" value={formatStatusLabel(property.status || "Belirtilmedi")} />
+    <div className="mt-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {primaryDetails.map((item) => (
+          <DetailLine key={item.label} label={item.label} value={item.value} />
+        ))}
+      </div>
+      {secondaryDetails.length ? (
+        <details className="mt-4 rounded-[1.5rem] border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-950 dark:text-slate-100">
+            Daha Fazla Özellik
+          </summary>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {secondaryDetails.map((item) => (
+              <DetailLine key={item.label} label={item.label} value={item.value} />
+            ))}
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }
@@ -551,10 +593,46 @@ function PropertyTabContent({
 function DetailLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-      <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{label}</p>
+      <p className="text-xs font-medium text-slate-400 dark:text-slate-500">{label}</p>
       <p className="mt-2 break-words text-sm font-medium text-slate-950 dark:text-slate-100">{value}</p>
     </div>
   );
+}
+
+type PropertyDetailItem = {
+  label: string;
+  value: string;
+};
+
+function getPrimaryPropertyDetails(property: AdvisorPropertyRow, location: string) {
+  return [
+    { label: "Fiyat", value: formatPropertyPrice(property.asking_price, property.currency) },
+    { label: "Lokasyon", value: location || "Belirtilmedi" },
+    { label: "İlan Tipi", value: property.listing_type || "Belirtilmedi" },
+    { label: "Gayrimenkul Tipi", value: property.property_type || "Belirtilmedi" },
+    { label: "Oda Sayısı", value: property.room_count || "Belirtilmedi" },
+    { label: "Net / Brüt m²", value: [formatSquareMeters(property.net_area), formatSquareMeters(property.gross_area)].filter(Boolean).join(" / ") || "Belirtilmedi" },
+    { label: "Kat", value: [property.floor, property.total_floors].filter(Boolean).join(" / ") || "Belirtilmedi" },
+    { label: "Durum", value: formatStatusLabel(property.status || "Belirtilmedi") }
+  ];
+}
+
+function getSecondaryPropertyDetails(property: AdvisorPropertyRow) {
+  return [
+    { label: "Bina Yaşı", value: property.building_age || "" },
+    { label: "Isıtma Tipi", value: property.heating_type || "" },
+    { label: "Banyo Sayısı", value: property.bathroom_count || "" },
+    { label: "Balkon Sayısı", value: property.balcony_count || "" },
+    { label: "Otopark", value: property.parking_type || "" },
+    { label: "Asansör", value: booleanToText(property.has_elevator) },
+    { label: "Site İçi", value: booleanToText(property.in_site, "Evet", "Hayır") },
+    { label: "Aidat", value: formatDuesAmount(property.dues_amount) },
+    { label: "Tapu Durumu", value: property.deed_status || "" },
+    { label: "Takas", value: booleanToText(property.exchange_available) },
+    { label: "Kullanım", value: property.usage_type || "" },
+    { label: "Danışman", value: property.advisor_id || "" },
+    { label: "Görünürlük", value: property.is_public ? "Office-wide görünür" : "İç kullanım" }
+  ].filter((item) => item.value && item.value !== "Belirtilmedi");
 }
 
 function formatDate(value?: string) {

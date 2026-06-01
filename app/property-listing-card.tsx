@@ -26,6 +26,7 @@ export function PropertyListingCard({ actions, demo = false, media = [], propert
   const imageUrl = cover?.signed_url || (demo || !cover ? DEMO_PROPERTY_IMAGE : "");
   const location = formatPropertyLocation(property);
   const area = property.gross_area || property.net_area;
+  const floor = [property.floor, property.total_floors].filter(Boolean).join(" / ");
   const photoCount = orderedMedia.length || (demo ? 1 : 0);
 
   return (
@@ -83,9 +84,12 @@ export function PropertyListingCard({ actions, demo = false, media = [], propert
         </p>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <CardSpec label="İlan" value={property.listing_type || property.usage_type || "Belirtilmedi"} />
           <CardSpec label="Tip" value={property.property_type || "Belirtilmedi"} />
-          <CardSpec label="Alan" value={area ? `${area} m²` : "Belirtilmedi"} />
-          <CardSpec label="Kullanım" value={property.usage_type || "Belirtilmedi"} />
+          <CardSpec label="Oda / Alan" value={[property.room_count, area ? `${area} m²` : ""].filter(Boolean).join(" · ") || "Belirtilmedi"} />
+          <CardSpec label="Kat" value={floor || "Belirtilmedi"} />
+          <CardSpec label="Isıtma" value={property.heating_type || "Belirtilmedi"} />
+          <CardSpec label="Otopark" value={property.parking_type || "Belirtilmedi"} />
         </div>
 
         <div className="mt-4 flex flex-wrap justify-end gap-2">

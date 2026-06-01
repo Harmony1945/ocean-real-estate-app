@@ -101,7 +101,7 @@ export default function AdvisorApplicationsAdminPage() {
       <div className="mx-auto max-w-6xl">
         <Link href="/menu" className="mini-action">Menüye Dön</Link>
         <header className="mt-8 border-b border-slate-200 pb-6 dark:border-white/10">
-          <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Admin</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Admin</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight">Danışman Başvuruları</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
             Başvuruları inceleyin, onaylayın veya reddedin. Profil varsa danışman kaydı onay anında bağlanır.

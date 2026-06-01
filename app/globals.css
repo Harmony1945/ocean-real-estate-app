@@ -60,6 +60,14 @@ body > main > nav.pointer-events-none.fixed {
   display: none !important;
 }
 
+.oos-mobile-nav {
+  position: fixed !important;
+  inset-inline: 0;
+  bottom: 0;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
 .oos-map-surface .leaflet-pane {
   z-index: 10;
 }

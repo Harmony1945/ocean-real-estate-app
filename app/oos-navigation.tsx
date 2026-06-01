@@ -148,7 +148,7 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
         </>
       ) : null}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-[70] px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 md:hidden">
+      <nav className="oos-mobile-nav fixed bottom-0 left-0 right-0 z-[70] px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 md:hidden">
         <div className="liquid-glass-nav mx-auto grid max-w-[21rem] grid-cols-4 gap-1.5 rounded-[2rem] p-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -212,7 +212,7 @@ export function MenuPanelContent({
       <div className="mt-3 space-y-5">
         {menuGroups.map((group) => (
           <div key={group.title}>
-            <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+            <p className="px-3 pb-1 text-[11px] font-medium text-slate-400 dark:text-slate-500">
               {group.title}
             </p>
             <div className="space-y-1">

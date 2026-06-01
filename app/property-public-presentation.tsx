@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { PropertySharePayload } from "@/lib/supabase/client";
 import { DEMO_PROPERTY_IMAGE } from "./property-listing-card";
 import { formatStatusLabel } from "@/lib/oos/status-labels";
+import { booleanToText, formatDuesAmount } from "@/lib/oos/property-fields";
 
 type PropertyPublicPresentationProps = {
   payload: PropertySharePayload;
@@ -15,6 +16,7 @@ export default function PropertyPublicPresentation({ payload, printMode = false 
   const photoCount = Math.max(payload.photo_count || 1, 1);
   const hasMultiplePhotos = !printMode && photoCount > 1;
   const location = [payload.city, payload.district, payload.neighborhood].filter(Boolean).join(" / ");
+  const publicSpecs = getPublicSpecs(payload);
 
   useEffect(() => {
     if (printMode) {
@@ -107,11 +109,9 @@ export default function PropertyPublicPresentation({ payload, printMode = false 
               {location || "Konum bilgisi paylaşılmadı"}
             </p>
             <div className="mt-5 grid gap-3">
-              <Spec label="Tip" value={payload.property_type || "Belirtilmedi"} />
-              <Spec label="Kullanım" value={payload.usage_type || "Belirtilmedi"} />
-              <Spec label="Brüt alan" value={payload.gross_area ? `${payload.gross_area} m²` : "Belirtilmedi"} />
-              <Spec label="Net alan" value={payload.net_area ? `${payload.net_area} m²` : "Belirtilmedi"} />
-              <Spec label="Durum" value={formatStatusLabel(payload.status || "Belirtilmedi")} />
+              {publicSpecs.map((spec) => (
+                <Spec key={spec.label} label={spec.label} value={spec.value} />
+              ))}
             </div>
           </aside>
         </section>
@@ -133,6 +133,25 @@ export default function PropertyPublicPresentation({ payload, printMode = false 
       </div>
     </main>
   );
+}
+
+function getPublicSpecs(payload: PropertySharePayload) {
+  return [
+    { label: "İlan Tipi", value: payload.listing_type || "" },
+    { label: "Gayrimenkul Tipi", value: payload.property_type || "" },
+    { label: "Oda Sayısı", value: payload.room_count || "" },
+    { label: "Brüt alan", value: payload.gross_area ? `${payload.gross_area} m²` : "" },
+    { label: "Net alan", value: payload.net_area ? `${payload.net_area} m²` : "" },
+    { label: "Kat", value: [payload.floor, payload.total_floors].filter(Boolean).join(" / ") },
+    { label: "Isıtma", value: payload.heating_type || "" },
+    { label: "Banyo", value: payload.bathroom_count || "" },
+    { label: "Otopark", value: payload.parking_type || "" },
+    { label: "Asansör", value: booleanToText(payload.has_elevator) },
+    { label: "Site İçi", value: booleanToText(payload.in_site, "Evet", "Hayır") },
+    { label: "Aidat", value: formatDuesAmount(payload.dues_amount) },
+    { label: "Tapu", value: payload.deed_status || "" },
+    { label: "Durum", value: formatStatusLabel(payload.status || "Belirtilmedi") }
+  ].filter((spec) => spec.value && spec.value !== "Belirtilmedi");
 }
 
 function Spec({ label, value }: { label: string; value: string }) {

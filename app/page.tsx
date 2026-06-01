@@ -20,6 +20,17 @@ import {
   type PropertyMediaRow
 } from "@/lib/supabase/client";
 import { demoSearchRequests, demoShowcasePortfolios } from "@/lib/oos/demo-data";
+import {
+  booleanTextOptions,
+  deedStatusOptions,
+  heatingTypeOptions,
+  listingTypeOptions,
+  parkingTypeOptions,
+  propertyTypeOptions as technicalPropertyTypeOptions,
+  roomCountOptions,
+  textToBoolean,
+  yesNoTextOptions
+} from "@/lib/oos/property-fields";
 import { formatStatusLabel, formatUrgencyLabel, getStatusPillClass, getUrgencyPillClass, isActiveStatus } from "@/lib/oos/status-labels";
 
 type Stage = "Lead" | "Yeni" | "Görüşme" | "Sözleşme" | "Kapanış" | "Kapandı";
@@ -71,8 +82,22 @@ type Opportunity = {
   listingId?: string;
   createdAt?: string;
   propertyType?: string;
+  listingType?: string;
   area?: string;
+  netArea?: string;
   rooms?: string;
+  buildingAge?: string;
+  floor?: string;
+  totalFloors?: string;
+  heatingType?: string;
+  bathroomCount?: string;
+  balconyCount?: string;
+  parkingType?: string;
+  hasElevator?: boolean | null;
+  inSite?: boolean | null;
+  duesAmount?: number | null;
+  deedStatus?: string;
+  exchangeAvailable?: boolean | null;
   description?: string;
   latitude?: number | null;
   longitude?: number | null;
@@ -87,6 +112,23 @@ type OpportunityForm = {
   owner: string;
   value: string;
   stage: Stage;
+  listingType: string;
+  propertyType: string;
+  roomCount: string;
+  grossArea: string;
+  netArea: string;
+  buildingAge: string;
+  floor: string;
+  totalFloors: string;
+  heatingType: string;
+  bathroomCount: string;
+  balconyCount: string;
+  parkingType: string;
+  hasElevator: string;
+  inSite: string;
+  duesAmount: string;
+  deedStatus: string;
+  exchangeAvailable: string;
   contractType: string;
   nextMove: string;
   commissionRate: number;
@@ -377,6 +419,23 @@ function emptyForm(): OpportunityForm {
     owner: "",
     value: "",
     stage: "Yeni",
+    listingType: "Satılık",
+    propertyType: "Daire",
+    roomCount: "",
+    grossArea: "",
+    netArea: "",
+    buildingAge: "",
+    floor: "",
+    totalFloors: "",
+    heatingType: "",
+    bathroomCount: "",
+    balconyCount: "",
+    parkingType: "",
+    hasElevator: "Belirtilmedi",
+    inSite: "Belirtilmedi",
+    duesAmount: "",
+    deedStatus: "",
+    exchangeAvailable: "Belirtilmedi",
     contractType: "Satışa Aracılık",
     nextMove: "",
     commissionRate: 2
@@ -409,6 +468,23 @@ function toForm(opportunity: Opportunity): OpportunityForm {
     owner: opportunity.owner,
     value: String(opportunity.value),
     stage: opportunity.stage,
+    listingType: opportunity.listingType || (opportunity.contractType?.includes("Kiral") ? "Kiralık" : "Satılık"),
+    propertyType: opportunity.propertyType || "Daire",
+    roomCount: opportunity.rooms || "",
+    grossArea: opportunity.area || "",
+    netArea: opportunity.netArea || "",
+    buildingAge: opportunity.buildingAge || "",
+    floor: opportunity.floor || "",
+    totalFloors: opportunity.totalFloors || "",
+    heatingType: opportunity.heatingType || "",
+    bathroomCount: opportunity.bathroomCount || "",
+    balconyCount: opportunity.balconyCount || "",
+    parkingType: opportunity.parkingType || "",
+    hasElevator: opportunity.hasElevator === true ? "Var" : opportunity.hasElevator === false ? "Yok" : "Belirtilmedi",
+    inSite: opportunity.inSite === true ? "Evet" : opportunity.inSite === false ? "Hayır" : "Belirtilmedi",
+    duesAmount: opportunity.duesAmount ? String(opportunity.duesAmount) : "",
+    deedStatus: opportunity.deedStatus || "",
+    exchangeAvailable: opportunity.exchangeAvailable === true ? "Var" : opportunity.exchangeAvailable === false ? "Yok" : "Belirtilmedi",
     contractType: opportunity.contractType,
     nextMove: opportunity.nextMove,
     commissionRate: opportunity.commissionRate
@@ -479,12 +555,26 @@ function toPropertyInput(opportunity: Opportunity): PropertyInput {
   return {
     title: opportunity.title,
     property_type: opportunity.propertyType || "Konut",
-    usage_type: opportunity.contractType,
+    listing_type: opportunity.listingType || (opportunity.contractType?.includes("Kiral") ? "Kiralık" : "Satılık"),
+    usage_type: opportunity.listingType || opportunity.contractType,
     city: city || null,
     district: district || null,
     neighborhood: neighborhood || null,
     gross_area: parseArea(opportunity.area),
-    net_area: null,
+    net_area: parseArea(opportunity.netArea),
+    room_count: opportunity.rooms || null,
+    building_age: opportunity.buildingAge || null,
+    floor: opportunity.floor || null,
+    total_floors: opportunity.totalFloors || null,
+    heating_type: opportunity.heatingType || null,
+    bathroom_count: opportunity.bathroomCount || null,
+    balcony_count: opportunity.balconyCount || null,
+    parking_type: opportunity.parkingType || null,
+    has_elevator: opportunity.hasElevator ?? null,
+    in_site: opportunity.inSite ?? null,
+    dues_amount: opportunity.duesAmount || null,
+    deed_status: opportunity.deedStatus || null,
+    exchange_available: opportunity.exchangeAvailable ?? null,
     asking_price: opportunity.value,
     currency: "TRY",
     status: getPropertyStatusValue(opportunity.stage),
@@ -510,8 +600,22 @@ function fromPropertyRow(row: AdvisorPropertyRow, consultant: Consultant): Oppor
     commission: calculateCommission(Number(row.asking_price || 0), 2),
     createdAt: row.created_at?.slice(0, 10) || today(),
     propertyType: row.property_type || "Konut",
+    listingType: row.listing_type || row.usage_type || "Satılık",
     area,
-    rooms: "",
+    netArea: row.net_area ? String(row.net_area) : "",
+    rooms: row.room_count || "",
+    buildingAge: row.building_age || "",
+    floor: row.floor || "",
+    totalFloors: row.total_floors || "",
+    heatingType: row.heating_type || "",
+    bathroomCount: row.bathroom_count || "",
+    balconyCount: row.balcony_count || "",
+    parkingType: row.parking_type || "",
+    hasElevator: row.has_elevator ?? null,
+    inSite: row.in_site ?? null,
+    duesAmount: row.dues_amount ?? null,
+    deedStatus: row.deed_status || "",
+    exchangeAvailable: row.exchange_available ?? null,
     description: "",
     latitude: null,
     longitude: null,
@@ -1261,7 +1365,23 @@ export default function Home() {
       risk: existingOpportunity?.risk || "Düşük",
       commissionRate: form.commissionRate,
       commission: calculateCommission(value, form.commissionRate),
-      propertyType: existingOpportunity?.propertyType || "Konut",
+      listingType: form.listingType,
+      propertyType: form.propertyType || "Daire",
+      area: form.grossArea,
+      netArea: form.netArea,
+      rooms: form.roomCount,
+      buildingAge: form.buildingAge,
+      floor: form.floor,
+      totalFloors: form.totalFloors,
+      heatingType: form.heatingType,
+      bathroomCount: form.bathroomCount,
+      balconyCount: form.balconyCount,
+      parkingType: form.parkingType,
+      hasElevator: textToBoolean(form.hasElevator),
+      inSite: textToBoolean(form.inSite),
+      duesAmount: Number(form.duesAmount || 0) || null,
+      deedStatus: form.deedStatus,
+      exchangeAvailable: textToBoolean(form.exchangeAvailable),
       createdAt: existingOpportunity?.createdAt || today(),
       ownerConsultantId: existingOpportunity?.ownerConsultantId || currentUser.id,
       ownerConsultantName:
@@ -2324,6 +2444,28 @@ export default function Home() {
                   }
                 />
               </Field>
+              <Field label="İlan Tipi">
+                <select className="input" value={form.listingType} onChange={(event) => setForm({ ...form, listingType: event.target.value })}>
+                  {listingTypeOptions.map((option) => <option key={option}>{option}</option>)}
+                </select>
+              </Field>
+              <Field label="Gayrimenkul Tipi">
+                <select className="input" value={form.propertyType} onChange={(event) => setForm({ ...form, propertyType: event.target.value })}>
+                  {technicalPropertyTypeOptions.map((option) => <option key={option}>{option}</option>)}
+                </select>
+              </Field>
+              <Field label="Oda Sayısı">
+                <select className="input" value={form.roomCount} onChange={(event) => setForm({ ...form, roomCount: event.target.value })}>
+                  <option value="">Belirtilmedi</option>
+                  {roomCountOptions.map((option) => <option key={option}>{option}</option>)}
+                </select>
+              </Field>
+              <Field label="Net m²">
+                <input className="input" min="0" type="number" value={form.netArea} onChange={(event) => setForm({ ...form, netArea: event.target.value })} />
+              </Field>
+              <Field label="Brüt m²">
+                <input className="input" min="0" type="number" value={form.grossArea} onChange={(event) => setForm({ ...form, grossArea: event.target.value })} />
+              </Field>
               <Field label="Aşama">
                 <select
                   className="input"
@@ -2365,6 +2507,24 @@ export default function Home() {
                 />
               </Field>
             </div>
+
+            <details className="mt-5 rounded-3xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-950 dark:text-slate-100">Daha Fazla Özellik</summary>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <Field label="Bina Yaşı"><input className="input" value={form.buildingAge} onChange={(event) => setForm({ ...form, buildingAge: event.target.value })} /></Field>
+                <Field label="Bulunduğu Kat"><input className="input" value={form.floor} onChange={(event) => setForm({ ...form, floor: event.target.value })} /></Field>
+                <Field label="Toplam Kat"><input className="input" value={form.totalFloors} onChange={(event) => setForm({ ...form, totalFloors: event.target.value })} /></Field>
+                <Field label="Isıtma Tipi"><select className="input" value={form.heatingType} onChange={(event) => setForm({ ...form, heatingType: event.target.value })}><option value="">Belirtilmedi</option>{heatingTypeOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>
+                <Field label="Banyo Sayısı"><input className="input" min="0" type="number" value={form.bathroomCount} onChange={(event) => setForm({ ...form, bathroomCount: event.target.value })} /></Field>
+                <Field label="Balkon Sayısı"><input className="input" min="0" type="number" value={form.balconyCount} onChange={(event) => setForm({ ...form, balconyCount: event.target.value })} /></Field>
+                <Field label="Otopark"><select className="input" value={form.parkingType} onChange={(event) => setForm({ ...form, parkingType: event.target.value })}><option value="">Belirtilmedi</option>{parkingTypeOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>
+                <Field label="Asansör"><select className="input" value={form.hasElevator} onChange={(event) => setForm({ ...form, hasElevator: event.target.value })}>{booleanTextOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>
+                <Field label="Site İçi"><select className="input" value={form.inSite} onChange={(event) => setForm({ ...form, inSite: event.target.value })}>{yesNoTextOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>
+                <Field label="Aidat"><input className="input" min="0" type="number" value={form.duesAmount} onChange={(event) => setForm({ ...form, duesAmount: event.target.value })} /></Field>
+                <Field label="Tapu Durumu"><select className="input" value={form.deedStatus} onChange={(event) => setForm({ ...form, deedStatus: event.target.value })}><option value="">Belirtilmedi</option>{deedStatusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>
+                <Field label="Takas"><select className="input" value={form.exchangeAvailable} onChange={(event) => setForm({ ...form, exchangeAvailable: event.target.value })}>{booleanTextOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>
+              </div>
+            </details>
 
             <div className="mt-6 rounded-3xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
               <p className="text-sm font-medium text-slate-950 dark:text-slate-100">

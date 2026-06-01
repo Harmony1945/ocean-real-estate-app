@@ -12,6 +12,17 @@ import {
   type PropertyMediaRow
 } from "@/lib/supabase/client";
 import { demoShowcasePortfolios } from "@/lib/oos/demo-data";
+import {
+  booleanTextOptions,
+  deedStatusOptions,
+  heatingTypeOptions,
+  listingTypeOptions,
+  parkingTypeOptions,
+  propertyTypeOptions,
+  roomCountOptions,
+  textToBoolean,
+  yesNoTextOptions
+} from "@/lib/oos/property-fields";
 import { PropertyListingCard, formatPropertyLocation, formatPropertyPrice } from "../property-listing-card";
 
 const demoPortfolios: AdvisorPropertyRow[] = demoShowcasePortfolios.slice(0, 2).map((portfolio) => ({
@@ -38,8 +49,24 @@ const emptyForm = {
   location: "",
   value: "",
   status: "active",
-  propertyType: "Konut",
-  area: ""
+  listingType: "Satılık",
+  propertyType: "Daire",
+  roomCount: "",
+  grossArea: "",
+  netArea: "",
+  buildingAge: "",
+  floor: "",
+  totalFloors: "",
+  heatingType: "",
+  bathroomCount: "",
+  balconyCount: "",
+  parkingType: "",
+  hasElevator: "Belirtilmedi",
+  inSite: "Belirtilmedi",
+  duesAmount: "",
+  deedStatus: "",
+  exchangeAvailable: "Belirtilmedi",
+  moreOpen: false
 };
 
 export default function PortfoliosRoutePage() {
@@ -150,8 +177,24 @@ export default function PortfoliosRoutePage() {
       location: formatPropertyLocation(item),
       value: String(item.asking_price || ""),
       status: item.status || "active",
-      propertyType: item.property_type || "Konut",
-      area: item.gross_area ? String(item.gross_area) : ""
+      listingType: item.listing_type || "Satılık",
+      propertyType: item.property_type || "Daire",
+      roomCount: item.room_count || "",
+      grossArea: item.gross_area ? String(item.gross_area) : "",
+      netArea: item.net_area ? String(item.net_area) : "",
+      buildingAge: item.building_age || "",
+      floor: item.floor || "",
+      totalFloors: item.total_floors || "",
+      heatingType: item.heating_type || "",
+      bathroomCount: item.bathroom_count || "",
+      balconyCount: item.balcony_count || "",
+      parkingType: item.parking_type || "",
+      hasElevator: item.has_elevator === true ? "Var" : item.has_elevator === false ? "Yok" : "Belirtilmedi",
+      inSite: item.in_site === true ? "Evet" : item.in_site === false ? "Hayır" : "Belirtilmedi",
+      duesAmount: item.dues_amount ? String(item.dues_amount) : "",
+      deedStatus: item.deed_status || "",
+      exchangeAvailable: item.exchange_available === true ? "Var" : item.exchange_available === false ? "Yok" : "Belirtilmedi",
+      moreOpen: false
     });
   }
 
@@ -191,8 +234,18 @@ export default function PortfoliosRoutePage() {
             <input className="input" placeholder="Başlık" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
             <input className="input" placeholder="Şehir / İlçe / Mahalle" value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} />
             <input className="input" inputMode="numeric" placeholder="Fiyat" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
-            <input className="input" inputMode="numeric" placeholder="Brüt m²" value={form.area} onChange={(event) => setForm({ ...form, area: event.target.value })} />
-            <input className="input" placeholder="Portföy tipi" value={form.propertyType} onChange={(event) => setForm({ ...form, propertyType: event.target.value })} />
+            <select className="input" value={form.listingType} onChange={(event) => setForm({ ...form, listingType: event.target.value })}>
+              {listingTypeOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+            <select className="input" value={form.propertyType} onChange={(event) => setForm({ ...form, propertyType: event.target.value })}>
+              {propertyTypeOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+            <select className="input" value={form.roomCount} onChange={(event) => setForm({ ...form, roomCount: event.target.value })}>
+              <option value="">Oda Sayısı</option>
+              {roomCountOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+            <input className="input" inputMode="numeric" placeholder="Net m²" value={form.netArea} onChange={(event) => setForm({ ...form, netArea: event.target.value })} />
+            <input className="input" inputMode="numeric" placeholder="Brüt m²" value={form.grossArea} onChange={(event) => setForm({ ...form, grossArea: event.target.value })} />
             <select className="input" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
               <option value="active">Aktif</option>
               <option value="draft">Taslak</option>
@@ -203,6 +256,38 @@ export default function PortfoliosRoutePage() {
               <option value="archived">Arşiv</option>
             </select>
           </div>
+          <details className="mt-4 rounded-3xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-950 dark:text-slate-100">Daha Fazla Özellik</summary>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <input className="input" placeholder="Bina Yaşı" value={form.buildingAge} onChange={(event) => setForm({ ...form, buildingAge: event.target.value })} />
+              <input className="input" placeholder="Bulunduğu Kat" value={form.floor} onChange={(event) => setForm({ ...form, floor: event.target.value })} />
+              <input className="input" placeholder="Toplam Kat Sayısı" value={form.totalFloors} onChange={(event) => setForm({ ...form, totalFloors: event.target.value })} />
+              <select className="input" value={form.heatingType} onChange={(event) => setForm({ ...form, heatingType: event.target.value })}>
+                <option value="">Isıtma Tipi</option>
+                {heatingTypeOptions.map((option) => <option key={option}>{option}</option>)}
+              </select>
+              <input className="input" inputMode="numeric" placeholder="Banyo Sayısı" value={form.bathroomCount} onChange={(event) => setForm({ ...form, bathroomCount: event.target.value })} />
+              <input className="input" inputMode="numeric" placeholder="Balkon Sayısı" value={form.balconyCount} onChange={(event) => setForm({ ...form, balconyCount: event.target.value })} />
+              <select className="input" value={form.parkingType} onChange={(event) => setForm({ ...form, parkingType: event.target.value })}>
+                <option value="">Otopark</option>
+                {parkingTypeOptions.map((option) => <option key={option}>{option}</option>)}
+              </select>
+              <select className="input" value={form.hasElevator} onChange={(event) => setForm({ ...form, hasElevator: event.target.value })}>
+                {booleanTextOptions.map((option) => <option key={option}>{option}</option>)}
+              </select>
+              <select className="input" value={form.inSite} onChange={(event) => setForm({ ...form, inSite: event.target.value })}>
+                {yesNoTextOptions.map((option) => <option key={option}>{option}</option>)}
+              </select>
+              <input className="input" inputMode="numeric" placeholder="Aidat" value={form.duesAmount} onChange={(event) => setForm({ ...form, duesAmount: event.target.value })} />
+              <select className="input" value={form.deedStatus} onChange={(event) => setForm({ ...form, deedStatus: event.target.value })}>
+                <option value="">Tapu Durumu</option>
+                {deedStatusOptions.map((option) => <option key={option}>{option}</option>)}
+              </select>
+              <select className="input" value={form.exchangeAvailable} onChange={(event) => setForm({ ...form, exchangeAvailable: event.target.value })}>
+                {booleanTextOptions.map((option) => <option key={option} value={option}>Takas: {option}</option>)}
+              </select>
+            </div>
+          </details>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
             {editingId ? <button className="btn-secondary" type="button" disabled={saving} onClick={() => { setEditingId(null); setForm(emptyForm); }}>Vazgeç</button> : null}
             <button className="btn-primary" type="button" disabled={saving} onClick={savePortfolio}>{saving ? "Kaydediliyor..." : "Kaydet"}</button>
@@ -265,12 +350,26 @@ function toPropertyInput(form: typeof emptyForm): PropertyInput {
   return {
     title: form.title.trim(),
     property_type: form.propertyType.trim() || "Konut",
-    usage_type: "Satış",
+    listing_type: form.listingType || "Satılık",
+    usage_type: form.listingType || "Satılık",
     city: city || null,
     district: district || null,
     neighborhood: neighborhood || null,
-    gross_area: Number(form.area || 0) || null,
-    net_area: null,
+    gross_area: Number(form.grossArea || 0) || null,
+    net_area: Number(form.netArea || 0) || null,
+    room_count: form.roomCount || null,
+    building_age: form.buildingAge || null,
+    floor: form.floor || null,
+    total_floors: form.totalFloors || null,
+    heating_type: form.heatingType || null,
+    bathroom_count: form.bathroomCount || null,
+    balcony_count: form.balconyCount || null,
+    parking_type: form.parkingType || null,
+    has_elevator: textToBoolean(form.hasElevator),
+    in_site: textToBoolean(form.inSite),
+    dues_amount: Number(form.duesAmount || 0) || null,
+    deed_status: form.deedStatus || null,
+    exchange_available: textToBoolean(form.exchangeAvailable),
     asking_price: Number(form.value || 0) || null,
     currency: "TRY",
     status: form.status || "active",
@@ -285,12 +384,26 @@ function fromForm(form: typeof emptyForm): AdvisorPropertyRow {
     advisor_id: null,
     title: form.title.trim() || "İsimsiz portföy",
     property_type: form.propertyType || "Konut",
-    usage_type: "Satış",
+    listing_type: form.listingType || "Satılık",
+    usage_type: form.listingType || "Satılık",
     city: city || null,
     district: district || null,
     neighborhood: neighborhood || null,
-    gross_area: Number(form.area || 0) || null,
-    net_area: null,
+    gross_area: Number(form.grossArea || 0) || null,
+    net_area: Number(form.netArea || 0) || null,
+    room_count: form.roomCount || null,
+    building_age: form.buildingAge || null,
+    floor: form.floor || null,
+    total_floors: form.totalFloors || null,
+    heating_type: form.heatingType || null,
+    bathroom_count: form.bathroomCount || null,
+    balcony_count: form.balconyCount || null,
+    parking_type: form.parkingType || null,
+    has_elevator: textToBoolean(form.hasElevator),
+    in_site: textToBoolean(form.inSite),
+    dues_amount: Number(form.duesAmount || 0) || null,
+    deed_status: form.deedStatus || null,
+    exchange_available: textToBoolean(form.exchangeAvailable),
     asking_price: Number(form.value || 0) || null,
     currency: "TRY",
     status: form.status || "active",

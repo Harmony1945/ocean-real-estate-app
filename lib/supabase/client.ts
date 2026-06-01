@@ -85,6 +85,7 @@ export type AdvisorPropertyRow = {
   id: string;
   advisor_id: string | null;
   title: string;
+  listing_type?: string | null;
   property_type: string | null;
   usage_type: string | null;
   city: string | null;
@@ -92,6 +93,19 @@ export type AdvisorPropertyRow = {
   neighborhood: string | null;
   gross_area: number | null;
   net_area: number | null;
+  room_count?: string | null;
+  building_age?: string | null;
+  floor?: string | null;
+  total_floors?: string | null;
+  heating_type?: string | null;
+  bathroom_count?: string | null;
+  balcony_count?: string | null;
+  parking_type?: string | null;
+  has_elevator?: boolean | null;
+  in_site?: boolean | null;
+  dues_amount?: number | null;
+  deed_status?: string | null;
+  exchange_available?: boolean | null;
   asking_price: number | null;
   currency: string | null;
   status: string | null;
@@ -180,8 +194,22 @@ export type PropertySharePayload = {
   neighborhood: string | null;
   property_type: string | null;
   usage_type: string | null;
+  listing_type?: string | null;
+  room_count?: string | null;
   gross_area: number | null;
   net_area: number | null;
+  building_age?: string | null;
+  floor?: string | null;
+  total_floors?: string | null;
+  heating_type?: string | null;
+  bathroom_count?: string | null;
+  balcony_count?: string | null;
+  parking_type?: string | null;
+  has_elevator?: boolean | null;
+  in_site?: boolean | null;
+  dues_amount?: number | null;
+  deed_status?: string | null;
+  exchange_available?: boolean | null;
   status: string | null;
   photo_count: number;
   advisor_name?: string | null;
@@ -529,6 +557,15 @@ async function addOceanWatermark(file: File) {
     });
   } finally {
     URL.revokeObjectURL(sourceUrl);
+  }
+}
+
+async function preparePropertyPhotoForUpload(file: File) {
+  try {
+    return await addOceanWatermark(file);
+  } catch (error) {
+    console.warn("Ocean watermark could not be applied; uploading original photo.", error);
+    return file;
   }
 }
 
@@ -1002,7 +1039,7 @@ export function createSupabaseAuthClient(): any {
 
     try {
       return await request<AdvisorMatchRow[]>(
-        "/rest/v1/matches?select=*,property:properties!matches_property_id_fkey(id,advisor_id,title,property_type,usage_type,city,district,neighborhood,gross_area,net_area,asking_price,currency,status,is_public,created_at,updated_at),search_request:search_requests!matches_search_request_id_fkey(*)&order=created_at.desc",
+        "/rest/v1/matches?select=*,property:properties!matches_property_id_fkey(id,advisor_id,title,listing_type,property_type,usage_type,city,district,neighborhood,gross_area,net_area,room_count,asking_price,currency,status,is_public,created_at,updated_at),search_request:search_requests!matches_search_request_id_fkey(*)&order=created_at.desc",
         { method: "GET", token }
       );
     } catch {
@@ -1077,7 +1114,7 @@ export function createSupabaseAuthClient(): any {
     const storagePath = `${propertyId}/${mediaId}.${getImageExtension(file)}`;
 
     try {
-      const watermarkedFile = await addOceanWatermark(file);
+      const watermarkedFile = await preparePropertyPhotoForUpload(file);
       await uploadStorageObject(storagePath, watermarkedFile, stored.access_token, onProgress);
       const rows = await request<PropertyMediaRow[]>("/rest/v1/property_media", {
         method: "POST",

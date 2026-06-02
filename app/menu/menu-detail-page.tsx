@@ -212,13 +212,15 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
       }
 
       if (page.slug === "matches") {
-        const [matches, properties, requests] = await Promise.all([
+        const [matches, properties, requests, advisors] = await Promise.all([
           supabase.getMatches(),
           supabase.getProperties(),
-          supabase.getSearchRequests()
+          supabase.getSearchRequests(),
+          supabase.getAdvisors()
         ]);
         if (mounted) {
           setMatchRows(enrichMatches(matches, properties, requests));
+          setAdvisorRows(advisors);
         }
       }
 
@@ -471,7 +473,12 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         {page.slug === "matches" && isSupabaseConfigured ? (
           <section className="mt-6 grid gap-4 md:grid-cols-2">
             {matchRows.map((match) => (
-              <MatchCard key={match.id} match={match} />
+              <MatchCard
+                key={match.id}
+                advisors={advisorRows}
+                currentProfileId={profile?.id || user?.id || null}
+                match={match}
+              />
             ))}
             {!matchRows.length ? (
               <article className="rounded-[1.75rem] border border-dashed border-slate-200 p-5 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 md:col-span-2">
@@ -1466,7 +1473,15 @@ function formatActivityTime(createdAt?: string | null) {
   }).format(date);
 }
 
-function MatchCard({ match }: { match: AdvisorMatchRow }) {
+function MatchCard({
+  advisors,
+  currentProfileId,
+  match
+}: {
+  advisors: AdvisorRow[];
+  currentProfileId: string | null;
+  match: AdvisorMatchRow;
+}) {
   const property = match.property;
   const portfolio = match.portfolio;
   const searchRequest = match.search_request;
@@ -1487,6 +1502,10 @@ function MatchCard({ match }: { match: AdvisorMatchRow }) {
     getSearchPropertyType(searchRequest),
     formatBudgetRange(searchRequest)
   ].filter(Boolean).join(" · ");
+  const contact = getMatchContact(match, advisors, currentProfileId);
+  const normalizedPhone = normalizeTurkishPhone(contact?.phone || "");
+  const phoneHref = normalizedPhone ? `tel:+${normalizedPhone}` : "";
+  const whatsappHref = normalizedPhone ? `https://wa.me/${normalizedPhone}` : "";
 
   return (
     <article className="oos-card rounded-[1.75rem] p-5">
@@ -1537,8 +1556,56 @@ function MatchCard({ match }: { match: AdvisorMatchRow }) {
           Eşleşen Portföy: {portfolioMeta}
         </p>
       ) : null}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        {phoneHref ? (
+          <a className="btn-secondary text-center" href={phoneHref}>
+            İletişime Geç{contact?.name ? ` · ${contact.name}` : ""}
+          </a>
+        ) : (
+          <button className="btn-secondary cursor-not-allowed opacity-60" type="button" disabled>
+            Telefon yok
+          </button>
+        )}
+        {whatsappHref ? (
+          <a className="btn-secondary text-center" href={whatsappHref} target="_blank" rel="noreferrer">
+            WhatsApp
+          </a>
+        ) : (
+          <button className="btn-secondary cursor-not-allowed opacity-60" type="button" disabled>
+            WhatsApp yok
+          </button>
+        )}
+      </div>
     </article>
   );
+}
+
+function getMatchContact(match: AdvisorMatchRow, advisors: AdvisorRow[], currentProfileId: string | null) {
+  const propertyAdvisorId = String(match.property_advisor_id || match.property?.advisor_id || "");
+  const requestAdvisorId = String(match.request_advisor_id || match.search_request?.advisor_id || "");
+  const currentAdvisor = advisors.find((advisor) => advisor.profile_id === currentProfileId);
+  const currentAdvisorId = currentAdvisor?.id || "";
+  const targetAdvisorId =
+    currentAdvisorId && currentAdvisorId === propertyAdvisorId
+      ? requestAdvisorId
+      : currentAdvisorId && currentAdvisorId === requestAdvisorId
+        ? propertyAdvisorId
+        : requestAdvisorId || propertyAdvisorId;
+  const advisor = advisors.find((item) => item.id === targetAdvisorId);
+  if (!advisor) return null;
+  return {
+    name: advisor.profile?.full_name || advisor.title || "Ocean Danışmanı",
+    phone: advisor.profile?.phone || ""
+  };
+}
+
+function normalizeTurkishPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("90")) return digits;
+  if (digits.startsWith("0")) return `90${digits.slice(1)}`;
+  if (digits.length === 10) return `90${digits}`;
+  return digits;
 }
 
 function getMatchOpportunityLabel(score: number) {
@@ -1774,9 +1841,6 @@ function MapPanel({
     .map((property) => ({ property, coordinates: getPropertyCoordinates(property) }))
     .filter((item): item is { property: AdvisorPropertyRow; coordinates: [number, number] } => Boolean(item.coordinates));
   const missing = properties.filter((property) => !property.latitude || !property.longitude);
-  const missingLabels = missing.length
-    ? missing.map((item) => item.title)
-    : demoMode ? missingLocationItems : [];
   const selectedRows = properties.filter((property) =>
     getPropertyDistrict(property) === selectedDistrict
   );
@@ -1857,6 +1921,11 @@ function MapPanel({
         <p className="px-4 py-4 text-sm leading-6 text-slate-500 dark:text-slate-400 md:px-0 md:pb-0">
           Leaflet ve OpenStreetMap ile ücretsiz, API anahtarsız harita temeli. Marker göstermek için portföyde enlem ve boylam bulunmalıdır.
         </p>
+        {!markers.length ? (
+          <p className="px-4 pb-4 text-sm font-medium leading-6 text-amber-700 dark:text-amber-200 md:px-0 md:pb-0 md:pt-3">
+            Haritada gösterilecek koordinatlı portföy yok. Portföy düzenleme ekranından harita konumu ekleyin.
+          </p>
+        ) : null}
       </article>
 
       <article className="oos-card rounded-[1.75rem] p-5">
@@ -1889,7 +1958,16 @@ function MapPanel({
         </div>
         <h3 className="mt-6 text-sm font-semibold">Konumu eksik portföyler</h3>
         <ul className="mt-3 space-y-2 text-sm text-slate-500 dark:text-slate-400">
-          {missingLabels.length ? missingLabels.map((item) => <li key={item}>• {item}</li>) : <li>Konumu eksik portföy yok.</li>}
+          {missing.length ? missing.map((property) => (
+            <li key={property.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2 dark:bg-white/[0.04]">
+              <span className="min-w-0 truncate">{property.title}</span>
+              <Link href="/portfolios" className="shrink-0 rounded-full bg-slate-950 px-3 py-1 text-xs font-medium text-white dark:bg-white dark:text-slate-950">
+                Konum Ekle
+              </Link>
+            </li>
+          )) : demoMode && missingLocationItems.length ? missingLocationItems.map((item) => (
+            <li key={item}>• {item}</li>
+          )) : <li>Konumu eksik portföy yok.</li>}
         </ul>
       </article>
     </section>

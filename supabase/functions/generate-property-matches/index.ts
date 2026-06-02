@@ -175,7 +175,7 @@ serve(async (request) => {
           continue;
         }
 
-        const { error } = await supabase.from("matches").insert({
+        const { data: insertedMatch, error } = await supabase.from("matches").insert({
           property_id: match.property_id,
           search_request_id: match.search_request_id,
           property_advisor_id: property.advisor_id,
@@ -184,9 +184,13 @@ serve(async (request) => {
           match_reasons: match.reasons as Record<string, JsonValue>,
           status: "new",
           created_at: new Date().toISOString()
-        });
+        }).select("id").single();
 
         if (error) throw new Error(error.message);
+        await createMatchNotifications(supabase, property, searchRequest, match, insertedMatch?.id).catch((notificationError) => {
+          const message = notificationError instanceof Error ? notificationError.message : "Bildirim oluşturulamadı.";
+          console.warn(`Match notification skipped: ${message}`);
+        });
         created += 1;
       }
     }
@@ -253,6 +257,60 @@ function loadExistingMatches(
     .in("property_id", propertyIds)
     .in("search_request_id", searchRequestIds)
     .returns<ExistingMatchRow[]>();
+}
+
+async function createMatchNotifications(
+  supabase: ReturnType<typeof createClient>,
+  property: PropertyRow,
+  searchRequest: SearchRequestRow,
+  match: MatchResult,
+  matchId?: string
+) {
+  const rows: Array<Record<string, unknown>> = [];
+
+  if (property.advisor_id) {
+    rows.push({
+      recipient_advisor_id: property.advisor_id,
+      type: "match_created",
+      title: "Yeni eşleşme bulundu",
+      body: "Portföyünüz bir arayışla eşleşti.",
+      entity_type: "match",
+      entity_id: matchId ?? null,
+      entity_title: property.title || "Portföy eşleşmesi",
+      priority: "normal",
+      action_url: "/menu/matches",
+      metadata: {
+        property_id: property.id,
+        search_request_id: searchRequest.id,
+        match_score: match.score,
+        recipient_side: "property_owner"
+      }
+    });
+  }
+
+  if (searchRequest.advisor_id && searchRequest.advisor_id !== property.advisor_id) {
+    rows.push({
+      recipient_advisor_id: searchRequest.advisor_id,
+      type: "match_created",
+      title: "Yeni eşleşme bulundu",
+      body: "Arayışınıza uygun bir portföy bulundu.",
+      entity_type: "match",
+      entity_id: matchId ?? null,
+      entity_title: searchRequest.request_type || "Arayış eşleşmesi",
+      priority: "normal",
+      action_url: "/menu/matches",
+      metadata: {
+        property_id: property.id,
+        search_request_id: searchRequest.id,
+        match_score: match.score,
+        recipient_side: "search_owner"
+      }
+    });
+  }
+
+  if (!rows.length) return;
+  const { error } = await supabase.from("notifications").insert(rows);
+  if (error) throw new Error(error.message);
 }
 
 function calculateMatches(properties: PropertyRow[], searchRequests: SearchRequestRow[]) {

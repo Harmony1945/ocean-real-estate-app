@@ -25,6 +25,7 @@ import {
   type PropertyPhotoPreviewItem
 } from "./property-photo-manager";
 import { PropertyImageFrame } from "./property-image-frame";
+import { PropertyLocationPicker, type PropertyLocationSelection } from "./property-location-picker";
 import { demoSearchRequests, demoShowcasePortfolios } from "@/lib/oos/demo-data";
 import {
   parsePropertyImportText,
@@ -112,6 +113,7 @@ type Opportunity = {
   description?: string;
   latitude?: number | null;
   longitude?: number | null;
+  addressText?: string;
   commission?: number;
   ownerConsultantId?: number;
   ownerConsultantName?: string;
@@ -143,6 +145,7 @@ type OpportunityForm = {
   exchangeAvailable: string;
   latitude: string;
   longitude: string;
+  addressText: string;
   contractType: string;
   nextMove: string;
   description: string;
@@ -449,6 +452,7 @@ function emptyForm(): OpportunityForm {
     exchangeAvailable: "Belirtilmedi",
     latitude: "",
     longitude: "",
+    addressText: "",
     contractType: "Satışa Aracılık",
     nextMove: "",
     description: "",
@@ -502,6 +506,7 @@ function toForm(opportunity: Opportunity): OpportunityForm {
     exchangeAvailable: opportunity.exchangeAvailable === true ? "Var" : opportunity.exchangeAvailable === false ? "Yok" : "Belirtilmedi",
     latitude: opportunity.latitude ? String(opportunity.latitude) : "",
     longitude: opportunity.longitude ? String(opportunity.longitude) : "",
+    addressText: opportunity.addressText || "",
     contractType: opportunity.contractType,
     nextMove: opportunity.nextMove,
     description: opportunity.description || "",
@@ -728,6 +733,7 @@ function toPropertyInput(opportunity: Opportunity): PropertyInput {
     exchange_available: opportunity.exchangeAvailable ?? null,
     latitude: opportunity.latitude ?? null,
     longitude: opportunity.longitude ?? null,
+    address_text: opportunity.addressText || null,
     description: opportunity.description || null,
     asking_price: opportunity.value,
     currency: opportunity.currency || "TRY",
@@ -774,6 +780,7 @@ function fromPropertyRow(row: AdvisorPropertyRow, consultant: Consultant): Oppor
     description: row.description || "",
     latitude: row.latitude ?? null,
     longitude: row.longitude ?? null,
+    addressText: row.address_text || "",
     ownerConsultantId: consultant.id,
     ownerConsultantName: getConsultantName(consultant)
   };
@@ -850,7 +857,12 @@ function getConsultantById(id: string | number) {
 }
 
 function normalizePhoneForWhatsApp(phone?: string) {
-  return phone ? phone.replace(/\D/g, "") : "";
+  const digits = phone ? phone.replace(/\D/g, "") : "";
+  if (!digits) return "";
+  if (digits.startsWith("90")) return digits;
+  if (digits.startsWith("0")) return `90${digits.slice(1)}`;
+  if (digits.length === 10) return `90${digits}`;
+  return digits;
 }
 
 function openWhatsAppForSearch(search: SearchRequest, portfolio?: Opportunity) {
@@ -1453,6 +1465,42 @@ export default function Home() {
     }
   }
 
+  function applyPropertyLocation(selection: PropertyLocationSelection) {
+    const nextLocation = selection.location || form.location;
+    const shouldUpdateLocation =
+      Boolean(nextLocation) &&
+      (!form.location.trim() ||
+        form.location === "Konum bekleniyor" ||
+        form.location === nextLocation ||
+        window.confirm("Mevcut konum bilgisi haritadan gelen adresle güncellensin mi?"));
+
+    setForm((current) => ({
+      ...current,
+      latitude: String(selection.latitude),
+      longitude: String(selection.longitude),
+      addressText: selection.addressText || current.addressText,
+      location: shouldUpdateLocation ? nextLocation : current.location
+    }));
+    setImportMessage(selection.message || "Harita konumu forma aktarıldı.");
+
+    if (persistentMode && supabase) {
+      void supabase.logActivity({
+        action: editingId ? "property_coordinates_updated" : "property_location_selected",
+        entity_type: "property",
+        entity_id: typeof editingId === "string" ? editingId : null,
+        summary: "Portföy harita konumu seçildi.",
+        metadata: {
+          source_type: "map_picker",
+          has_address: Boolean(selection.addressText || selection.location)
+        }
+      });
+    }
+  }
+
+  function clearPropertyLocation() {
+    setForm((current) => ({ ...current, latitude: "", longitude: "", addressText: "" }));
+  }
+
   function validatePhotoFiles(files: File[], currentCount: number) {
     return validatePropertyPhotoFiles(files, currentCount);
   }
@@ -1662,6 +1710,7 @@ export default function Home() {
       exchangeAvailable: textToBoolean(form.exchangeAvailable),
       latitude: Number(form.latitude) || null,
       longitude: Number(form.longitude) || null,
+      addressText: form.addressText.trim(),
       description: form.description.trim(),
       createdAt: existingOpportunity?.createdAt || today(),
       ownerConsultantId: existingOpportunity?.ownerConsultantId || currentUser.id,
@@ -2827,6 +2876,16 @@ export default function Home() {
               </Field>
             </div>
 
+            <PropertyLocationPicker
+              addressText={form.addressText}
+              disabled={actionLoading === "portfolio-save"}
+              latitude={form.latitude}
+              longitude={form.longitude}
+              location={form.location}
+              onClear={clearPropertyLocation}
+              onConfirm={applyPropertyLocation}
+            />
+
             <details className="mt-5 rounded-3xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
               <summary className="cursor-pointer text-sm font-semibold text-slate-950 dark:text-slate-100">Daha Fazla Özellik</summary>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -2842,8 +2901,6 @@ export default function Home() {
                 <Field label="Aidat"><input className="input" min="0" type="number" value={form.duesAmount} onChange={(event) => setForm({ ...form, duesAmount: event.target.value })} /></Field>
                 <Field label="Tapu Durumu"><select className="input" value={form.deedStatus} onChange={(event) => setForm({ ...form, deedStatus: event.target.value })}><option value="">Belirtilmedi</option>{deedStatusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>
                 <Field label="Takas"><select className="input" value={form.exchangeAvailable} onChange={(event) => setForm({ ...form, exchangeAvailable: event.target.value })}>{booleanTextOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>
-                <Field label="Enlem"><input className="input" inputMode="decimal" placeholder="41.0082" value={form.latitude} onChange={(event) => setForm({ ...form, latitude: event.target.value })} /></Field>
-                <Field label="Boylam"><input className="input" inputMode="decimal" placeholder="28.9784" value={form.longitude} onChange={(event) => setForm({ ...form, longitude: event.target.value })} /></Field>
               </div>
             </details>
 
@@ -3324,6 +3381,9 @@ function SearchMatchCard({
   onCreateTask: (searchRequest: SearchRequest, portfolio: Opportunity) => void;
   onSelectPortfolio: (id: EntityId) => void;
 }) {
+  const consultant = consultants.find((item) => item.id === search.consultantId);
+  const phone = normalizePhoneForWhatsApp(consultant?.phone);
+
   return (
     <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#111111] sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -3383,6 +3443,22 @@ function SearchMatchCard({
         >
           Portföyü Aç
         </button>
+        {phone ? (
+          <a
+            className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-[#111111] sm:min-h-9"
+            href={`tel:+${phone}`}
+          >
+            İletişime Geç
+          </a>
+        ) : (
+          <button
+            className="inline-flex min-h-10 cursor-not-allowed items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-400 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-500 sm:min-h-9"
+            type="button"
+            disabled
+          >
+            Telefon yok
+          </button>
+        )}
         <button
           className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-[#0a0a0a] dark:text-slate-300 dark:hover:border-white/20 dark:hover:bg-[#111111] sm:min-h-9"
           type="button"

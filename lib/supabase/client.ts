@@ -43,7 +43,7 @@ export type AdvisorRow = {
   commission_cap_amount: number | null;
   commission_cap_currency: string | null;
   joined_at?: string | null;
-  profile?: Pick<AdvisorProfile, "id" | "full_name" | "email" | "role"> | null;
+  profile?: Pick<AdvisorProfile, "id" | "full_name" | "email" | "role" | "phone"> | null;
 };
 
 export type AdvisorPortfolioRow = {
@@ -102,6 +102,7 @@ export type AdvisorPropertyRow = {
   advisor_id: string | null;
   title: string;
   description?: string | null;
+  address_text?: string | null;
   listing_type?: string | null;
   property_type: string | null;
   usage_type: string | null;
@@ -1363,7 +1364,7 @@ export function createSupabaseAuthClient(): any {
 
     try {
       return await request<AdvisorMatchRow[]>(
-        "/rest/v1/matches?select=*,property:properties!matches_property_id_fkey(id,advisor_id,title,listing_type,property_type,usage_type,city,district,neighborhood,gross_area,net_area,room_count,asking_price,currency,status,is_public,created_at,updated_at),search_request:search_requests!matches_search_request_id_fkey(*)&order=created_at.desc",
+        "/rest/v1/matches?select=*,property:properties!matches_property_id_fkey(id,advisor_id,title,listing_type,property_type,usage_type,city,district,neighborhood,address_text,latitude,longitude,gross_area,net_area,room_count,asking_price,currency,status,is_public,created_at,updated_at),search_request:search_requests!matches_search_request_id_fkey(*)&order=created_at.desc",
         { method: "GET", token }
       );
     } catch {
@@ -1385,7 +1386,7 @@ export function createSupabaseAuthClient(): any {
 
     try {
       return await request<AdvisorRow[]>(
-        "/rest/v1/advisors?select=*,profile:profiles(id,full_name,email,role)&order=joined_at.desc",
+        "/rest/v1/advisors?select=*,profile:profiles(id,full_name,email,role,phone)&order=joined_at.desc",
         { method: "GET", token }
       );
     } catch {

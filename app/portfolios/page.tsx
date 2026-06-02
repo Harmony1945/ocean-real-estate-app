@@ -29,6 +29,7 @@ import {
   validatePropertyPhotoFiles,
   type PropertyPhotoPreviewItem
 } from "../property-photo-manager";
+import { PropertyLocationPicker, type PropertyLocationSelection } from "../property-location-picker";
 
 type PendingPortfolioPhoto = {
   id: string;
@@ -77,6 +78,9 @@ const emptyForm = {
   duesAmount: "",
   deedStatus: "",
   exchangeAvailable: "Belirtilmedi",
+  latitude: "",
+  longitude: "",
+  addressText: "",
   moreOpen: false
 };
 
@@ -219,8 +223,46 @@ export default function PortfoliosRoutePage() {
       duesAmount: item.dues_amount ? String(item.dues_amount) : "",
       deedStatus: item.deed_status || "",
       exchangeAvailable: item.exchange_available === true ? "Var" : item.exchange_available === false ? "Yok" : "Belirtilmedi",
+      latitude: item.latitude ? String(item.latitude) : "",
+      longitude: item.longitude ? String(item.longitude) : "",
+      addressText: item.address_text || "",
       moreOpen: false
     });
+  }
+
+  function applyPropertyLocation(selection: PropertyLocationSelection) {
+    const nextLocation = selection.location || form.location;
+    const shouldUpdateLocation =
+      Boolean(nextLocation) &&
+      (!form.location.trim() ||
+        form.location === nextLocation ||
+        window.confirm("Mevcut konum bilgisi haritadan gelen adresle güncellensin mi?"));
+
+    setForm((current) => ({
+      ...current,
+      latitude: String(selection.latitude),
+      longitude: String(selection.longitude),
+      addressText: selection.addressText || current.addressText,
+      location: shouldUpdateLocation ? nextLocation : current.location
+    }));
+    setMediaMessage(selection.message || "Harita konumu forma aktarıldı.");
+
+    if (persistentMode && supabase) {
+      void supabase.logActivity({
+        action: editingId ? "property_coordinates_updated" : "property_location_selected",
+        entity_type: "property",
+        entity_id: editingId,
+        summary: "Portföy harita konumu seçildi.",
+        metadata: {
+          source_type: "map_picker",
+          has_address: Boolean(selection.addressText || selection.location)
+        }
+      });
+    }
+  }
+
+  function clearPropertyLocation() {
+    setForm((current) => ({ ...current, latitude: "", longitude: "", addressText: "" }));
   }
 
   function clearPendingPhotos() {
@@ -447,6 +489,15 @@ export default function PortfoliosRoutePage() {
               <option value="archived">Arşiv</option>
             </select>
           </div>
+          <PropertyLocationPicker
+            addressText={form.addressText}
+            disabled={saving}
+            latitude={form.latitude}
+            longitude={form.longitude}
+            location={form.location}
+            onClear={clearPropertyLocation}
+            onConfirm={applyPropertyLocation}
+          />
           <details className="mt-4 rounded-3xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
             <summary className="cursor-pointer text-sm font-semibold text-slate-950 dark:text-slate-100">Daha Fazla Özellik</summary>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -576,6 +627,9 @@ function toPropertyInput(form: typeof emptyForm): PropertyInput {
     dues_amount: Number(form.duesAmount || 0) || null,
     deed_status: form.deedStatus || null,
     exchange_available: textToBoolean(form.exchangeAvailable),
+    latitude: Number(form.latitude) || null,
+    longitude: Number(form.longitude) || null,
+    address_text: form.addressText || null,
     asking_price: Number(form.value || 0) || null,
     currency: "TRY",
     status: form.status || "active",
@@ -610,6 +664,9 @@ function fromForm(form: typeof emptyForm): AdvisorPropertyRow {
     dues_amount: Number(form.duesAmount || 0) || null,
     deed_status: form.deedStatus || null,
     exchange_available: textToBoolean(form.exchangeAvailable),
+    latitude: Number(form.latitude) || null,
+    longitude: Number(form.longitude) || null,
+    address_text: form.addressText || null,
     asking_price: Number(form.value || 0) || null,
     currency: "TRY",
     status: form.status || "active",

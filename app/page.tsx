@@ -3767,6 +3767,7 @@ function DashboardPortfolioInventory({
   portfolios: Opportunity[];
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const sortedPortfolios = [...portfolios].sort((a, b) =>
     (b.createdAt || "").localeCompare(a.createdAt || "")
   );
@@ -3786,12 +3787,22 @@ function DashboardPortfolioInventory({
             Tüm Portföyler
           </h2>
         </div>
-        <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-white/10 dark:text-slate-300">
-          {sortedPortfolios.length} portföy
-        </span>
+        <div className="flex w-fit items-center gap-2">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-white/10 dark:text-slate-300">
+            {sortedPortfolios.length} portföy
+          </span>
+          <button
+            type="button"
+            className="mini-action"
+            onClick={() => setViewMode((current) => current === "grid" ? "list" : "grid")}
+            aria-label={viewMode === "grid" ? "Satır görünümüne geç" : "Kart görünümüne geç"}
+          >
+            {viewMode === "grid" ? "Satır" : "Kart"}
+          </button>
+        </div>
       </div>
 
-      {visiblePortfolios.length ? (
+      {visiblePortfolios.length && viewMode === "grid" ? (
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {visiblePortfolios.map((portfolio) => (
             <DashboardPortfolioCard
@@ -3801,11 +3812,27 @@ function DashboardPortfolioInventory({
             />
           ))}
         </div>
+      ) : null}
+
+      {visiblePortfolios.length && viewMode === "list" ? (
+        <div className="mt-5 grid gap-3">
+          {visiblePortfolios.map((portfolio) => (
+            <DashboardPortfolioRow
+              key={portfolio.id}
+              media={mediaByProperty[String(portfolio.id)] ?? []}
+              portfolio={portfolio}
+            />
+          ))}
+        </div>
       ) : (
+        null
+      )}
+
+      {!visiblePortfolios.length ? (
         <p className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
           Henüz ofis portföyü yok.
         </p>
-      )}
+      ) : null}
 
       {showExpand || showAllLink ? (
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -3829,6 +3856,22 @@ function DashboardPortfolioInventory({
   );
 }
 
+function getDashboardCover(media: PropertyMediaRow[]) {
+  return [...media].sort((a, b) => {
+    if (a.is_cover && !b.is_cover) return -1;
+    if (!a.is_cover && b.is_cover) return 1;
+    return Number(a.sort_order || 0) - Number(b.sort_order || 0);
+  })[0];
+}
+
+function getDashboardPortfolioSpecs(portfolio: Opportunity) {
+  return [
+    portfolio.listingType || portfolio.contractType,
+    portfolio.propertyType,
+    portfolio.area ? `${portfolio.area} m²` : ""
+  ].filter(Boolean);
+}
+
 function DashboardPortfolioCard({
   media,
   portfolio
@@ -3837,17 +3880,9 @@ function DashboardPortfolioCard({
   portfolio: Opportunity;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const cover = [...media].sort((a, b) => {
-    if (a.is_cover && !b.is_cover) return -1;
-    if (!a.is_cover && b.is_cover) return 1;
-    return Number(a.sort_order || 0) - Number(b.sort_order || 0);
-  })[0];
+  const cover = getDashboardCover(media);
   const imageUrl = cover?.signed_url || (!isSupabaseConfigured ? "/mandarin-2.jpeg" : "");
-  const specs = [
-    portfolio.listingType || portfolio.contractType,
-    portfolio.propertyType,
-    portfolio.area ? `${portfolio.area} m²` : ""
-  ].filter(Boolean);
+  const specs = getDashboardPortfolioSpecs(portfolio);
 
   return (
     <article className="overflow-hidden rounded-3xl border border-slate-200 bg-stone-50 dark:border-white/10 dark:bg-white/[0.04]">
@@ -3888,6 +3923,70 @@ function DashboardPortfolioCard({
           {money(portfolio.value)}
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
+          {specs.map((spec) => (
+            <span key={spec} className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 dark:bg-[#080808] dark:text-slate-300">
+              {spec}
+            </span>
+          ))}
+        </div>
+        <p className="mt-3 truncate text-xs text-slate-500 dark:text-slate-400">
+          Danışman: {portfolio.ownerConsultantName || "Atanmadı"}
+        </p>
+      </div>
+    </article>
+  );
+}
+
+function DashboardPortfolioRow({
+  media,
+  portfolio
+}: {
+  media: PropertyMediaRow[];
+  portfolio: Opportunity;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const cover = getDashboardCover(media);
+  const imageUrl = cover?.signed_url || (!isSupabaseConfigured ? "/mandarin-2.jpeg" : "");
+  const specs = getDashboardPortfolioSpecs(portfolio);
+
+  return (
+    <article className="rounded-3xl border border-slate-200 bg-stone-50 p-3 dark:border-white/10 dark:bg-white/[0.04] sm:flex sm:items-center sm:gap-4">
+      <div className="h-28 overflow-hidden rounded-2xl bg-slate-100 dark:bg-white/[0.06] sm:h-24 sm:w-36 sm:shrink-0">
+        {imageUrl && !imageFailed ? (
+          <PropertyImageFrame
+            src={imageUrl}
+            alt={portfolio.title || "Portföy fotoğrafı"}
+            className="h-full w-full"
+            variant="card"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <div className="grid h-full place-items-center px-3 text-center text-xs text-slate-500 dark:text-slate-400">
+            Fotoğraf hazırlanıyor
+          </div>
+        )}
+      </div>
+      <div className="mt-3 min-w-0 flex-1 sm:mt-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+              {portfolio.title || "İsimsiz portföy"}
+            </h3>
+            <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+              {portfolio.location || "Konum bekleniyor"}
+            </p>
+          </div>
+          <Link href={`/properties/${portfolio.id}`} className="mini-action w-fit shrink-0">
+            Aç
+          </Link>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+            {money(portfolio.value)}
+          </span>
+          <span className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 dark:bg-[#080808] dark:text-slate-300">
+            {portfolio.stage || "Durum yok"}
+          </span>
           {specs.map((spec) => (
             <span key={spec} className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 dark:bg-[#080808] dark:text-slate-300">
               {spec}

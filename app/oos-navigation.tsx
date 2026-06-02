@@ -5,7 +5,13 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "./theme-toggle";
-import { getUserDisplayName, type AdvisorProfile, type SupabaseAuthUser } from "@/lib/supabase/client";
+import {
+  createSupabaseAuthClient,
+  getUserDisplayName,
+  isSupabaseConfigured,
+  type AdvisorProfile,
+  type SupabaseAuthUser
+} from "@/lib/supabase/client";
 
 type OOSNavigationProps = {
   user: SupabaseAuthUser | null;
@@ -91,8 +97,10 @@ export const oosMenuGroups = menuGroups;
 export default function OOSNavigation({ user, profile, onLogout }: OOSNavigationProps) {
   const pathname = usePathname();
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const displayName = getUserDisplayName(user, profile) || "OOS Advisor";
   const initials = useMemo(() => getInitials(displayName), [displayName]);
+  const supabase = useMemo(() => createSupabaseAuthClient(), []);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -102,6 +110,26 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, []);
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !supabase) {
+      setUnreadNotificationCount(0);
+      return;
+    }
+
+    let mounted = true;
+    supabase.getUnreadNotificationCount()
+      .then((count: number) => {
+        if (mounted) setUnreadNotificationCount(count);
+      })
+      .catch(() => {
+        if (mounted) setUnreadNotificationCount(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [supabase, user]);
 
   return (
     <>
@@ -141,6 +169,7 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
               initials={initials}
               company={profile?.company || "Şirket bilgisi bekleniyor"}
               phone={profile?.phone || "Telefon bilgisi bekleniyor"}
+              unreadNotificationCount={unreadNotificationCount}
               onLogout={onLogout}
               onItemSelect={() => setDesktopMenuOpen(false)}
             />
@@ -183,6 +212,7 @@ export function MenuPanelContent({
   initials,
   company,
   phone,
+  unreadNotificationCount,
   onLogout,
   onItemSelect
 }: {
@@ -191,6 +221,7 @@ export function MenuPanelContent({
   initials: string;
   company: string;
   phone: string;
+  unreadNotificationCount?: number;
   onLogout: () => void;
   onItemSelect?: () => void;
 }) {
@@ -217,7 +248,12 @@ export function MenuPanelContent({
             </p>
             <div className="space-y-1">
               {group.items.map((item) => (
-                <MenuRow key={item.label} item={item} onItemSelect={onItemSelect} />
+                <MenuRow
+                  key={item.label}
+                  item={item}
+                  notificationCount={item.href === "/menu/notifications" ? unreadNotificationCount : 0}
+                  onItemSelect={onItemSelect}
+                />
               ))}
             </div>
           </div>
@@ -235,7 +271,15 @@ export function MenuPanelContent({
   );
 }
 
-function MenuRow({ item, onItemSelect }: { item: MenuItem; onItemSelect?: () => void }) {
+function MenuRow({
+  item,
+  notificationCount = 0,
+  onItemSelect
+}: {
+  item: MenuItem;
+  notificationCount?: number;
+  onItemSelect?: () => void;
+}) {
   const pathname = usePathname();
   const active = pathname === item.href;
 
@@ -252,6 +296,11 @@ function MenuRow({ item, onItemSelect }: { item: MenuItem; onItemSelect?: () => 
         <MenuItemIcon name={item.icon} />
       </span>
       <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{item.label}</span>
+      {notificationCount > 0 ? (
+        <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+          {notificationCount > 99 ? "99+" : notificationCount}
+        </span>
+      ) : null}
       <ChevronIcon className="h-5 w-5 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 dark:text-slate-600" />
     </Link>
   );

@@ -298,6 +298,43 @@ export type ActivityLogInput = {
   actor_email?: string | null;
 };
 
+export type NotificationPriority = "low" | "normal" | "high" | "urgent" | string;
+export type NotificationStatus = "unread" | "read" | string;
+
+export type NotificationRow = {
+  id: string;
+  recipient_profile_id: string | null;
+  recipient_advisor_id: string | null;
+  actor_profile_id: string | null;
+  actor_advisor_id: string | null;
+  type: string;
+  title: string;
+  body: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  entity_title: string | null;
+  priority: NotificationPriority;
+  status: NotificationStatus;
+  action_url: string | null;
+  metadata: Record<string, unknown>;
+  read_at: string | null;
+  created_at?: string;
+};
+
+export type NotificationInput = {
+  recipient_profile_id?: string | null;
+  recipient_advisor_id?: string | null;
+  type: string;
+  title: string;
+  body?: string | null;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  entity_title?: string | null;
+  priority?: NotificationPriority;
+  action_url?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
 export type PortfolioInput = Partial<Omit<AdvisorPortfolioRow, "id" | "owner_user_id" | "created_at" | "updated_at">> & {
   title: string;
 };
@@ -492,6 +529,10 @@ function sanitizeActivityMetadata(metadata: ActivityLogInput["metadata"] = {}) {
   return safeMetadata;
 }
 
+function sanitizeNotificationMetadata(metadata: NotificationInput["metadata"] = {}) {
+  return sanitizeActivityMetadata(metadata);
+}
+
 function loadImageElement(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -538,10 +579,12 @@ async function addOceanWatermark(file: File) {
     canvas.height = height;
     context.drawImage(sourceImage, 0, 0, width, height);
 
+    const watermarkAspect = watermarkImage.naturalWidth / watermarkImage.naturalHeight || 1;
     const watermarkWidth = Math.min(
-      Math.max(width * 0.3, Math.min(width * 0.36, 180)),
-      width * 0.34,
-      520
+      Math.max(width * 0.72, 280),
+      width * 0.92,
+      height * 0.72 * watermarkAspect,
+      1400
     );
     const watermarkHeight = watermarkWidth * (watermarkImage.naturalHeight / watermarkImage.naturalWidth);
     const bottomMargin = Math.max(height * 0.045, 28);
@@ -669,6 +712,38 @@ export function createSupabaseAuthClient(): any {
     }
   }
 
+  async function createNotification(input: NotificationInput) {
+    try {
+      const token = getAccessToken();
+      const row = await request<NotificationRow[] | NotificationRow>("/rest/v1/rpc/create_notification", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          input_recipient_profile_id: input.recipient_profile_id ?? null,
+          input_recipient_advisor_id: input.recipient_advisor_id ?? null,
+          input_type: input.type,
+          input_title: input.title,
+          input_body: input.body ?? null,
+          input_entity_type: input.entity_type ?? null,
+          input_entity_id: isUuid(input.entity_id) ? input.entity_id : null,
+          input_entity_title: input.entity_title ?? null,
+          input_priority: input.priority || "normal",
+          input_action_url: input.action_url ?? null,
+          input_metadata: sanitizeNotificationMetadata(input.metadata)
+        })
+      });
+
+      return Array.isArray(row) ? row[0] ?? null : row;
+    } catch (error) {
+      console.warn("Notification creation failed.", error);
+      return null;
+    }
+  }
+
+  async function createNotifications(inputs: NotificationInput[]) {
+    return Promise.all(inputs.map((input) => createNotification(input)));
+  }
+
   async function getActivityLogs() {
     const token = getAccessToken();
     if (!token) return [];
@@ -680,6 +755,68 @@ export function createSupabaseAuthClient(): any {
       );
     } catch (error) {
       throw new Error(dataError(error));
+    }
+  }
+
+  async function fetchNotifications() {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<NotificationRow[]>(
+        "/rest/v1/notifications?select=*&order=created_at.desc&limit=100",
+        { method: "GET", token }
+      );
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function markNotificationRead(id: string) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const row = await request<NotificationRow[] | NotificationRow>("/rest/v1/rpc/mark_notification_read", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ input_notification_id: id })
+      });
+
+      return Array.isArray(row) ? row[0] ?? null : row;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function markAllNotificationsRead() {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      return await request<number>("/rest/v1/rpc/mark_all_notifications_read", {
+        method: "POST",
+        token,
+        body: JSON.stringify({})
+      });
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function getUnreadNotificationCount() {
+    const token = getAccessToken();
+    if (!token) return 0;
+
+    try {
+      const rows = await request<Array<{ id: string }>>(
+        "/rest/v1/notifications?status=eq.unread&select=id&limit=1000",
+        { method: "GET", token }
+      );
+
+      return rows.length;
+    } catch {
+      return 0;
     }
   }
 
@@ -824,6 +961,21 @@ export function createSupabaseAuthClient(): any {
           entity_id: row.id,
           entity_title: row.title || row.request_type || "Arayış",
           summary: "Arayış oluşturuldu.",
+          metadata: {
+            request_type: row.request_type || row.purpose,
+            status: row.status,
+            urgency: row.urgency
+          }
+        });
+        void createNotification({
+          type: "search_request_created",
+          title: "Yeni arayış oluşturuldu",
+          body: row.title || row.request_type || row.purpose || "Yeni müşteri arayışı kaydedildi.",
+          entity_type: "search_request",
+          entity_id: row.id,
+          entity_title: row.title || row.request_type || "Arayış",
+          priority: row.urgency === "high" ? "high" : "normal",
+          action_url: "/requests",
           metadata: {
             request_type: row.request_type || row.purpose,
             status: row.status,
@@ -991,6 +1143,22 @@ export function createSupabaseAuthClient(): any {
             property_type: row.property_type
           }
         });
+        void createNotification({
+          type: "property_created",
+          title: "Yeni portföy eklendi",
+          body: row.title,
+          entity_type: "property",
+          entity_id: row.id,
+          entity_title: row.title,
+          priority: "normal",
+          action_url: `/properties/${row.id}`,
+          metadata: {
+            status: row.status,
+            city: row.city,
+            district: row.district,
+            property_type: row.property_type
+          }
+        });
       }
 
       return row;
@@ -1022,6 +1190,22 @@ export function createSupabaseAuthClient(): any {
           entity_id: row.id,
           entity_title: row.title,
           summary: "Portföy güncellendi.",
+          metadata: {
+            status: row.status,
+            city: row.city,
+            district: row.district,
+            property_type: row.property_type
+          }
+        });
+        void createNotification({
+          type: "property_updated",
+          title: "Portföy güncellendi",
+          body: row.title,
+          entity_type: "property",
+          entity_id: row.id,
+          entity_title: row.title,
+          priority: "low",
+          action_url: `/properties/${row.id}`,
           metadata: {
             status: row.status,
             city: row.city,
@@ -1163,6 +1347,22 @@ export function createSupabaseAuthClient(): any {
           entity_id: propertyId,
           entity_title: file.name,
           summary: "Portföy fotoğrafı yüklendi.",
+          metadata: {
+            media_id: row.id,
+            mime_type: row.mime_type,
+            file_size: row.file_size,
+            is_cover: row.is_cover
+          }
+        });
+        void createNotification({
+          type: "property_photo_uploaded",
+          title: "Portföy fotoğrafı yüklendi",
+          body: "Yeni fotoğraf watermark standardıyla kaydedildi.",
+          entity_type: "property",
+          entity_id: propertyId,
+          entity_title: file.name,
+          priority: "low",
+          action_url: `/properties/${propertyId}`,
           metadata: {
             media_id: row.id,
             mime_type: row.mime_type,
@@ -1328,6 +1528,21 @@ export function createSupabaseAuthClient(): any {
           file_size: media.file_size
         }
       });
+      void createNotification({
+        type: "property_photo_removed",
+        title: "Portföy fotoğrafı kaldırıldı",
+        body: media.file_name || "Bir portföy fotoğrafı kaldırıldı.",
+        entity_type: "property",
+        entity_id: propertyId,
+        entity_title: media.file_name || "Portföy fotoğrafı",
+        priority: "low",
+        action_url: `/properties/${propertyId}`,
+        metadata: {
+          media_id: media.id,
+          mime_type: media.mime_type,
+          file_size: media.file_size
+        }
+      });
 
       return withSignedImageUrls(media.is_cover && remainingRows[0]?.id
         ? remainingRows.map((row, index) => ({ ...row, is_cover: index === 0 }))
@@ -1383,6 +1598,19 @@ export function createSupabaseAuthClient(): any {
             photo_count: publicPayload.photo_count
           }
         });
+        void createNotification({
+          type: "property_share_created",
+          title: "Portföy paylaşımı oluşturuldu",
+          body: publicPayload.title,
+          entity_type: "property",
+          entity_id: propertyId,
+          entity_title: publicPayload.title,
+          priority: "normal",
+          action_url: `/properties/${propertyId}`,
+          metadata: {
+            photo_count: publicPayload.photo_count
+          }
+        });
       }
 
       return row;
@@ -1414,6 +1642,19 @@ export function createSupabaseAuthClient(): any {
           entity_id: row.property_id,
           entity_title: "Paylaşım linki",
           summary: "Paylaşım kapatıldı.",
+          metadata: {
+            share_link_id: row.id
+          }
+        });
+        void createNotification({
+          type: "property_share_deactivated",
+          title: "Portföy paylaşımı kapatıldı",
+          body: "Aktif paylaşım linki devre dışı bırakıldı.",
+          entity_type: "property",
+          entity_id: row.property_id,
+          entity_title: "Paylaşım linki",
+          priority: "low",
+          action_url: `/properties/${row.property_id}`,
           metadata: {
             share_link_id: row.id
           }
@@ -1462,6 +1703,21 @@ export function createSupabaseAuthClient(): any {
           entity_title: row.full_name,
           actor_email: row.email,
           summary: "Danışman başvurusu gönderildi.",
+          metadata: {
+            preferred_model: row.preferred_model,
+            city: row.city,
+            district: row.district
+          }
+        });
+        void createNotification({
+          type: "advisor_application_submitted",
+          title: "Yeni danışman başvurusu",
+          body: row.full_name,
+          entity_type: "advisor_application",
+          entity_id: row.id,
+          entity_title: row.full_name,
+          priority: "high",
+          action_url: "/admin/advisor-applications",
           metadata: {
             preferred_model: row.preferred_model,
             city: row.city,
@@ -1546,6 +1802,28 @@ export function createSupabaseAuthClient(): any {
             summary: "Danışman başvurusu admin tarafından incelendi.",
             metadata: {
               review_status: status,
+              linked_profile: Boolean(row.linked_profile_id),
+              linked_advisor: Boolean(row.linked_advisor_id)
+            }
+          });
+        }
+        if (row.linked_profile_id && action !== "admin_reviewed_advisor_application") {
+          void createNotification({
+            recipient_profile_id: row.linked_profile_id,
+            recipient_advisor_id: row.linked_advisor_id ?? null,
+            type: action,
+            title: status === "approved" ? "Danışman başvurusu onaylandı" : "Danışman başvurusu reddedildi",
+            body: status === "approved"
+              ? "OceanOS danışman hesabınız onaylandı."
+              : "Danışman başvurunuz için karar kaydedildi.",
+            entity_type: "advisor_application",
+            entity_id: row.id,
+            entity_title: row.full_name,
+            priority: "high",
+            action_url: "/menu/profile",
+            metadata: {
+              review_status: status,
+              preferred_model: row.preferred_model,
               linked_profile: Boolean(row.linked_profile_id),
               linked_advisor: Boolean(row.linked_advisor_id)
             }
@@ -1674,6 +1952,18 @@ export function createSupabaseAuthClient(): any {
     logActivity,
 
     getActivityLogs,
+
+    createNotification,
+
+    createNotifications,
+
+    fetchNotifications,
+
+    markNotificationRead,
+
+    markAllNotificationsRead,
+
+    getUnreadNotificationCount,
 
     getPortfolios,
 

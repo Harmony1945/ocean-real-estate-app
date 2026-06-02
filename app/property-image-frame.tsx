@@ -14,9 +14,9 @@ type PropertyImageFrameProps = {
 };
 
 const watermarkClassByVariant = {
-  card: "bottom-8 w-[30%] min-w-16 max-w-28 opacity-80",
-  hero: "bottom-12 w-[30%] min-w-32 max-w-md opacity-80",
-  print: "bottom-9 w-[26%] min-w-28 max-w-72 opacity-[0.78]"
+  card: "bottom-7 w-[90%] max-h-[55%] min-w-24 max-w-72 object-contain opacity-80",
+  hero: "bottom-14 w-[90%] max-h-[58%] min-w-56 max-w-5xl object-contain opacity-80",
+  print: "bottom-10 w-[78%] max-h-[56%] min-w-44 max-w-3xl object-contain opacity-[0.78]"
 };
 
 export function PropertyImageFrame({

@@ -16,7 +16,8 @@ import {
   type AdvisorPortfolioRow,
   type AdvisorPropertyRow,
   type AdvisorSearchRequestRow,
-  type AdvisorTaskRow
+  type AdvisorTaskRow,
+  type NotificationRow
 } from "@/lib/supabase/client";
 import { createCheckoutSession } from "@/lib/oos/payments";
 import { demoShowcasePortfolios } from "@/lib/oos/demo-data";
@@ -80,6 +81,8 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   const [commissionRows, setCommissionRows] = useState<AdvisorCommissionRow[]>([]);
   const [activityRows, setActivityRows] = useState<ActivityLogRow[]>([]);
   const [activityFilter, setActivityFilter] = useState("all");
+  const [notificationRows, setNotificationRows] = useState<NotificationRow[]>([]);
+  const [notificationFilter, setNotificationFilter] = useState("all");
   const [moduleMessage, setModuleMessage] = useState("");
   const [paymentNotice, setPaymentNotice] = useState("");
   const displayName = getUserDisplayName(user, profile) || "OOS Advisor";
@@ -92,11 +95,19 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
     if (activityFilter === "all") return activityRows;
     return activityRows.filter((row) => getActivityFilterKey(row) === activityFilter);
   }, [activityFilter, activityRows]);
+  const filteredNotificationRows = useMemo(() => {
+    if (notificationFilter === "all") return notificationRows;
+    if (notificationFilter === "unread") {
+      return notificationRows.filter((row) => row.status === "unread");
+    }
+    return notificationRows.filter((row) => getNotificationFilterKey(row) === notificationFilter);
+  }, [notificationFilter, notificationRows]);
+  const unreadNotificationCount = notificationRows.filter((row) => row.status === "unread").length;
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
   useEffect(() => {
     if (!persistentMode || !supabase) return;
-    if (!["map", "tasks", "matches", "commissions", "activity"].includes(page.slug)) return;
+    if (!["map", "tasks", "matches", "commissions", "activity", "notifications"].includes(page.slug)) return;
 
     let mounted = true;
     setModuleMessage("");
@@ -138,6 +149,11 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         const rows = await supabase.getActivityLogs();
         if (mounted) setActivityRows(rows);
       }
+
+      if (page.slug === "notifications") {
+        const rows = await supabase.fetchNotifications();
+        if (mounted) setNotificationRows(rows);
+      }
     };
 
     loadModuleRows()
@@ -149,6 +165,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         setDealRows([]);
         setCommissionRows([]);
         setActivityRows([]);
+        setNotificationRows([]);
         setModuleMessage(page.slug === "tasks"
           ? "Görev altyapısı henüz etkin değil. Manuel takip alanı yakında kullanılabilir olacak."
           : getDataSetupMessage(error.message, { optional: page.slug === "commissions" }));
@@ -167,6 +184,27 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
       currency: "TRY"
     });
     setPaymentNotice(session.message);
+  }
+
+  async function markNotificationRead(id: string) {
+    if (!supabase) return;
+
+    const updated = await supabase.markNotificationRead(id);
+    if (!updated) return;
+
+    setNotificationRows((current) =>
+      current.map((row) => row.id === id ? { ...row, status: "read", read_at: updated.read_at || new Date().toISOString() } : row)
+    );
+  }
+
+  async function markAllNotificationsRead() {
+    if (!supabase) return;
+
+    await supabase.markAllNotificationsRead();
+    const readAt = new Date().toISOString();
+    setNotificationRows((current) =>
+      current.map((row) => row.status === "unread" ? { ...row, status: "read", read_at: row.read_at || readAt } : row)
+    );
   }
 
   return (
@@ -328,13 +366,66 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
           </section>
         ) : null}
 
+        {page.slug === "notifications" && isSupabaseConfigured ? (
+          <section className="mt-6">
+            <div className="oos-card rounded-[1.75rem] p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-400">Gerçek zamanlı iş akışı</p>
+                  <h2 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-100">
+                    {unreadNotificationCount} okunmamış bildirim
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  className="btn-secondary w-fit"
+                  onClick={markAllNotificationsRead}
+                  disabled={!unreadNotificationCount}
+                >
+                  Tümünü Okundu Yap
+                </button>
+              </div>
+              <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {notificationFilters.map((filter) => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    onClick={() => setNotificationFilter(filter.value)}
+                    className={`shrink-0 rounded-full px-3 py-2 text-xs font-medium transition ${
+                      notificationFilter === filter.value
+                        ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/[0.06] dark:text-slate-300 dark:hover:bg-white/[0.1]"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {filteredNotificationRows.map((notification) => (
+                <NotificationCard
+                  key={notification.id}
+                  notification={notification}
+                  onMarkRead={markNotificationRead}
+                />
+              ))}
+              {!filteredNotificationRows.length ? (
+                <article className="rounded-[1.75rem] border border-dashed border-slate-200 p-5 text-sm leading-6 text-slate-500 dark:border-white/10 dark:text-slate-400">
+                  Henüz bildiriminiz yok. Yeni eşleşmeler, portföy güncellemeleri ve sistem uyarıları burada görünecek.
+                </article>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
         {(moduleMessage || (!isSupabaseConfigured && ["map", "tasks"].includes(page.slug))) ? (
           <p className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
             {moduleMessage || getDataSetupMessage()}
           </p>
         ) : null}
 
-        {(!isSupabaseConfigured || !["matches", "commissions", "activity"].includes(page.slug)) ? (
+        {(!isSupabaseConfigured || !["matches", "commissions", "activity", "notifications"].includes(page.slug)) ? (
           <section className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {page.cards.map((card) => (
               <article key={card.title} className="liquid-glass-strong rounded-[1.75rem] p-5">
@@ -376,6 +467,77 @@ const activityFilters = [
   { value: "media", label: "Medya" }
 ];
 
+const notificationFilters = [
+  { value: "all", label: "Tümü" },
+  { value: "unread", label: "Okunmamış" },
+  { value: "property", label: "Portföy" },
+  { value: "match", label: "Eşleşme" },
+  { value: "advisor_application", label: "Başvuru" },
+  { value: "system", label: "Sistem" }
+];
+
+function NotificationCard({
+  notification,
+  onMarkRead
+}: {
+  notification: NotificationRow;
+  onMarkRead: (id: string) => void;
+}) {
+  const unread = notification.status === "unread";
+
+  return (
+    <article className={`rounded-[1.75rem] border p-5 ${
+      unread
+        ? "border-slate-300 bg-white dark:border-white/15 dark:bg-white/[0.07]"
+        : "border-slate-200 bg-stone-50 dark:border-white/10 dark:bg-white/[0.04]"
+    }`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-white/[0.08] dark:text-slate-300">
+              {formatNotificationType(notification.type)}
+            </span>
+            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${getNotificationPriorityClass(notification.priority)}`}>
+              {formatNotificationPriority(notification.priority)}
+            </span>
+            <span className="text-xs text-slate-400">{formatRelativeNotificationTime(notification.created_at)}</span>
+          </div>
+          <h2 className="mt-3 text-lg font-semibold text-slate-950 dark:text-slate-100">
+            {notification.title}
+          </h2>
+          {notification.body ? (
+            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              {notification.body}
+            </p>
+          ) : null}
+          {notification.entity_title ? (
+            <p className="mt-2 text-xs text-slate-400">{notification.entity_title}</p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+            unread
+              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200"
+              : "bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400"
+          }`}>
+            {unread ? "Okunmamış" : "Okundu"}
+          </span>
+          {notification.action_url ? (
+            <Link href={notification.action_url} className="mini-action">
+              Aç
+            </Link>
+          ) : null}
+          {unread ? (
+            <button type="button" className="mini-action" onClick={() => onMarkRead(notification.id)}>
+              Okundu
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function ActivityLogCard({ activity }: { activity: ActivityLogRow }) {
   return (
     <article className="oos-card rounded-[1.75rem] p-5">
@@ -410,6 +572,71 @@ function getActivityFilterKey(activity: ActivityLogRow) {
   if (activity.action.includes("share")) return "share";
   if (activity.action.includes("photo") || activity.action.includes("cover")) return "media";
   return activity.entity_type;
+}
+
+function getNotificationFilterKey(notification: NotificationRow) {
+  if (notification.type.includes("property") || notification.entity_type === "property") return "property";
+  if (notification.type.includes("match") || notification.entity_type === "match") return "match";
+  if (notification.type.includes("advisor_application") || notification.entity_type === "advisor_application") return "advisor_application";
+  return "system";
+}
+
+function formatNotificationType(type: string) {
+  const labels: Record<string, string> = {
+    property_created: "Portföy",
+    property_updated: "Portföy",
+    property_photo_uploaded: "Portföy fotoğrafı",
+    property_photo_removed: "Portföy fotoğrafı",
+    property_share_created: "Paylaşım",
+    property_share_deactivated: "Paylaşım",
+    search_request_created: "Arayış",
+    match_created: "Eşleşme",
+    advisor_application_submitted: "Başvuru",
+    advisor_application_approved: "Başvuru",
+    advisor_application_rejected: "Başvuru",
+    system_notice: "Sistem"
+  };
+
+  return labels[type] || "Bildirim";
+}
+
+function formatNotificationPriority(priority: string) {
+  if (priority === "urgent") return "Acil";
+  if (priority === "high") return "Yüksek";
+  if (priority === "low") return "Düşük";
+  return "Normal";
+}
+
+function getNotificationPriorityClass(priority: string) {
+  if (priority === "urgent" || priority === "high") {
+    return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100";
+  }
+  if (priority === "low") {
+    return "border-slate-200 bg-slate-50 text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400";
+  }
+  return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200";
+}
+
+function formatRelativeNotificationTime(createdAt?: string | null) {
+  if (!createdAt) return "Tarih yok";
+  const createdTime = new Date(createdAt).getTime();
+  if (Number.isNaN(createdTime)) return "Tarih yok";
+
+  const diffMinutes = Math.max(0, Math.floor((Date.now() - createdTime) / 60000));
+  if (diffMinutes < 1) return "Az önce";
+  if (diffMinutes < 60) return `${diffMinutes} dk önce`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} saat önce`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} gün önce`;
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(new Date(createdAt));
 }
 
 function formatActivityAction(action: string) {

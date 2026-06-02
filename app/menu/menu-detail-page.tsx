@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthContext } from "../auth-context";
 import type { MenuPageData } from "./menu-data";
@@ -14,7 +14,6 @@ import {
   type AdvisorCommissionRow,
   type AdvisorDealRow,
   type AdvisorMatchRow,
-  type AdvisorPortfolioRow,
   type AdvisorPropertyRow,
   type AdvisorRow,
   type AdvisorSearchRequestRow,
@@ -29,6 +28,7 @@ import { calculateCommission, getDefaultRevenueRule } from "@/lib/oos/revenue-ru
 import { createCheckoutSession } from "@/lib/oos/payments";
 import { demoShowcasePortfolios } from "@/lib/oos/demo-data";
 import { formatStatusLabel } from "@/lib/oos/status-labels";
+import { getPreferredTheme, saveTheme, type ThemeMode } from "../theme";
 
 const mapLocations = [
   { district: "Sarıyer", title: "Yeniköy yalı dairesi", price: "₺92M", top: "22%", left: "42%" },
@@ -50,27 +50,40 @@ const districtCoordinates: Record<string, [number, number]> = {
   "Üsküdar": [41.0214, 29.0427]
 };
 
-const demoPortfolios: AdvisorPortfolioRow[] = demoShowcasePortfolios.map((portfolio) => ({
+const demoMapProperties: AdvisorPropertyRow[] = demoShowcasePortfolios.map((portfolio) => ({
   id: portfolio.id,
-  owner_user_id: "demo",
+  advisor_id: null,
   title: portfolio.title,
-  location: portfolio.location,
-  district: portfolio.district,
-  owner: portfolio.owner,
-  value: portfolio.value,
-  stage: portfolio.stage,
-  contract_type: portfolio.contractType,
-  next_move: portfolio.nextMove,
-  risk: portfolio.risk,
-  commission_rate: portfolio.commissionRate,
-  commission: portfolio.commission,
-  listing_id: portfolio.listingId,
-  property_type: portfolio.propertyType,
-  area: portfolio.area,
-  rooms: portfolio.rooms,
+  listing_type: portfolio.contractType?.includes("Kiral") ? "Kiralık" : "Satılık",
+  property_type: portfolio.propertyType || null,
+  usage_type: portfolio.contractType || null,
+  city: "İstanbul",
+  district: portfolio.district || null,
+  neighborhood: null,
+  gross_area: Number(portfolio.area || 0) || null,
+  net_area: null,
+  room_count: portfolio.rooms,
+  building_age: null,
+  floor: null,
+  total_floors: null,
+  heating_type: null,
+  bathroom_count: null,
+  balcony_count: null,
+  parking_type: null,
+  has_elevator: null,
+  in_site: null,
+  dues_amount: null,
+  deed_status: null,
+  exchange_available: null,
+  asking_price: portfolio.value,
+  currency: "TRY",
+  status: "active",
+  is_public: true,
   description: portfolio.description,
   latitude: portfolio.latitude,
-  longitude: portfolio.longitude
+  longitude: portfolio.longitude,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
 }));
 
 type RevenueFormState = {
@@ -117,8 +130,8 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   const [commission, setCommission] = useState(250000);
   const [incomeTaxRate, setIncomeTaxRate] = useState(20);
   const [selectedDistrict, setSelectedDistrict] = useState(mapLocations[0].district);
-  const [portfolioRows, setPortfolioRows] = useState<AdvisorPortfolioRow[]>(
-    isSupabaseConfigured ? [] : demoPortfolios
+  const [mapPropertyRows, setMapPropertyRows] = useState<AdvisorPropertyRow[]>(
+    isSupabaseConfigured ? [] : demoMapProperties
   );
   const [tasks, setTasks] = useState<AdvisorTaskRow[]>([]);
   const [matchRows, setMatchRows] = useState<AdvisorMatchRow[]>([]);
@@ -138,7 +151,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   const [notificationFilter, setNotificationFilter] = useState("all");
   const [moduleMessage, setModuleMessage] = useState("");
   const [paymentNotice, setPaymentNotice] = useState("");
-  const displayName = getUserDisplayName(user, profile) || "OOS Advisor";
+  const displayName = getUserDisplayName(user, profile) || "Ocean Danışmanı";
   const tax = useMemo(() => {
     const vat = Math.round(commission * 0.2);
     const incomeTax = Math.round(commission * (incomeTaxRate / 100));
@@ -189,8 +202,8 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
 
     const loadModuleRows = async () => {
       if (page.slug === "map") {
-        const portfolios = await supabase.getPortfolios();
-        if (mounted) setPortfolioRows(portfolios);
+        const properties = await supabase.getProperties();
+        if (mounted) setMapPropertyRows(properties);
       }
 
       if (page.slug === "tasks") {
@@ -243,7 +256,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
     loadModuleRows()
       .catch((error: Error) => {
         console.error(error);
-        setPortfolioRows([]);
+        setMapPropertyRows([]);
         setTasks([]);
         setMatchRows([]);
         setDealRows([]);
@@ -359,9 +372,13 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   }
 
   return (
-    <main className="min-h-screen bg-stone-50 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-20 text-slate-950 dark:bg-black dark:text-neutral-50 sm:px-6 md:pt-24 lg:px-8">
-      <div className="mx-auto max-w-5xl">
-        <header className="border-b border-slate-200 pb-6 dark:border-slate-800">
+    <main className={`min-h-screen bg-stone-50 text-slate-950 dark:bg-black dark:text-neutral-50 ${
+      page.slug === "map"
+        ? "px-0 pb-[calc(env(safe-area-inset-bottom)+5.75rem)] pt-16 md:px-4 md:pb-8 md:pt-24 lg:px-8"
+        : "px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-20 sm:px-6 md:pt-24 lg:px-8"
+    }`}>
+      <div className={`mx-auto ${page.slug === "map" ? "max-w-none md:max-w-5xl" : "max-w-5xl"}`}>
+        <header className={`border-b border-slate-200 pb-6 dark:border-slate-800 ${page.slug === "map" ? "px-4 md:px-0" : ""}`}>
           <Link href="/menu" className="mini-action">Menüye Dön</Link>
           <p className="mt-7 text-sm font-medium text-slate-500 dark:text-slate-400">{page.eyebrow}</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-5xl">{page.title}</h1>
@@ -444,7 +461,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
 
         {page.slug === "map" ? (
           <MapPanel
-            portfolios={portfolioRows}
+            properties={mapPropertyRows}
             demoMode={!isSupabaseConfigured}
             selectedDistrict={selectedDistrict}
             onSelectDistrict={setSelectedDistrict}
@@ -587,13 +604,17 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
           </section>
         ) : null}
 
+        {page.slug === "settings" ? (
+          <SettingsPanel />
+        ) : null}
+
         {(moduleMessage || (!isSupabaseConfigured && ["map", "tasks"].includes(page.slug))) ? (
           <p className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
             {moduleMessage || getDataSetupMessage()}
           </p>
         ) : null}
 
-        {(!isSupabaseConfigured || !["matches", "commissions", "activity", "notifications"].includes(page.slug)) ? (
+        {(!isSupabaseConfigured || !["matches", "commissions", "activity", "notifications", "settings"].includes(page.slug)) ? (
           <section className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {page.cards.map((card) => (
               <article key={card.title} className="liquid-glass-strong rounded-[1.75rem] p-5">
@@ -607,13 +628,250 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
           </section>
         ) : null}
 
-        {page.actions ? (
+        {page.actions && page.slug !== "settings" ? (
           <section className="mt-6 grid gap-3 sm:grid-cols-3">
             {page.actions.map((action) => <div key={action} className="oos-card-muted rounded-2xl p-4 text-sm font-medium">{action}</div>)}
           </section>
         ) : null}
       </div>
     </main>
+  );
+}
+
+type SettingsPreferences = {
+  theme: ThemeMode;
+  inAppNotifications: boolean;
+  emailNotifications: boolean;
+  criticalAlerts: boolean;
+  dashboardView: "grid" | "list";
+  startPage: "dashboard" | "portfolios" | "all-portfolios";
+  language: "tr";
+  currency: "TRY" | "USD" | "EUR";
+  defaultListingType: "Satılık" | "Kiralık";
+  defaultPortfolioCurrency: "TRY" | "USD" | "EUR";
+  defaultPropertyType: "Daire" | "Villa" | "Arsa" | "Diğer";
+};
+
+const settingsStorageKey = "oceanos-local-settings";
+
+const defaultSettingsPreferences: SettingsPreferences = {
+  theme: "system",
+  inAppNotifications: true,
+  emailNotifications: false,
+  criticalAlerts: true,
+  dashboardView: "grid",
+  startPage: "dashboard",
+  language: "tr",
+  currency: "TRY",
+  defaultListingType: "Satılık",
+  defaultPortfolioCurrency: "TRY",
+  defaultPropertyType: "Daire"
+};
+
+function SettingsPanel() {
+  const [preferences, setPreferences] = useState<SettingsPreferences>(defaultSettingsPreferences);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(settingsStorageKey);
+    const savedTheme = getPreferredTheme();
+    if (!stored) {
+      setPreferences((current) => ({ ...current, theme: savedTheme }));
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as Partial<SettingsPreferences>;
+      setPreferences({ ...defaultSettingsPreferences, ...parsed, theme: savedTheme });
+    } catch {
+      setPreferences((current) => ({ ...current, theme: savedTheme }));
+    }
+  }, []);
+
+  function updatePreferences(nextPreferences: SettingsPreferences) {
+    setPreferences(nextPreferences);
+    window.localStorage.setItem(settingsStorageKey, JSON.stringify(nextPreferences));
+  }
+
+  function update<Key extends keyof SettingsPreferences>(key: Key, value: SettingsPreferences[Key]) {
+    const nextPreferences = { ...preferences, [key]: value };
+    updatePreferences(nextPreferences);
+    if (key === "theme") saveTheme(value as ThemeMode);
+  }
+
+  return (
+    <section className="mt-6 grid gap-4">
+      <SettingsSection
+        eyebrow="Görünüm"
+        title="Tema tercihi"
+        description="Global tema davranışıyla aynı anahtarı kullanır."
+      >
+        <SegmentedControl
+          options={[
+            ["system", "Sistem"],
+            ["light", "Açık"],
+            ["dark", "Koyu"]
+          ]}
+          value={preferences.theme}
+          onChange={(value) => update("theme", value as ThemeMode)}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        eyebrow="Bildirim Tercihleri"
+        title="Yerel bildirim kanalları"
+        description="Sunucu tarafı tercih tablosu olmadığı için bu seçimler bu cihazda saklanır."
+      >
+        <SettingsToggle label="Uygulama içi bildirimler" checked={preferences.inAppNotifications} onChange={(checked) => update("inAppNotifications", checked)} />
+        <SettingsToggle label="E-posta bildirimleri" checked={preferences.emailNotifications} onChange={(checked) => update("emailNotifications", checked)} />
+        <SettingsToggle label="Kritik uyarılar" checked={preferences.criticalAlerts} onChange={(checked) => update("criticalAlerts", checked)} />
+      </SettingsSection>
+
+      <SettingsSection
+        eyebrow="Çalışma Alanı"
+        title="Varsayılan çalışma düzeni"
+        description="Dashboard ve açılış tercihleri yerel olarak korunur."
+      >
+        <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+          Dashboard portföy görünümü
+          <select className="input mt-2" value={preferences.dashboardView} onChange={(event) => update("dashboardView", event.target.value as SettingsPreferences["dashboardView"])}>
+            <option value="grid">Kart görünümü</option>
+            <option value="list">Satır görünümü</option>
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+          Varsayılan açılış
+          <select className="input mt-2" value={preferences.startPage} onChange={(event) => update("startPage", event.target.value as SettingsPreferences["startPage"])}>
+            <option value="dashboard">Dashboard</option>
+            <option value="portfolios">Portföylerim</option>
+            <option value="all-portfolios">Tüm Portföyler</option>
+          </select>
+        </label>
+      </SettingsSection>
+
+      <SettingsSection
+        eyebrow="Dil ve Bölge"
+        title="Türkiye çalışma standardı"
+        description="Tam i18n kapsamı yok; para birimi tercihi yerel varsayılan olarak saklanır."
+      >
+        <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+          Dil
+          <select className="input mt-2" value={preferences.language} onChange={() => update("language", "tr")}>
+            <option value="tr">Türkçe</option>
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+          Varsayılan para birimi
+          <select className="input mt-2" value={preferences.currency} onChange={(event) => update("currency", event.target.value as SettingsPreferences["currency"])}>
+            <option value="TRY">TRY</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </label>
+      </SettingsSection>
+
+      <SettingsSection
+        eyebrow="Varsayılan Portföy Tercihleri"
+        title="Yeni kayıt başlangıç değerleri"
+        description="Bu ayarlar yerel olarak saklanır; portföy formuna sunucu tercihi gibi yansıtılmaz."
+      >
+        <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+          Varsayılan ilan tipi
+          <select className="input mt-2" value={preferences.defaultListingType} onChange={(event) => update("defaultListingType", event.target.value as SettingsPreferences["defaultListingType"])}>
+            <option value="Satılık">Satılık</option>
+            <option value="Kiralık">Kiralık</option>
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+          Varsayılan portföy para birimi
+          <select className="input mt-2" value={preferences.defaultPortfolioCurrency} onChange={(event) => update("defaultPortfolioCurrency", event.target.value as SettingsPreferences["defaultPortfolioCurrency"])}>
+            <option value="TRY">TRY</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+          Varsayılan gayrimenkul tipi
+          <select className="input mt-2" value={preferences.defaultPropertyType} onChange={(event) => update("defaultPropertyType", event.target.value as SettingsPreferences["defaultPropertyType"])}>
+            <option value="Daire">Daire</option>
+            <option value="Villa">Villa</option>
+            <option value="Arsa">Arsa</option>
+            <option value="Diğer">Diğer</option>
+          </select>
+        </label>
+      </SettingsSection>
+    </section>
+  );
+}
+
+function SettingsSection({
+  eyebrow,
+  title,
+  description,
+  children
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <article className="oos-card rounded-[1.75rem] p-5">
+      <p className="text-xs font-medium text-slate-400">{eyebrow}</p>
+      <h2 className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">{children}</div>
+    </article>
+  );
+}
+
+function SegmentedControl({
+  options,
+  value,
+  onChange
+}: {
+  options: Array<[string, string]>;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex rounded-2xl bg-slate-100 p-1 dark:bg-white/[0.06] sm:col-span-2">
+      {options.map(([optionValue, label]) => (
+        <button
+          key={optionValue}
+          type="button"
+          onClick={() => onChange(optionValue)}
+          className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition ${
+            value === optionValue
+              ? "bg-white text-slate-950 shadow-sm dark:bg-white dark:text-slate-950"
+              : "text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SettingsToggle({
+  label,
+  checked,
+  onChange
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3 rounded-2xl bg-slate-100 px-3 py-3 text-sm font-medium text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">
+      <span>{label}</span>
+      <input
+        type="checkbox"
+        className="h-5 w-5 accent-slate-950 dark:accent-white"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+    </label>
   );
 }
 
@@ -1498,12 +1756,12 @@ function PaymentPanel({
 }
 
 function MapPanel({
-  portfolios,
+  properties,
   demoMode,
   selectedDistrict,
   onSelectDistrict
 }: {
-  portfolios: AdvisorPortfolioRow[];
+  properties: AdvisorPropertyRow[];
   demoMode: boolean;
   selectedDistrict: string;
   onSelectDistrict: (district: string) => void;
@@ -1512,15 +1770,15 @@ function MapPanel({
   const mapInstanceRef = useRef<any>(null);
   const markerLayerRef = useRef<any>(null);
   const [mapError, setMapError] = useState("");
-  const markers = portfolios
-    .map((portfolio) => ({ portfolio, coordinates: getPortfolioCoordinates(portfolio) }))
-    .filter((item): item is { portfolio: AdvisorPortfolioRow; coordinates: [number, number] } => Boolean(item.coordinates));
-  const missing = portfolios.filter((portfolio) => !portfolio.latitude || !portfolio.longitude);
+  const markers = properties
+    .map((property) => ({ property, coordinates: getPropertyCoordinates(property) }))
+    .filter((item): item is { property: AdvisorPropertyRow; coordinates: [number, number] } => Boolean(item.coordinates));
+  const missing = properties.filter((property) => !property.latitude || !property.longitude);
   const missingLabels = missing.length
     ? missing.map((item) => item.title)
     : demoMode ? missingLocationItems : [];
-  const selectedRows = portfolios.filter((portfolio) =>
-    getPortfolioDistrict(portfolio) === selectedDistrict
+  const selectedRows = properties.filter((property) =>
+    getPropertyDistrict(property) === selectedDistrict
   );
 
   useEffect(() => {
@@ -1566,7 +1824,7 @@ function MapPanel({
       if (!leaflet) return;
       markerLayerRef.current.clearLayers();
 
-      markers.forEach(({ portfolio, coordinates }) => {
+      markers.forEach(({ property, coordinates }) => {
         const marker = leaflet.marker(coordinates, {
           icon: leaflet.divIcon({
             className: "",
@@ -1577,7 +1835,7 @@ function MapPanel({
         });
         marker
           .bindPopup(
-            `<strong>${escapeHtml(portfolio.title)}</strong><br />${escapeHtml(portfolio.location || "Konum bekleniyor")}<br />${formatCurrency(Number(portfolio.value || 0))}<br />${escapeHtml(portfolio.owner || "OOS Advisor")}<br /><a href="/portfolios">Detaya Git</a>`
+            `<strong>${escapeHtml(property.title)}</strong><br />${escapeHtml(getPropertyLocation(property) || "Konum bekleniyor")}<br />${formatCurrency(Number(property.asking_price || 0))}<br /><a href="/properties/${encodeURIComponent(property.id)}">Aç</a>`
           )
           .addTo(markerLayerRef.current);
       });
@@ -1587,17 +1845,17 @@ function MapPanel({
   }, [markers]);
 
   return (
-    <section className="mt-6 space-y-4">
-      <article className="oos-card overflow-hidden rounded-[2rem] p-5">
+    <section className="mt-6 space-y-4 md:mt-6">
+      <article className="overflow-hidden rounded-none border border-slate-200 bg-white p-0 dark:border-white/10 dark:bg-[#080808] md:rounded-[2rem] md:p-5">
         {mapError ? (
-          <div className="flex min-h-[30rem] items-center justify-center rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-5 text-center text-sm leading-6 text-slate-500 dark:border-white/10 dark:bg-[#111111] dark:text-slate-400">
+          <div className="flex min-h-[calc(100dvh-12rem)] items-center justify-center border border-dashed border-slate-200 bg-slate-50 px-5 text-center text-sm leading-6 text-slate-500 dark:border-white/10 dark:bg-[#111111] dark:text-slate-400 md:min-h-[30rem] md:rounded-[1.5rem]">
             {mapError}
           </div>
         ) : (
-          <div ref={mapElementRef} className="oos-map-surface relative z-0 min-h-[30rem] rounded-[1.5rem] border border-slate-200 dark:border-white/10 lg:min-h-[42rem]" />
+          <div ref={mapElementRef} className="oos-map-surface relative z-0 min-h-[calc(100dvh-12rem)] border-slate-200 dark:border-white/10 md:min-h-[30rem] md:rounded-[1.5rem] md:border lg:min-h-[42rem]" />
         )}
-        <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
-          Leaflet ve OpenStreetMap ile ücretsiz, API anahtarsız İstanbul harita temeli. İlçe merkezinden gösterilen kayıtlar yaklaşık konum olarak etiketlenir.
+        <p className="px-4 py-4 text-sm leading-6 text-slate-500 dark:text-slate-400 md:px-0 md:pb-0">
+          Leaflet ve OpenStreetMap ile ücretsiz, API anahtarsız harita temeli. Marker göstermek için portföyde enlem ve boylam bulunmalıdır.
         </p>
       </article>
 
@@ -1616,18 +1874,18 @@ function MapPanel({
           ))}
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {(selectedRows.length ? selectedRows : portfolios).slice(0, 5).map((portfolio) => (
-            <div key={portfolio.id} className="rounded-2xl bg-slate-50 p-4 dark:bg-white/[0.04]">
-              <p className="font-medium">{portfolio.title}</p>
+          {(selectedRows.length ? selectedRows : properties).slice(0, 5).map((property) => (
+            <Link key={property.id} href={`/properties/${property.id}`} className="rounded-2xl bg-slate-50 p-4 transition hover:bg-slate-100 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]">
+              <p className="font-medium">{property.title}</p>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                {portfolio.location || "Konum bekleniyor"} · {formatCurrency(Number(portfolio.value || 0))}
+                {getPropertyLocation(property) || "Konum bekleniyor"} · {formatCurrency(Number(property.asking_price || 0))}
               </p>
-              {!portfolio.latitude || !portfolio.longitude ? (
-                <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">Yaklaşık ilçe konumu</p>
+              {!property.latitude || !property.longitude ? (
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">Net marker için enlem/boylam gerekli</p>
               ) : null}
-            </div>
+            </Link>
           ))}
-          {!portfolios.length ? <p className="text-sm text-slate-500 dark:text-slate-400">Haritada gösterilecek portföy yok.</p> : null}
+          {!properties.length ? <p className="text-sm text-slate-500 dark:text-slate-400">Haritada gösterilecek portföy yok.</p> : null}
         </div>
         <h3 className="mt-6 text-sm font-semibold">Konumu eksik portföyler</h3>
         <ul className="mt-3 space-y-2 text-sm text-slate-500 dark:text-slate-400">
@@ -1638,13 +1896,17 @@ function MapPanel({
   );
 }
 
-function getPortfolioDistrict(portfolio: AdvisorPortfolioRow) {
-  return portfolio.district || portfolio.location?.split("/")?.[0]?.trim() || "";
+function getPropertyLocation(property: AdvisorPropertyRow) {
+  return [property.city, property.district, property.neighborhood].filter(Boolean).join(" / ");
 }
 
-function getPortfolioCoordinates(portfolio: AdvisorPortfolioRow): [number, number] | null {
-  if (portfolio.latitude && portfolio.longitude) return [Number(portfolio.latitude), Number(portfolio.longitude)];
-  return districtCoordinates[getPortfolioDistrict(portfolio)] || null;
+function getPropertyDistrict(property: AdvisorPropertyRow) {
+  return property.district || "";
+}
+
+function getPropertyCoordinates(property: AdvisorPropertyRow): [number, number] | null {
+  if (property.latitude && property.longitude) return [Number(property.latitude), Number(property.longitude)];
+  return null;
 }
 
 function escapeHtml(value: string) {

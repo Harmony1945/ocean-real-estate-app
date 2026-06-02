@@ -7,7 +7,7 @@ import { getUserDisplayName } from "@/lib/supabase/client";
 
 export default function MenuRoutePage() {
   const { user, profile, onLogout } = useAuthContext();
-  const displayName = getUserDisplayName(user, profile) || "OOS Advisor";
+  const displayName = getUserDisplayName(user, profile) || "Ocean Danışmanı";
 
   return (
     <main className="min-h-screen bg-stone-50 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-20 text-slate-950 dark:bg-black dark:text-slate-100 sm:px-6 md:bg-slate-950 md:pt-24 lg:px-8">
@@ -22,10 +22,7 @@ export default function MenuRoutePage() {
         <section className="md:liquid-glass-strong md:rounded-[2rem] md:p-3">
           <MenuPanelContent
             displayName={displayName}
-            email={user?.email || "Kurulum bekleniyor"}
             initials={getInitials(displayName)}
-            company={profile?.company || "Şirket bilgisi bekleniyor"}
-            phone={profile?.phone || "Telefon bilgisi bekleniyor"}
             onLogout={onLogout}
           />
         </section>

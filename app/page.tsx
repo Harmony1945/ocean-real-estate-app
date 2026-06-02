@@ -141,6 +141,8 @@ type OpportunityForm = {
   duesAmount: string;
   deedStatus: string;
   exchangeAvailable: string;
+  latitude: string;
+  longitude: string;
   contractType: string;
   nextMove: string;
   description: string;
@@ -445,6 +447,8 @@ function emptyForm(): OpportunityForm {
     duesAmount: "",
     deedStatus: "",
     exchangeAvailable: "Belirtilmedi",
+    latitude: "",
+    longitude: "",
     contractType: "Satışa Aracılık",
     nextMove: "",
     description: "",
@@ -496,6 +500,8 @@ function toForm(opportunity: Opportunity): OpportunityForm {
     duesAmount: opportunity.duesAmount ? String(opportunity.duesAmount) : "",
     deedStatus: opportunity.deedStatus || "",
     exchangeAvailable: opportunity.exchangeAvailable === true ? "Var" : opportunity.exchangeAvailable === false ? "Yok" : "Belirtilmedi",
+    latitude: opportunity.latitude ? String(opportunity.latitude) : "",
+    longitude: opportunity.longitude ? String(opportunity.longitude) : "",
     contractType: opportunity.contractType,
     nextMove: opportunity.nextMove,
     description: opportunity.description || "",
@@ -671,6 +677,20 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function formatTimeAgo(value?: string) {
+  if (!value) return "Tarih yok";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Tarih yok";
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 60 * 1000) return "Az önce";
+  const minutes = Math.floor(diffMs / (60 * 1000));
+  if (minutes < 60) return `${minutes} dk önce`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} saat önce`;
+  const days = Math.floor(hours / 24);
+  return `${days} gün önce`;
+}
+
 function getPropertyStatusValue(stage: string) {
   const normalizedStage = stage.toLocaleLowerCase("tr-TR");
   if (normalizedStage.includes("kapandı")) return "archived";
@@ -706,6 +726,8 @@ function toPropertyInput(opportunity: Opportunity): PropertyInput {
     dues_amount: opportunity.duesAmount || null,
     deed_status: opportunity.deedStatus || null,
     exchange_available: opportunity.exchangeAvailable ?? null,
+    latitude: opportunity.latitude ?? null,
+    longitude: opportunity.longitude ?? null,
     description: opportunity.description || null,
     asking_price: opportunity.value,
     currency: opportunity.currency || "TRY",
@@ -731,7 +753,7 @@ function fromPropertyRow(row: AdvisorPropertyRow, consultant: Consultant): Oppor
     risk: "Düşük",
     commissionRate: 2,
     commission: calculateCommission(Number(row.asking_price || 0), 2),
-    createdAt: row.created_at?.slice(0, 10) || today(),
+    createdAt: row.created_at || row.updated_at || today(),
     propertyType: row.property_type || "Konut",
     listingType: row.listing_type || row.usage_type || "Satılık",
     area,
@@ -750,8 +772,8 @@ function fromPropertyRow(row: AdvisorPropertyRow, consultant: Consultant): Oppor
     deedStatus: row.deed_status || "",
     exchangeAvailable: row.exchange_available ?? null,
     description: row.description || "",
-    latitude: null,
-    longitude: null,
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
     ownerConsultantId: consultant.id,
     ownerConsultantName: getConsultantName(consultant)
   };
@@ -1638,6 +1660,8 @@ export default function Home() {
       duesAmount: Number(form.duesAmount || 0) || null,
       deedStatus: form.deedStatus,
       exchangeAvailable: textToBoolean(form.exchangeAvailable),
+      latitude: Number(form.latitude) || null,
+      longitude: Number(form.longitude) || null,
       description: form.description.trim(),
       createdAt: existingOpportunity?.createdAt || today(),
       ownerConsultantId: existingOpportunity?.ownerConsultantId || currentUser.id,
@@ -2220,10 +2244,7 @@ export default function Home() {
                 setActivePage("searches");
               }}
               onOpenPortfolio={(id) => setSelectedId(id)}
-              onViewMatches={() => {
-                setSearchFilter("Güçlü Eşleşmeler");
-                setActivePage("searches");
-              }}
+              onViewMatches={() => router.push("/menu/matches")}
             />
 
             <div className="mt-6 lg:hidden">
@@ -2821,6 +2842,8 @@ export default function Home() {
                 <Field label="Aidat"><input className="input" min="0" type="number" value={form.duesAmount} onChange={(event) => setForm({ ...form, duesAmount: event.target.value })} /></Field>
                 <Field label="Tapu Durumu"><select className="input" value={form.deedStatus} onChange={(event) => setForm({ ...form, deedStatus: event.target.value })}><option value="">Belirtilmedi</option>{deedStatusOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>
                 <Field label="Takas"><select className="input" value={form.exchangeAvailable} onChange={(event) => setForm({ ...form, exchangeAvailable: event.target.value })}>{booleanTextOptions.map((option) => <option key={option}>{option}</option>)}</select></Field>
+                <Field label="Enlem"><input className="input" inputMode="decimal" placeholder="41.0082" value={form.latitude} onChange={(event) => setForm({ ...form, latitude: event.target.value })} /></Field>
+                <Field label="Boylam"><input className="input" inputMode="decimal" placeholder="28.9784" value={form.longitude} onChange={(event) => setForm({ ...form, longitude: event.target.value })} /></Field>
               </div>
             </details>
 
@@ -4198,7 +4221,10 @@ function DashboardPortfolioRow({
   const specs = getDashboardPortfolioSpecs(portfolio);
 
   return (
-    <article className="rounded-3xl border border-slate-200 bg-stone-50 p-3 dark:border-white/10 dark:bg-white/[0.04] sm:flex sm:items-center sm:gap-4">
+    <Link
+      href={`/properties/${portfolio.id}`}
+      className="group rounded-3xl border border-slate-200 bg-stone-50 p-3 text-left transition hover:border-slate-300 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-white/20 dark:hover:bg-white/[0.07] dark:focus-visible:ring-white/30 sm:flex sm:items-center sm:gap-4"
+    >
       <div className="h-28 overflow-hidden rounded-2xl bg-slate-100 dark:bg-white/[0.06] sm:h-24 sm:w-36 sm:shrink-0">
         {imageUrl && !imageFailed ? (
           <PropertyImageFrame
@@ -4217,16 +4243,21 @@ function DashboardPortfolioRow({
       <div className="mt-3 min-w-0 flex-1 sm:mt-0">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-              {portfolio.title || "İsimsiz portföy"}
-            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-base font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+                {portfolio.title || "İsimsiz portföy"}
+              </h3>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 shadow-sm dark:bg-[#080808] dark:text-slate-300">
+                {formatTimeAgo(portfolio.createdAt)}
+              </span>
+            </div>
             <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
               {portfolio.location || "Konum bekleniyor"}
             </p>
           </div>
-          <Link href={`/properties/${portfolio.id}`} className="mini-action w-fit shrink-0">
+          <span className="mini-action w-fit shrink-0 opacity-70 transition group-hover:opacity-100">
             Aç
-          </Link>
+          </span>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-slate-950 dark:text-slate-100">
@@ -4245,7 +4276,7 @@ function DashboardPortfolioRow({
           Danışman: {portfolio.ownerConsultantName || "Atanmadı"}
         </p>
       </div>
-    </article>
+    </Link>
   );
 }
 
@@ -4870,16 +4901,16 @@ function Info({
 
   return (
     <div className="min-w-0">
-      <p className={`text-xs ${isDanger ? "text-red-600" : "text-slate-400"}`}>
+      <p className={`text-xs ${isDanger ? "text-red-600 dark:text-red-300" : "text-slate-400 dark:text-slate-500"}`}>
         {label}
       </p>
       <p
         className={`mt-1 break-words text-sm font-medium ${
           isDanger
-            ? "text-red-700"
+            ? "text-red-700 dark:text-red-200"
             : isSuccess
-              ? "text-emerald-700"
-              : "text-slate-900"
+              ? "text-emerald-700 dark:text-emerald-200"
+              : "text-slate-900 dark:text-slate-100"
         }`}
       >
         {value}

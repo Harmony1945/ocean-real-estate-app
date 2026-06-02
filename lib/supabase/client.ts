@@ -123,6 +123,8 @@ export type AdvisorPropertyRow = {
   dues_amount?: number | null;
   deed_status?: string | null;
   exchange_available?: boolean | null;
+  latitude?: number | null;
+  longitude?: number | null;
   asking_price: number | null;
   currency: string | null;
   status: string | null;

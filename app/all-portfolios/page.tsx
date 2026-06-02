@@ -18,6 +18,8 @@ export default function AllPortfoliosPage() {
   const [items, setItems] = useState<AdvisorPropertyRow[]>([]);
   const [mediaByProperty, setMediaByProperty] = useState<Record<string, PropertyMediaRow[]>>({});
   const [query, setQuery] = useState("");
+  const [cityFilter, setCityFilter] = useState("");
+  const [districtFilter, setDistrictFilter] = useState("");
   const [message, setMessage] = useState("");
   const [mediaMessage, setMediaMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,7 +53,20 @@ export default function AllPortfoliosPage() {
   }, [persistentMode, supabase]);
 
   const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
+  const cityOptions = useMemo(
+    () => [...new Set(items.map((item) => item.city).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "tr")),
+    [items]
+  );
+  const districtOptions = useMemo(
+    () => [...new Set(items
+      .filter((item) => !cityFilter || item.city === cityFilter)
+      .map((item) => item.district)
+      .filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "tr")),
+    [cityFilter, items]
+  );
   const filteredItems = items.filter((item) => {
+    if (cityFilter && item.city !== cityFilter) return false;
+    if (districtFilter && item.district !== districtFilter) return false;
     if (!normalizedQuery) return true;
     return [
       item.title,
@@ -105,6 +120,44 @@ export default function AllPortfoliosPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">İl</span>
+              <select
+                className="input"
+                value={cityFilter}
+                onChange={(event) => {
+                  setCityFilter(event.target.value);
+                  setDistrictFilter("");
+                }}
+              >
+                <option value="">Tüm iller</option>
+                {cityOptions.map((city) => <option key={city} value={city}>{city}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">İlçe</span>
+              <select
+                className="input"
+                value={districtFilter}
+                onChange={(event) => setDistrictFilter(event.target.value)}
+              >
+                <option value="">Tüm ilçeler</option>
+                {districtOptions.map((district) => <option key={district} value={district}>{district}</option>)}
+              </select>
+            </label>
+            <button
+              className="btn-secondary self-end"
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setCityFilter("");
+                setDistrictFilter("");
+              }}
+            >
+              Temizle
+            </button>
           </div>
         </section>
 

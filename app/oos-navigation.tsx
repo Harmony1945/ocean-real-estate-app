@@ -98,7 +98,7 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
   const pathname = usePathname();
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
-  const displayName = getUserDisplayName(user, profile) || "OOS Advisor";
+  const displayName = getUserDisplayName(user, profile) || "Ocean Danışmanı";
   const initials = useMemo(() => getInitials(displayName), [displayName]);
   const supabase = useMemo(() => createSupabaseAuthClient(), []);
 
@@ -165,10 +165,7 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
           <aside className="liquid-glass-strong fixed right-4 top-16 z-[75] hidden max-h-[calc(100dvh-5rem)] w-[22rem] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-[2rem] p-3 text-slate-950 dark:text-slate-100 md:block">
             <MenuPanelContent
               displayName={displayName}
-              email={user?.email || "Kurulum bekleniyor"}
               initials={initials}
-              company={profile?.company || "Şirket bilgisi bekleniyor"}
-              phone={profile?.phone || "Telefon bilgisi bekleniyor"}
               unreadNotificationCount={unreadNotificationCount}
               onLogout={onLogout}
               onItemSelect={() => setDesktopMenuOpen(false)}
@@ -208,19 +205,13 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
 
 export function MenuPanelContent({
   displayName,
-  email,
   initials,
-  company,
-  phone,
   unreadNotificationCount,
   onLogout,
   onItemSelect
 }: {
   displayName: string;
-  email: string;
   initials: string;
-  company: string;
-  phone: string;
   unreadNotificationCount?: number;
   onLogout: () => void;
   onItemSelect?: () => void;
@@ -233,9 +224,9 @@ export function MenuPanelContent({
             {initials}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{displayName}</p>
-            <p className="truncate text-xs text-slate-500 dark:text-slate-400">{email}</p>
-            <p className="truncate text-xs text-slate-500 dark:text-slate-400">{company} · {phone}</p>
+            <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">
+              {displayName || "Ocean Danışmanı"}
+            </p>
           </div>
         </div>
       </div>

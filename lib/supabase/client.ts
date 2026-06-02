@@ -101,6 +101,7 @@ export type AdvisorPropertyRow = {
   id: string;
   advisor_id: string | null;
   title: string;
+  description?: string | null;
   listing_type?: string | null;
   property_type: string | null;
   usage_type: string | null;

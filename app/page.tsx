@@ -27,6 +27,10 @@ import {
 import { PropertyImageFrame } from "./property-image-frame";
 import { demoSearchRequests, demoShowcasePortfolios } from "@/lib/oos/demo-data";
 import {
+  parsePropertyImportText,
+  type ParsedPropertyImport
+} from "@/lib/oos/property-import-parser";
+import {
   booleanTextOptions,
   deedStatusOptions,
   heatingTypeOptions,
@@ -78,6 +82,7 @@ type Opportunity = {
   location: string;
   owner: string;
   value: number;
+  currency?: SearchCurrency;
   stage: Stage;
   contractType: string;
   nextMove: string;
@@ -117,6 +122,7 @@ type OpportunityForm = {
   location: string;
   owner: string;
   value: string;
+  currency: SearchCurrency;
   stage: Stage;
   listingType: string;
   propertyType: string;
@@ -137,6 +143,7 @@ type OpportunityForm = {
   exchangeAvailable: string;
   contractType: string;
   nextMove: string;
+  description: string;
   commissionRate: number;
 };
 
@@ -419,6 +426,7 @@ function emptyForm(): OpportunityForm {
     location: "",
     owner: "",
     value: "",
+    currency: "TRY",
     stage: "Yeni",
     listingType: "Satılık",
     propertyType: "Daire",
@@ -439,6 +447,7 @@ function emptyForm(): OpportunityForm {
     exchangeAvailable: "Belirtilmedi",
     contractType: "Satışa Aracılık",
     nextMove: "",
+    description: "",
     commissionRate: 2
   };
 }
@@ -468,6 +477,7 @@ function toForm(opportunity: Opportunity): OpportunityForm {
     location: opportunity.location,
     owner: opportunity.owner,
     value: String(opportunity.value),
+    currency: opportunity.currency || "TRY",
     stage: opportunity.stage,
     listingType: opportunity.listingType || (opportunity.contractType?.includes("Kiral") ? "Kiralık" : "Satılık"),
     propertyType: opportunity.propertyType || "Daire",
@@ -488,8 +498,128 @@ function toForm(opportunity: Opportunity): OpportunityForm {
     exchangeAvailable: opportunity.exchangeAvailable === true ? "Var" : opportunity.exchangeAvailable === false ? "Yok" : "Belirtilmedi",
     contractType: opportunity.contractType,
     nextMove: opportunity.nextMove,
+    description: opportunity.description || "",
     commissionRate: opportunity.commissionRate
   };
+}
+
+function importFieldsToFormValues(parsed: ParsedPropertyImport): Partial<Record<keyof OpportunityForm, string | number>> {
+  const fields = parsed.fields;
+  const values: Partial<Record<keyof OpportunityForm, string | number>> = {};
+  const location = fields.location || [fields.city, fields.district, fields.neighborhood].filter(Boolean).join(" / ");
+
+  if (fields.title) values.title = fields.title;
+  if (location) values.location = location;
+  if (fields.price) values.value = fields.price;
+  if (fields.currency && ["TRY", "USD", "EUR"].includes(fields.currency)) values.currency = fields.currency;
+  if (fields.listingType) values.listingType = fields.listingType;
+  if (fields.propertyType) values.propertyType = fields.propertyType;
+  if (fields.usageType) values.contractType = fields.usageType;
+  if (fields.roomCount) values.roomCount = fields.roomCount;
+  if (fields.grossArea) values.grossArea = fields.grossArea;
+  if (fields.netArea) values.netArea = fields.netArea;
+  if (fields.buildingAge) values.buildingAge = fields.buildingAge;
+  if (fields.floor) values.floor = fields.floor;
+  if (fields.totalFloors) values.totalFloors = fields.totalFloors;
+  if (fields.heatingType) values.heatingType = fields.heatingType;
+  if (fields.bathroomCount) values.bathroomCount = fields.bathroomCount;
+  if (fields.balconyCount) values.balconyCount = fields.balconyCount;
+  if (fields.parkingType) values.parkingType = fields.parkingType;
+  if (fields.hasElevator) values.hasElevator = fields.hasElevator;
+  if (fields.inSite) values.inSite = fields.inSite === "Var" ? "Evet" : fields.inSite;
+  if (fields.duesAmount) values.duesAmount = fields.duesAmount;
+  if (fields.deedStatus) values.deedStatus = fields.deedStatus;
+  if (fields.exchangeAvailable) values.exchangeAvailable = fields.exchangeAvailable;
+  if (fields.description) values.description = fields.description;
+
+  return values;
+}
+
+function mergeImportIntoForm(
+  form: OpportunityForm,
+  parsed: ParsedPropertyImport,
+  overwrite: boolean,
+  treatDefaultsAsEmpty = false
+) {
+  const values = importFieldsToFormValues(parsed);
+  const defaults = treatDefaultsAsEmpty ? emptyForm() : null;
+
+  return Object.entries(values).reduce((nextForm, [key, value]) => {
+    const formKey = key as keyof OpportunityForm;
+    const currentValue = String(nextForm[formKey] ?? "").trim();
+    const defaultValue = defaults ? String(defaults[formKey] ?? "").trim() : "";
+    const canFill = !currentValue || currentValue === "Belirtilmedi" || (treatDefaultsAsEmpty && currentValue === defaultValue);
+    if (!overwrite && !canFill) return nextForm;
+    return { ...nextForm, [formKey]: value };
+  }, form);
+}
+
+function formToImportFields(form: OpportunityForm): ParsedPropertyImport["fields"] {
+  return {
+    title: form.title,
+    location: form.location,
+    price: form.value,
+    currency: form.currency,
+    listingType: form.listingType,
+    propertyType: form.propertyType,
+    usageType: form.contractType,
+    roomCount: form.roomCount,
+    grossArea: form.grossArea,
+    netArea: form.netArea,
+    buildingAge: form.buildingAge,
+    floor: form.floor,
+    totalFloors: form.totalFloors,
+    heatingType: form.heatingType,
+    bathroomCount: form.bathroomCount,
+    balconyCount: form.balconyCount,
+    parkingType: form.parkingType,
+    hasElevator: form.hasElevator,
+    inSite: form.inSite,
+    duesAmount: form.duesAmount,
+    deedStatus: form.deedStatus,
+    exchangeAvailable: form.exchangeAvailable,
+    description: form.description
+  };
+}
+
+function draftToExtractedImportFields(draft: OpportunityForm, parsed: ParsedPropertyImport): ParsedPropertyImport["fields"] {
+  const extractedKeys = Object.keys(importFieldsToFormValues(parsed)) as Array<keyof OpportunityForm>;
+
+  return extractedKeys.reduce<ParsedPropertyImport["fields"]>((fields, key) => {
+    const fieldKey = formKeyToImportFieldKey(key);
+    if (fieldKey) fields[fieldKey] = String(draft[key] ?? "");
+    return fields;
+  }, {});
+}
+
+function formKeyToImportFieldKey(key: keyof OpportunityForm): keyof ParsedPropertyImport["fields"] | null {
+  const map: Partial<Record<keyof OpportunityForm, keyof ParsedPropertyImport["fields"]>> = {
+    title: "title",
+    location: "location",
+    value: "price",
+    currency: "currency",
+    listingType: "listingType",
+    propertyType: "propertyType",
+    contractType: "usageType",
+    roomCount: "roomCount",
+    grossArea: "grossArea",
+    netArea: "netArea",
+    buildingAge: "buildingAge",
+    floor: "floor",
+    totalFloors: "totalFloors",
+    heatingType: "heatingType",
+    bathroomCount: "bathroomCount",
+    balconyCount: "balconyCount",
+    parkingType: "parkingType",
+    hasElevator: "hasElevator",
+    inSite: "inSite",
+    duesAmount: "duesAmount",
+    deedStatus: "deedStatus",
+    exchangeAvailable: "exchangeAvailable",
+    description: "description"
+  };
+
+  return map[key] || null;
 }
 
 function formatCurrency(value: number) {
@@ -576,8 +706,9 @@ function toPropertyInput(opportunity: Opportunity): PropertyInput {
     dues_amount: opportunity.duesAmount || null,
     deed_status: opportunity.deedStatus || null,
     exchange_available: opportunity.exchangeAvailable ?? null,
+    description: opportunity.description || null,
     asking_price: opportunity.value,
-    currency: "TRY",
+    currency: opportunity.currency || "TRY",
     status: getPropertyStatusValue(opportunity.stage),
     is_public: true
   };
@@ -593,6 +724,7 @@ function fromPropertyRow(row: AdvisorPropertyRow, consultant: Consultant): Oppor
     location: location || "Konum bekleniyor",
     owner: "OceanOS",
     value: Number(row.asking_price || 0),
+    currency: (row.currency || "TRY") as SearchCurrency,
     stage: formatStatusLabel(row.status || "Yeni") as Stage,
     contractType: row.usage_type || "Satışa Aracılık",
     nextMove: row.is_public ? "Public görünürlük aktif" : "Görünürlük kontrolü bekleniyor",
@@ -617,7 +749,7 @@ function fromPropertyRow(row: AdvisorPropertyRow, consultant: Consultant): Oppor
     duesAmount: row.dues_amount ?? null,
     deedStatus: row.deed_status || "",
     exchangeAvailable: row.exchange_available ?? null,
-    description: "",
+    description: row.description || "",
     latitude: null,
     longitude: null,
     ownerConsultantId: consultant.id,
@@ -976,6 +1108,10 @@ export default function Home() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [pendingPortfolioPhotos, setPendingPortfolioPhotos] = useState<PendingPortfolioPhoto[]>([]);
   const [formPhotoMessage, setFormPhotoMessage] = useState("");
+  const [importText, setImportText] = useState("");
+  const [parsedImport, setParsedImport] = useState<ParsedPropertyImport | null>(null);
+  const [importDraft, setImportDraft] = useState<OpportunityForm | null>(null);
+  const [importMessage, setImportMessage] = useState("");
 
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
@@ -1209,6 +1345,7 @@ export default function Home() {
   function openCreateForm() {
     setEditingId(null);
     setForm(emptyForm());
+    resetPropertyImportAssistant();
     clearPendingPortfolioPhotos();
     setFormPhotoMessage("");
     setFormOpen(true);
@@ -1217,6 +1354,7 @@ export default function Home() {
   function openEditForm(opportunity: Opportunity) {
     setEditingId(opportunity.id);
     setForm(toForm(opportunity));
+    resetPropertyImportAssistant();
     clearPendingPortfolioPhotos();
     setFormPhotoMessage("");
     setFormOpen(true);
@@ -1227,6 +1365,70 @@ export default function Home() {
       current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
       return [];
     });
+  }
+
+  function resetPropertyImportAssistant() {
+    setImportText("");
+    setParsedImport(null);
+    setImportDraft(null);
+    setImportMessage("");
+  }
+
+  function parsePropertyImport() {
+    const parsed = parsePropertyImportText(importText);
+    const draft = mergeImportIntoForm(emptyForm(), parsed, true);
+    setParsedImport(parsed);
+    setImportDraft(draft);
+    setImportMessage(`${parsed.extractedFieldCount} alan bulundu · ${parsed.missingCriticalFields.length} kritik bilgi eksik`);
+
+    if (persistentMode && supabase) {
+      void supabase.logActivity({
+        action: "property_import_parsed",
+        entity_type: "property",
+        summary: "Akıllı portföy metni analiz edildi.",
+        metadata: {
+          extracted_field_count: parsed.extractedFieldCount,
+          missing_field_count: parsed.missingCriticalFields.length,
+          source_type: "pasted_text"
+        }
+      });
+    }
+  }
+
+  function applyPropertyImport() {
+    if (!parsedImport || !importDraft) return;
+    const reviewedFields = draftToExtractedImportFields(importDraft, parsedImport);
+    const reviewedImport = { ...parsedImport, fields: reviewedFields };
+    const shouldTreatDefaultsAsEmpty = !editingId;
+    const filledOnly = mergeImportIntoForm(form, reviewedImport, false, shouldTreatDefaultsAsEmpty);
+    const overwriteForm = mergeImportIntoForm(form, reviewedImport, true);
+    const hasConflicts = Object.keys(importFieldsToFormValues(reviewedImport)).some((key) => {
+      const formKey = key as keyof OpportunityForm;
+      const currentValue = String(form[formKey] ?? "").trim();
+      const nextValue = String(importDraft[formKey] ?? "").trim();
+      const defaultValue = shouldTreatDefaultsAsEmpty ? String(emptyForm()[formKey] ?? "").trim() : "";
+      if (shouldTreatDefaultsAsEmpty && currentValue === defaultValue) return false;
+      return Boolean(currentValue && nextValue && currentValue !== nextValue);
+    });
+    const shouldOverwrite = hasConflicts
+      ? window.confirm("Mevcut form bilgileri güncellensin mi?")
+      : false;
+    const nextForm = shouldOverwrite ? overwriteForm : filledOnly;
+    setForm(nextForm);
+    setImportMessage(`${parsedImport.extractedFieldCount} alan forma aktarıldı${shouldOverwrite ? "." : "; dolu alanlar korundu."}`);
+
+    if (persistentMode && supabase) {
+      void supabase.logActivity({
+        action: "property_import_applied",
+        entity_type: "property",
+        summary: "Akıllı portföy bilgileri forma aktarıldı.",
+        metadata: {
+          extracted_field_count: parsedImport.extractedFieldCount,
+          missing_field_count: parsedImport.missingCriticalFields.length,
+          source_type: "pasted_text"
+        }
+      });
+    }
   }
 
   function validatePhotoFiles(files: File[], currentCount: number) {
@@ -1412,6 +1614,7 @@ export default function Home() {
       location: form.location.trim() || "Konum bekleniyor",
       owner: form.owner.trim() || "Müşteri bekleniyor",
       value,
+      currency: form.currency,
       stage: form.stage,
       contractType: form.contractType.trim() || "Satışa Aracılık",
       nextMove: form.nextMove.trim() || "Sonraki adım belirlenmedi",
@@ -1435,6 +1638,7 @@ export default function Home() {
       duesAmount: Number(form.duesAmount || 0) || null,
       deedStatus: form.deedStatus,
       exchangeAvailable: textToBoolean(form.exchangeAvailable),
+      description: form.description.trim(),
       createdAt: existingOpportunity?.createdAt || today(),
       ownerConsultantId: existingOpportunity?.ownerConsultantId || currentUser.id,
       ownerConsultantName:
@@ -2465,6 +2669,18 @@ export default function Home() {
               </button>
             </div>
 
+            <SmartPropertyImportAssistant
+              draft={importDraft}
+              message={importMessage}
+              parsed={parsedImport}
+              rawText={importText}
+              onApply={applyPropertyImport}
+              onDraftChange={setImportDraft}
+              onParse={parsePropertyImport}
+              onRawTextChange={setImportText}
+              onReset={resetPropertyImportAssistant}
+            />
+
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <Field label="Başlık">
                 <input
@@ -2503,6 +2719,19 @@ export default function Home() {
                     setForm({ ...form, value: event.target.value })
                   }
                 />
+              </Field>
+              <Field label="Para birimi">
+                <select
+                  className="input"
+                  value={form.currency}
+                  onChange={(event) =>
+                    setForm({ ...form, currency: event.target.value as SearchCurrency })
+                  }
+                >
+                  <option value="TRY">TRY</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
               </Field>
               <Field label="İlan Tipi">
                 <select className="input" value={form.listingType} onChange={(event) => setForm({ ...form, listingType: event.target.value })}>
@@ -2563,6 +2792,15 @@ export default function Home() {
                   value={form.nextMove}
                   onChange={(event) =>
                     setForm({ ...form, nextMove: event.target.value })
+                  }
+                />
+              </Field>
+              <Field label="Açıklama / Notlar">
+                <textarea
+                  className="input min-h-24 resize-none"
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm({ ...form, description: event.target.value })
                   }
                 />
               </Field>
@@ -4649,6 +4887,132 @@ function Info({
     </div>
   );
 }
+
+function SmartPropertyImportAssistant({
+  draft,
+  message,
+  parsed,
+  rawText,
+  onApply,
+  onDraftChange,
+  onParse,
+  onRawTextChange,
+  onReset
+}: {
+  draft: OpportunityForm | null;
+  message: string;
+  parsed: ParsedPropertyImport | null;
+  rawText: string;
+  onApply: () => void;
+  onDraftChange: (draft: OpportunityForm | null) => void;
+  onParse: () => void;
+  onRawTextChange: (text: string) => void;
+  onReset: () => void;
+}) {
+  const extractedValues = parsed ? importFieldsToFormValues(parsed) : {};
+  const reviewFields = Object.keys(extractedValues) as Array<keyof OpportunityForm>;
+
+  return (
+    <details className="mt-6 rounded-3xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+      <summary className="cursor-pointer text-sm font-semibold text-slate-950 dark:text-slate-100">
+        Akıllı Portföy Girişi
+      </summary>
+      <div className="mt-4">
+        <textarea
+          className="input min-h-36 resize-none"
+          value={rawText}
+          onChange={(event) => onRawTextChange(event.target.value)}
+          placeholder="Sahibinden ilan metni, WhatsApp açıklaması, malik notu veya portföy bilgilerini buraya yapıştırın..."
+        />
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <button className="btn-primary w-full sm:w-auto" type="button" onClick={onParse}>
+            Bilgileri Çıkar
+          </button>
+          <button className="btn-secondary w-full sm:w-auto" type="button" onClick={onReset}>
+            Temizle
+          </button>
+        </div>
+        {message ? (
+          <p className="mt-3 rounded-2xl bg-slate-100 px-3 py-2 text-sm text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">
+            {message}
+          </p>
+        ) : null}
+      </div>
+
+      {parsed && draft ? (
+        <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#080808]">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-medium text-slate-400">Bulunan Bilgiler</p>
+              <h3 className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">
+                {parsed.extractedFieldCount} alan bulundu
+              </h3>
+            </div>
+            <button className="mini-action w-fit" type="button" onClick={onApply}>
+              Forma Aktar
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {reviewFields.map((key) => (
+              <label key={key} className="block">
+                <span className="mb-1.5 block text-xs text-slate-500 dark:text-slate-400">
+                  {propertyImportFieldLabels[key] || key}
+                </span>
+                {key === "description" ? (
+                  <textarea
+                    className="input min-h-24 resize-none"
+                    value={String(draft[key] ?? "")}
+                    onChange={(event) => onDraftChange({ ...draft, [key]: event.target.value })}
+                  />
+                ) : (
+                  <input
+                    className="input"
+                    value={String(draft[key] ?? "")}
+                    onChange={(event) => onDraftChange({ ...draft, [key]: event.target.value })}
+                  />
+                )}
+              </label>
+            ))}
+          </div>
+
+          {parsed.missingCriticalFields.length ? (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
+              <p className="font-medium">Eksik Bilgiler</p>
+              <p className="mt-1">{parsed.missingCriticalFields.join(", ")}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </details>
+  );
+}
+
+const propertyImportFieldLabels: Partial<Record<keyof OpportunityForm, string>> = {
+  title: "Başlık",
+  location: "Konum",
+  value: "Fiyat",
+  currency: "Para birimi",
+  listingType: "İlan Tipi",
+  propertyType: "Gayrimenkul Tipi",
+  contractType: "Kullanım / Sözleşme",
+  roomCount: "Oda Sayısı",
+  grossArea: "Brüt m²",
+  netArea: "Net m²",
+  buildingAge: "Bina Yaşı",
+  floor: "Bulunduğu Kat",
+  totalFloors: "Toplam Kat",
+  heatingType: "Isıtma",
+  bathroomCount: "Banyo",
+  balconyCount: "Balkon",
+  parkingType: "Otopark",
+  hasElevator: "Asansör",
+  inSite: "Site İçi",
+  duesAmount: "Aidat",
+  deedStatus: "Tapu Durumu",
+  exchangeAvailable: "Takas",
+  description: "Açıklama / Notlar"
+};
 
 function Field({
   label,

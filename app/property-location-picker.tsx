@@ -23,7 +23,8 @@ type PropertyLocationPickerProps = {
   onConfirm: (selection: PropertyLocationSelection) => void;
 };
 
-const defaultCenter: [number, number] = [41.0082, 28.9784];
+const istanbulCenter: [number, number] = [41.0082, 28.9784];
+const beykozCenter: [number, number] = [41.123, 29.097];
 
 export function PropertyLocationPicker({
   addressText,
@@ -71,6 +72,7 @@ export function PropertyLocationPicker({
         <PropertyLocationPickerModal
           initialLatitude={latitude}
           initialLongitude={longitude}
+          initialLocation={location}
           onClose={() => setOpen(false)}
           onConfirm={(selection) => {
             onConfirm(selection);
@@ -85,11 +87,13 @@ export function PropertyLocationPicker({
 function PropertyLocationPickerModal({
   initialLatitude,
   initialLongitude,
+  initialLocation,
   onClose,
   onConfirm
 }: {
   initialLatitude?: string | number | null;
   initialLongitude?: string | number | null;
+  initialLocation?: string;
   onClose: () => void;
   onConfirm: (selection: PropertyLocationSelection) => void;
 }) {
@@ -122,10 +126,10 @@ function PropertyLocationPickerModal({
       if (!leaflet || !mounted || !mapElementRef.current) return;
       const L = leaflet;
 
-      const center = selected || defaultCenter;
+      const center = selected || getDefaultMapCenter(initialLocation);
       mapInstanceRef.current = L.map(mapElementRef.current, {
         center,
-        zoom: selected ? 15 : 11,
+        zoom: selected ? 15 : getDefaultMapZoom(initialLocation),
         scrollWheelZoom: false
       });
       L
@@ -212,6 +216,14 @@ function PropertyLocationPickerModal({
       </div>
     </div>
   );
+}
+
+function getDefaultMapCenter(location?: string): [number, number] {
+  return location?.toLocaleLowerCase("tr-TR").includes("beykoz") ? beykozCenter : istanbulCenter;
+}
+
+function getDefaultMapZoom(location?: string) {
+  return location?.toLocaleLowerCase("tr-TR").includes("beykoz") ? 12 : 11;
 }
 
 async function reverseGeocode(latitude: number, longitude: number) {

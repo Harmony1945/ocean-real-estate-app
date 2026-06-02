@@ -42,6 +42,8 @@ const publicRoutePrefixes = [
   "/careers",
   "/support",
   "/apply-advisor",
+  "/forgot-password",
+  "/reset-password",
   "/tools/tax-calculator",
   "/legal",
   "/share"
@@ -691,6 +693,13 @@ function AuthScreen({
                     if (event.key === "Enter") submit();
                   }}
                 />
+                {mode === "login" ? (
+                  <div className="flex justify-end">
+                    <Link href="/forgot-password" className="text-xs font-medium text-white/50 transition hover:text-white">
+                      Şifremi Unuttum
+                    </Link>
+                  </div>
+                ) : null}
                 {!isConfigured ? (
                   <p className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-sm leading-6 text-white/70">
                     Supabase kurulumu bekleniyor. `NEXT_PUBLIC_SUPABASE_URL` ve `NEXT_PUBLIC_SUPABASE_ANON_KEY` eklenince gerçek giriş aktif olur.

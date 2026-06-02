@@ -2355,6 +2355,28 @@ export function createSupabaseAuthClient(): any {
       return session;
     },
 
+    async resetPasswordForEmail(email: string, redirectTo: string) {
+      const redirectQuery = redirectTo ? `?redirect_to=${encodeURIComponent(redirectTo)}` : "";
+      await request<AuthResponse>(`/auth/v1/recover${redirectQuery}`, {
+        method: "POST",
+        body: JSON.stringify({ email })
+      });
+    },
+
+    async updatePassword(password: string) {
+      const token = getAccessToken();
+      if (!token) throw new Error("Oturum bulunamadı.");
+
+      const user = await request<SupabaseAuthUser>("/auth/v1/user", {
+        method: "PUT",
+        token,
+        body: JSON.stringify({ password })
+      });
+      const stored = readStoredSession();
+      if (stored) saveSession({ ...stored, user });
+      return user;
+    },
+
     refreshSession,
 
     getUser,

@@ -67,7 +67,7 @@ const menuGroups: Array<{ title: string; items: MenuItem[] }> = [
     items: [
       { label: "Ödemeler", href: "/menu/payments", icon: "payment" },
       { label: "Vergi Hesaplayıcı", href: "/menu/tax-calculator", icon: "tax" },
-      { label: "İşlem ve Komisyonlar", href: "/menu/commissions", icon: "commission" },
+      { label: "Gelir Motoru", href: "/menu/commissions", icon: "commission" },
       { label: "Raporlar", href: "/menu/reports", icon: "report" }
     ]
   },

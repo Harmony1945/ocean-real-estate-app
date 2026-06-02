@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthContext } from "../auth-context";
 import type { MenuPageData } from "./menu-data";
@@ -15,10 +16,16 @@ import {
   type AdvisorMatchRow,
   type AdvisorPortfolioRow,
   type AdvisorPropertyRow,
+  type AdvisorRow,
   type AdvisorSearchRequestRow,
   type AdvisorTaskRow,
+  type CommissionRuleRow,
+  type CommissionSplitRow,
+  type RevenueTransactionInput,
+  type RevenueTransactionRow,
   type NotificationRow
 } from "@/lib/supabase/client";
+import { calculateCommission, getDefaultRevenueRule } from "@/lib/oos/revenue-rules";
 import { createCheckoutSession } from "@/lib/oos/payments";
 import { demoShowcasePortfolios } from "@/lib/oos/demo-data";
 import { formatStatusLabel } from "@/lib/oos/status-labels";
@@ -66,6 +73,44 @@ const demoPortfolios: AdvisorPortfolioRow[] = demoShowcasePortfolios.map((portfo
   longitude: portfolio.longitude
 }));
 
+type RevenueFormState = {
+  property_id: string;
+  advisor_id: string;
+  title: string;
+  transaction_type: string;
+  status: string;
+  transaction_amount: string;
+  currency: string;
+  commission_rate: string;
+  advisor_model: "core" | "elite";
+  source_type: string;
+  has_referral: boolean;
+  referral_advisor_id: string;
+  cap_reached: boolean;
+  close_date: string;
+  notes: string;
+};
+
+const emptyRevenueForm: RevenueFormState = {
+  property_id: "",
+  advisor_id: "",
+  title: "",
+  transaction_type: "sale",
+  status: "draft",
+  transaction_amount: "",
+  currency: "TRY",
+  commission_rate: "2",
+  advisor_model: "core",
+  source_type: "advisor_generated",
+  has_referral: false,
+  referral_advisor_id: "",
+  cap_reached: false,
+  close_date: "",
+  notes: ""
+};
+
+const commissionRateOptions = [1, 1.5, 2, 3, 4];
+
 export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   const { user, profile } = useAuthContext();
   const supabase = useMemo(() => createSupabaseAuthClient(), []);
@@ -79,6 +124,14 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   const [matchRows, setMatchRows] = useState<AdvisorMatchRow[]>([]);
   const [dealRows, setDealRows] = useState<AdvisorDealRow[]>([]);
   const [commissionRows, setCommissionRows] = useState<AdvisorCommissionRow[]>([]);
+  const [advisorRows, setAdvisorRows] = useState<AdvisorRow[]>([]);
+  const [propertyRows, setPropertyRows] = useState<AdvisorPropertyRow[]>([]);
+  const [transactionRows, setTransactionRows] = useState<RevenueTransactionRow[]>([]);
+  const [commissionRuleRows, setCommissionRuleRows] = useState<CommissionRuleRow[]>([]);
+  const [revenueForm, setRevenueForm] = useState<RevenueFormState>(emptyRevenueForm);
+  const [revenueStatusFilter, setRevenueStatusFilter] = useState("all");
+  const [revenueMessage, setRevenueMessage] = useState("");
+  const [revenueSaving, setRevenueSaving] = useState(false);
   const [activityRows, setActivityRows] = useState<ActivityLogRow[]>([]);
   const [activityFilter, setActivityFilter] = useState("all");
   const [notificationRows, setNotificationRows] = useState<NotificationRow[]>([]);
@@ -103,6 +156,28 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
     return notificationRows.filter((row) => getNotificationFilterKey(row) === notificationFilter);
   }, [notificationFilter, notificationRows]);
   const unreadNotificationCount = notificationRows.filter((row) => row.status === "unread").length;
+  const selectedRevenueRule = commissionRuleRows.find((rule) => rule.model === revenueForm.advisor_model);
+  const fallbackRevenueRule = getDefaultRevenueRule(revenueForm.advisor_model);
+  const revenuePreview = calculateCommission({
+    transaction_amount: Number(revenueForm.transaction_amount) || 0,
+    commission_rate: Number(revenueForm.commission_rate) || 0,
+    advisor_model: revenueForm.advisor_model,
+    source_type: revenueForm.source_type,
+    has_referral: revenueForm.has_referral,
+    referral_percentage: selectedRevenueRule?.referral_percentage ?? fallbackRevenueRule.referral_percentage,
+    cap_enabled: selectedRevenueRule?.cap_enabled ?? fallbackRevenueRule.cap_enabled,
+    cap_reached: revenueForm.cap_reached,
+    currency: revenueForm.currency,
+    advisor_percentage: selectedRevenueRule?.advisor_percentage ?? fallbackRevenueRule.advisor_percentage,
+    office_percentage: selectedRevenueRule?.office_percentage ?? fallbackRevenueRule.office_percentage,
+    post_cap_own_office_percentage: selectedRevenueRule?.post_cap_own_office_percentage ?? fallbackRevenueRule.post_cap_own_office_percentage,
+    post_cap_office_generated_percentage: selectedRevenueRule?.post_cap_office_generated_percentage ?? fallbackRevenueRule.post_cap_office_generated_percentage
+  });
+  const filteredTransactionRows = useMemo(() => {
+    if (revenueStatusFilter === "all") return transactionRows;
+    return transactionRows.filter((row) => row.status === revenueStatusFilter);
+  }, [revenueStatusFilter, transactionRows]);
+  const revenueSummary = useMemo(() => buildRevenueSummary(transactionRows), [transactionRows]);
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
   useEffect(() => {
@@ -135,13 +210,22 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
       }
 
       if (page.slug === "commissions") {
-        const [deals, commissions] = await Promise.all([
-          supabase.getDeals(),
-          supabase.getCommissions()
+        const [transactions, rules, advisors, properties] = await Promise.all([
+          supabase.getRevenueTransactions(),
+          supabase.getCommissionRules(),
+          supabase.getAdvisors(),
+          supabase.getProperties()
         ]);
         if (mounted) {
-          setDealRows(deals);
-          setCommissionRows(commissions);
+          setTransactionRows(transactions);
+          setCommissionRuleRows(rules);
+          setAdvisorRows(advisors);
+          setPropertyRows(properties);
+          setRevenueForm((current) => ({
+            ...current,
+            advisor_id: current.advisor_id || advisors[0]?.id || "",
+            property_id: current.property_id || properties[0]?.id || ""
+          }));
         }
       }
 
@@ -164,6 +248,10 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         setMatchRows([]);
         setDealRows([]);
         setCommissionRows([]);
+        setTransactionRows([]);
+        setAdvisorRows([]);
+        setPropertyRows([]);
+        setCommissionRuleRows([]);
         setActivityRows([]);
         setNotificationRows([]);
         setModuleMessage(page.slug === "tasks"
@@ -204,6 +292,69 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
     const readAt = new Date().toISOString();
     setNotificationRows((current) =>
       current.map((row) => row.status === "unread" ? { ...row, status: "read", read_at: row.read_at || readAt } : row)
+    );
+  }
+
+  function updateRevenueForm<Key extends keyof RevenueFormState>(key: Key, value: RevenueFormState[Key]) {
+    setRevenueForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function createRevenueTransaction(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || revenueSaving) return;
+
+    const payload: RevenueTransactionInput = {
+      property_id: revenueForm.property_id || null,
+      advisor_id: revenueForm.advisor_id,
+      title: revenueForm.title.trim() || "OceanOS işlemi",
+      transaction_type: revenueForm.transaction_type,
+      status: revenueForm.status,
+      transaction_amount: Number(revenueForm.transaction_amount) || 0,
+      currency: revenueForm.currency,
+      commission_rate: Number(revenueForm.commission_rate) || 0,
+      advisor_model: revenueForm.advisor_model,
+      source_type: revenueForm.source_type,
+      close_date: revenueForm.close_date || null,
+      notes: revenueForm.notes || null,
+      has_referral: revenueForm.has_referral,
+      referral_advisor_id: revenueForm.has_referral ? revenueForm.referral_advisor_id || null : null,
+      cap_reached: revenueForm.cap_reached
+    };
+
+    if (!payload.advisor_id) {
+      setRevenueMessage("Danışman seçimi gerekli.");
+      return;
+    }
+
+    setRevenueSaving(true);
+    setRevenueMessage("");
+
+    try {
+      const row = await supabase.createRevenueTransaction(payload);
+      if (row) {
+        setTransactionRows((current) => [row, ...current]);
+        setRevenueForm((current) => ({
+          ...emptyRevenueForm,
+          advisor_id: current.advisor_id,
+          property_id: current.property_id
+        }));
+        setRevenueMessage("İşlem oluşturuldu ve komisyon kırılımı hesaplandı.");
+      }
+    } catch (error) {
+      setRevenueMessage(getDataSetupMessage(error instanceof Error ? error.message : "İşlem oluşturulamadı."));
+    } finally {
+      setRevenueSaving(false);
+    }
+  }
+
+  async function updateRevenueStatus(transaction: RevenueTransactionRow, status: string) {
+    if (!supabase) return;
+
+    const row = await supabase.updateRevenueTransactionStatus(transaction.id, status);
+    if (!row) return;
+
+    setTransactionRows((current) =>
+      current.map((item) => item.id === row.id ? { ...item, ...row } : item)
     );
   }
 
@@ -314,24 +465,41 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
         ) : null}
 
         {page.slug === "commissions" && isSupabaseConfigured ? (
-          <section className="mt-6 grid gap-4 md:grid-cols-2">
-            <InfoCard title="İşlem kaydı" value={String(dealRows.length)} />
-            <InfoCard title="Komisyon kaydı" value={String(commissionRows.length)} />
-            {commissionRows.map((commission) => (
-              <article key={commission.id} className="oos-card rounded-[1.75rem] p-5">
-                <p className="text-xs font-medium text-slate-400">
-                  {formatStatusLabel(commission.status || "Komisyon")}
-                </p>
-                <h2 className="mt-2 text-lg font-semibold">
-                  {formatCurrency(Number(commission.net_commission ?? commission.gross_commission ?? commission.commission ?? commission.amount ?? 0))}
-                </h2>
-              </article>
-            ))}
-            {!dealRows.length && !commissionRows.length ? (
-              <article className="rounded-[1.75rem] border border-dashed border-slate-200 p-5 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 md:col-span-2">
-                Henüz gerçek işlem veya komisyon kaydı yok.
-              </article>
+          <section className="mt-6 space-y-4">
+            <div className="grid gap-3 md:grid-cols-4">
+              <InfoCard title="Toplam işlem hacmi" value={formatCurrencyAmount(revenueSummary.volume, revenueSummary.currency)} />
+              <InfoCard title="Brüt komisyon" value={formatCurrencyAmount(revenueSummary.gross, revenueSummary.currency)} />
+              <InfoCard title="Ofis payı" value={formatCurrencyAmount(revenueSummary.office, revenueSummary.currency)} />
+              <InfoCard title="Danışman hakedişi" value={formatCurrencyAmount(revenueSummary.advisor, revenueSummary.currency)} />
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+              <RevenueTransactionForm
+                advisors={advisorRows}
+                calculation={revenuePreview}
+                form={revenueForm}
+                properties={propertyRows}
+                rules={commissionRuleRows}
+                saving={revenueSaving}
+                onChange={updateRevenueForm}
+                onSubmit={createRevenueTransaction}
+              />
+              <RevenueBreakdownCard calculation={revenuePreview} form={revenueForm} />
+            </div>
+
+            {revenueMessage ? (
+              <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-100">
+                {revenueMessage}
+              </p>
             ) : null}
+
+            <RevenueTransactionList
+              filter={revenueStatusFilter}
+              rows={filteredTransactionRows}
+              totalRows={transactionRows.length}
+              onFilterChange={setRevenueStatusFilter}
+              onStatusChange={updateRevenueStatus}
+            />
           </section>
         ) : null}
 
@@ -456,6 +624,347 @@ function InfoCard({ title, value }: { title: string; value: string }) {
       <p className="mt-2 break-words text-xl font-semibold">{value}</p>
     </article>
   );
+}
+
+function RevenueTransactionForm({
+  advisors,
+  calculation,
+  form,
+  properties,
+  rules,
+  saving,
+  onChange,
+  onSubmit
+}: {
+  advisors: AdvisorRow[];
+  calculation: ReturnType<typeof calculateCommission>;
+  form: RevenueFormState;
+  properties: AdvisorPropertyRow[];
+  rules: CommissionRuleRow[];
+  saving: boolean;
+  onChange: <Key extends keyof RevenueFormState>(key: Key, value: RevenueFormState[Key]) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className="oos-card rounded-[1.75rem] p-5" onSubmit={onSubmit}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-slate-400">Gelir Motoru</p>
+          <h2 className="mt-2 text-xl font-semibold">İşlem Oluştur</h2>
+        </div>
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-white/[0.08] dark:text-slate-300">
+          {calculation.applied_rule_summary}
+        </span>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          İşlem başlığı
+          <input className="input mt-2" value={form.title} onChange={(event) => onChange("title", event.target.value)} placeholder="Bebek satış işlemi" />
+        </label>
+        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          Portföy
+          <select className="input mt-2" value={form.property_id} onChange={(event) => onChange("property_id", event.target.value)}>
+            <option value="">Portföy seçilmedi</option>
+            {properties.map((property) => (
+              <option key={property.id} value={property.id}>{property.title}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          Danışman
+          <select className="input mt-2" value={form.advisor_id} onChange={(event) => onChange("advisor_id", event.target.value)}>
+            <option value="">Danışman seç</option>
+            {advisors.map((advisor) => (
+              <option key={advisor.id} value={advisor.id}>{getAdvisorLabel(advisor)}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          İşlem tipi
+          <select className="input mt-2" value={form.transaction_type} onChange={(event) => onChange("transaction_type", event.target.value)}>
+            {transactionTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          İşlem tutarı
+          <input className="input mt-2" type="number" min={0} value={form.transaction_amount} onChange={(event) => onChange("transaction_amount", event.target.value)} placeholder="25000000" />
+        </label>
+        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          Para birimi
+          <select className="input mt-2" value={form.currency} onChange={(event) => onChange("currency", event.target.value)}>
+            {["TRY", "USD", "EUR"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div className="mt-4">
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Komisyon oranı</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {commissionRateOptions.map((rate) => (
+            <button
+              key={rate}
+              className={`rounded-full px-3 py-2 text-xs font-medium transition ${Number(form.commission_rate) === rate ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950" : "bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300"}`}
+              type="button"
+              onClick={() => onChange("commission_rate", String(rate))}
+            >
+              %{rate}
+            </button>
+          ))}
+          <input className="input max-w-28" type="number" min={0} step="0.1" value={form.commission_rate} onChange={(event) => onChange("commission_rate", event.target.value)} />
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          Danışman modeli
+          <select className="input mt-2" value={form.advisor_model} onChange={(event) => onChange("advisor_model", event.target.value as RevenueFormState["advisor_model"])}>
+            {rules.length ? rules.map((rule) => <option key={rule.id} value={rule.model}>{rule.name}</option>) : (
+              <>
+                <option value="core">Ocean Core</option>
+                <option value="elite">Ocean Elite</option>
+              </>
+            )}
+          </select>
+        </label>
+        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          Kaynak tipi
+          <select className="input mt-2" value={form.source_type} onChange={(event) => onChange("source_type", event.target.value)}>
+            {sourceTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          Durum
+          <select className="input mt-2" value={form.status} onChange={(event) => onChange("status", event.target.value)}>
+            {transactionStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          Kapanış tarihi
+          <input className="input mt-2" type="date" value={form.close_date} onChange={(event) => onChange("close_date", event.target.value)} />
+        </label>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <label className="flex items-center gap-2 rounded-2xl bg-slate-100 px-3 py-3 text-sm font-medium text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">
+          <input type="checkbox" checked={form.has_referral} onChange={(event) => onChange("has_referral", event.target.checked)} />
+          Referral teşviki uygula
+        </label>
+        <label className="flex items-center gap-2 rounded-2xl bg-slate-100 px-3 py-3 text-sm font-medium text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">
+          <input type="checkbox" checked={form.cap_reached} onChange={(event) => onChange("cap_reached", event.target.checked)} />
+          Tavan sonrası hesapla
+        </label>
+      </div>
+
+      {form.has_referral ? (
+        <label className="mt-4 block text-sm font-medium text-slate-500 dark:text-slate-400">
+          Referral danışmanı
+          <select className="input mt-2" value={form.referral_advisor_id} onChange={(event) => onChange("referral_advisor_id", event.target.value)}>
+            <option value="">Referral danışmanı seç</option>
+            {advisors.map((advisor) => (
+              <option key={advisor.id} value={advisor.id}>{getAdvisorLabel(advisor)}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      <label className="mt-4 block text-sm font-medium text-slate-500 dark:text-slate-400">
+        Not
+        <textarea className="input mt-2 min-h-20 resize-none" value={form.notes} onChange={(event) => onChange("notes", event.target.value)} placeholder="İç operasyon notu" />
+      </label>
+
+      <button className="btn-primary mt-5 w-full" type="submit" disabled={saving}>
+        {saving ? "Kaydediliyor..." : "Komisyon Hesapla ve İşlem Oluştur"}
+      </button>
+    </form>
+  );
+}
+
+function RevenueBreakdownCard({
+  calculation,
+  form
+}: {
+  calculation: ReturnType<typeof calculateCommission>;
+  form: RevenueFormState;
+}) {
+  return (
+    <article className="oos-card rounded-[1.75rem] p-5">
+      <p className="text-xs font-medium text-slate-400">Hesaplama önizlemesi</p>
+      <h2 className="mt-2 text-xl font-semibold">Komisyon Kırılımı</h2>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <Result label="Brüt Komisyon" value={formatCurrencyAmount(calculation.gross_commission, form.currency)} />
+        <Result label="Danışman Payı" value={formatCurrencyAmount(calculation.advisor_share, form.currency)} />
+        <Result label="Ofis Payı" value={formatCurrencyAmount(calculation.office_share, form.currency)} />
+        <Result label="Referral Teşviki" value={formatCurrencyAmount(calculation.referral_reward, form.currency)} />
+        <Result label="Net Danışman Hakedişi" value={formatCurrencyAmount(calculation.net_advisor_payout, form.currency)} />
+        <Result label="Tavan Durumu" value={calculation.cap_adjustment ? formatCurrencyAmount(calculation.cap_adjustment, form.currency) : "Aktif değil"} />
+      </div>
+      <p className="mt-4 rounded-2xl bg-slate-100 p-3 text-sm leading-6 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">
+        {calculation.applied_rule_summary}. USD tavan takibi canlı FX kullanmaz; ilk versiyonda manuel/raporlanabilir cap alanı olarak tutulur.
+      </p>
+    </article>
+  );
+}
+
+function RevenueTransactionList({
+  filter,
+  rows,
+  totalRows,
+  onFilterChange,
+  onStatusChange
+}: {
+  filter: string;
+  rows: RevenueTransactionRow[];
+  totalRows: number;
+  onFilterChange: (filter: string) => void;
+  onStatusChange: (transaction: RevenueTransactionRow, status: string) => void;
+}) {
+  return (
+    <article className="oos-card rounded-[1.75rem] p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-medium text-slate-400">Aktif işlemler</p>
+          <h2 className="mt-2 text-xl font-semibold">{totalRows} işlem kaydı</h2>
+        </div>
+        <select className="input w-full sm:w-56" value={filter} onChange={(event) => onFilterChange(event.target.value)}>
+          <option value="all">Tüm durumlar</option>
+          {transactionStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      </div>
+      <div className="mt-5 grid gap-3">
+        {rows.map((transaction) => (
+          <RevenueTransactionCard
+            key={transaction.id}
+            transaction={transaction}
+            onStatusChange={onStatusChange}
+          />
+        ))}
+        {!rows.length ? (
+          <p className="rounded-2xl border border-dashed border-slate-200 p-5 text-sm leading-6 text-slate-500 dark:border-white/10 dark:text-slate-400">
+            Henüz işlem kaydı yok. İlk işlemi oluşturduğunuzda brüt komisyon, danışman hakedişi ve ofis payı burada görünecek.
+          </p>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function RevenueTransactionCard({
+  transaction,
+  onStatusChange
+}: {
+  transaction: RevenueTransactionRow;
+  onStatusChange: (transaction: RevenueTransactionRow, status: string) => void;
+}) {
+  const splits = transaction.commission_splits || [];
+  const advisorShare = getSplitAmount(splits, "advisor_share");
+  const officeShare = getSplitAmount(splits, "office_share");
+  const nextStatus = getNextTransactionStatus(transaction.status);
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-slate-400">{formatTransactionType(transaction.transaction_type)} · {formatSourceType(transaction.source_type)}</p>
+          <h3 className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-100">{transaction.title}</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {transaction.property?.title || "Portföy bağlanmadı"} · {getAdvisorLabel(transaction.advisor || null)}
+          </p>
+        </div>
+        <span className="w-fit rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white dark:bg-white dark:text-slate-950">
+          {formatTransactionStatus(transaction.status)}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        <Result label="Tutar" value={formatCurrencyAmount(Number(transaction.transaction_amount), transaction.currency)} />
+        <Result label="Brüt" value={formatCurrencyAmount(Number(transaction.gross_commission), transaction.currency)} />
+        <Result label="Danışman" value={formatCurrencyAmount(advisorShare, transaction.currency)} />
+        <Result label="Ofis" value={formatCurrencyAmount(officeShare, transaction.currency)} />
+      </div>
+      {nextStatus ? (
+        <button className="mini-action mt-4" type="button" onClick={() => onStatusChange(transaction, nextStatus)}>
+          {formatTransactionStatus(nextStatus)} Yap
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+const transactionTypeOptions = [
+  { value: "sale", label: "Satış" },
+  { value: "rental", label: "Kiralama" },
+  { value: "land_share", label: "Kat karşılığı" },
+  { value: "project_sale", label: "Proje satışı" },
+  { value: "referral", label: "Referral" },
+  { value: "other", label: "Diğer" }
+];
+
+const sourceTypeOptions = [
+  { value: "advisor_generated", label: "Danışman kaynaklı" },
+  { value: "office_generated", label: "Ofis kaynaklı" },
+  { value: "referral_generated", label: "Referral kaynaklı" },
+  { value: "project_generated", label: "Proje kaynaklı" }
+];
+
+const transactionStatusOptions = [
+  { value: "draft", label: "Taslak" },
+  { value: "active", label: "Aktif" },
+  { value: "pending_collection", label: "Tahsilat Bekliyor" },
+  { value: "collected", label: "Tahsil Edildi" },
+  { value: "paid_out", label: "Hakediş Ödendi" },
+  { value: "cancelled", label: "İptal" }
+];
+
+function buildRevenueSummary(rows: RevenueTransactionRow[]) {
+  return rows.reduce((summary, row) => {
+    const splits = row.commission_splits || [];
+    summary.volume += Number(row.transaction_amount || 0);
+    summary.gross += Number(row.gross_commission || 0);
+    summary.office += getSplitAmount(splits, "office_share");
+    summary.advisor += getSplitAmount(splits, "advisor_share");
+    if (row.status === "pending_collection") summary.pending += Number(row.gross_commission || 0);
+    if (row.status === "collected" || row.status === "paid_out") summary.collected += Number(row.gross_commission || 0);
+    summary.currency = row.currency || summary.currency;
+    return summary;
+  }, {
+    volume: 0,
+    gross: 0,
+    office: 0,
+    advisor: 0,
+    pending: 0,
+    collected: 0,
+    currency: "TRY"
+  });
+}
+
+function getSplitAmount(splits: CommissionSplitRow[], splitType: string) {
+  return splits
+    .filter((split) => split.split_type === splitType)
+    .reduce((sum, split) => sum + Number(split.amount || 0), 0);
+}
+
+function getAdvisorLabel(advisor?: AdvisorRow | null) {
+  if (!advisor) return "Danışman bekleniyor";
+  return advisor.profile?.full_name || advisor.title || advisor.advisor_code || "Danışman";
+}
+
+function formatTransactionType(value?: string | null) {
+  return transactionTypeOptions.find((option) => option.value === value)?.label || "İşlem";
+}
+
+function formatSourceType(value?: string | null) {
+  return sourceTypeOptions.find((option) => option.value === value)?.label || "Kaynak yok";
+}
+
+function formatTransactionStatus(value?: string | null) {
+  return transactionStatusOptions.find((option) => option.value === value)?.label || formatStatusLabel(value || "Durum");
+}
+
+function getNextTransactionStatus(status: string) {
+  const flow = ["draft", "active", "pending_collection", "collected", "paid_out"];
+  const index = flow.indexOf(status);
+  if (index < 0 || index === flow.length - 1 || status === "cancelled") return "";
+  return flow[index + 1];
 }
 
 const activityFilters = [

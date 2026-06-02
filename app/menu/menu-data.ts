@@ -113,13 +113,13 @@ export const menuPages: MenuPageData[] = [
   },
   {
     slug: "commissions",
-    title: "İşlem ve Komisyonlar",
-    eyebrow: "Süreç takibi",
-    description: "Satış ve kiralama işlemlerinde aşama, brüt komisyon ve danışman payı özetlenir.",
+    title: "Gelir Motoru",
+    eyebrow: "İşlem ve komisyon kuralları",
+    description: "Satış ve kiralama işlemlerinde brüt komisyon, danışman hakedişi, ofis payı, referral teşviki ve tavan durumunu hesaplayın.",
     cards: [
-      { title: "Yetki ve teklif", body: "Yetki belgesi, teklif ve kapora adımlarını ayrı takip edin.", meta: "Süreç" },
-      { title: "Komisyon özeti", body: "Brüt komisyon, ofis payı ve danışman payı görünümü.", meta: "Finans" },
-      { title: "Kapanış kontrolü", body: "Eksik belge varsa görev listesine aksiyon düşer.", meta: "Kontrol" }
+      { title: "Komisyon hesaplama", body: "Ocean Core, Ocean Elite, referral ve tavan kuralları tek hesaplama motorunda uygulanır.", meta: "Kural" },
+      { title: "Gelir özeti", body: "Brüt komisyon, ofis payı ve danışman hakedişi gerçek işlem kayıtlarından özetlenir.", meta: "Finans" },
+      { title: "Tahsilat ve ödeme", body: "İşlem durumu draft aşamasından paid out aşamasına kadar takip edilir.", meta: "Kontrol" }
     ]
   },
   {

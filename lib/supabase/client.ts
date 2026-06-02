@@ -1,3 +1,5 @@
+import { calculateCommission, getDefaultRevenueRule } from "@/lib/oos/revenue-rules";
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -28,6 +30,20 @@ export type AdvisorProfile = {
   avatar_url: string | null;
   created_at?: string;
   updated_at?: string;
+};
+
+export type AdvisorRow = {
+  id: string;
+  profile_id: string | null;
+  advisor_code: string | null;
+  model: string | null;
+  title: string | null;
+  city: string | null;
+  district: string | null;
+  commission_cap_amount: number | null;
+  commission_cap_currency: string | null;
+  joined_at?: string | null;
+  profile?: Pick<AdvisorProfile, "id" | "full_name" | "email" | "role"> | null;
 };
 
 export type AdvisorPortfolioRow = {
@@ -333,6 +349,109 @@ export type NotificationInput = {
   priority?: NotificationPriority;
   action_url?: string | null;
   metadata?: Record<string, unknown>;
+};
+
+export type CommissionRuleRow = {
+  id: string;
+  name: string;
+  model: string;
+  advisor_percentage: number;
+  office_percentage: number;
+  referral_percentage: number | null;
+  cap_enabled: boolean;
+  annual_cap_usd: number | null;
+  post_cap_own_office_percentage: number | null;
+  post_cap_office_generated_percentage: number | null;
+  is_active: boolean;
+  metadata: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type RevenueTransactionStatus =
+  | "draft"
+  | "active"
+  | "pending_collection"
+  | "collected"
+  | "paid_out"
+  | "cancelled"
+  | string;
+
+export type RevenueTransactionRow = {
+  id: string;
+  property_id: string | null;
+  advisor_id: string | null;
+  title: string;
+  transaction_type: string;
+  status: RevenueTransactionStatus;
+  transaction_amount: number;
+  currency: string;
+  commission_rate: number;
+  gross_commission: number;
+  advisor_model: string;
+  source_type: string | null;
+  close_date: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at?: string;
+  updated_at?: string;
+  property?: Pick<AdvisorPropertyRow, "id" | "title" | "city" | "district"> | null;
+  advisor?: AdvisorRow | null;
+  commission_splits?: CommissionSplitRow[];
+};
+
+export type CommissionSplitRow = {
+  id: string;
+  transaction_id: string;
+  advisor_id: string | null;
+  split_type: string;
+  percentage: number | null;
+  amount: number;
+  currency: string;
+  description: string | null;
+  created_at?: string;
+};
+
+export type AdvisorCapProgressRow = {
+  id: string;
+  advisor_id: string;
+  year: number;
+  cap_currency: string;
+  cap_target: number;
+  accumulated_office_share_usd: number;
+  cap_reached: boolean;
+  cap_reached_at: string | null;
+  updated_at?: string;
+};
+
+export type PaymentRecordRow = {
+  id: string;
+  transaction_id: string;
+  amount: number;
+  currency: string;
+  payment_type: string;
+  status: string;
+  paid_at: string | null;
+  notes: string | null;
+  created_at?: string;
+};
+
+export type RevenueTransactionInput = {
+  property_id?: string | null;
+  advisor_id: string;
+  title: string;
+  transaction_type: string;
+  status: RevenueTransactionStatus;
+  transaction_amount: number;
+  currency: string;
+  commission_rate: number;
+  advisor_model: string;
+  source_type?: string | null;
+  close_date?: string | null;
+  notes?: string | null;
+  referral_advisor_id?: string | null;
+  has_referral?: boolean;
+  cap_reached?: boolean;
 };
 
 export type PortfolioInput = Partial<Omit<AdvisorPortfolioRow, "id" | "owner_user_id" | "created_at" | "updated_at">> & {
@@ -1257,6 +1376,297 @@ export function createSupabaseAuthClient(): any {
     return getOperationalRows<AdvisorCommissionRow>("commissions");
   }
 
+  async function getAdvisors() {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<AdvisorRow[]>(
+        "/rest/v1/advisors?select=*,profile:profiles(id,full_name,email,role)&order=joined_at.desc",
+        { method: "GET", token }
+      );
+    } catch {
+      return request<AdvisorRow[]>(
+        "/rest/v1/advisors?select=*&order=joined_at.desc",
+        { method: "GET", token }
+      ).catch(() => []);
+    }
+  }
+
+  async function getCommissionRules() {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<CommissionRuleRow[]>(
+        "/rest/v1/commission_rules?select=*&is_active=eq.true&order=created_at.asc",
+        { method: "GET", token }
+      );
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function getAdvisorCapProgress(year = new Date().getFullYear()) {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<AdvisorCapProgressRow[]>(
+        `/rest/v1/advisor_cap_progress?year=eq.${year}&select=*&order=updated_at.desc`,
+        { method: "GET", token }
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  async function getRevenueTransactions() {
+    const token = getAccessToken();
+    if (!token) return [];
+
+    try {
+      return await request<RevenueTransactionRow[]>(
+        "/rest/v1/transactions?select=*,property:properties(id,title,city,district),advisor:advisors(*),commission_splits(*)&order=created_at.desc",
+        { method: "GET", token }
+      );
+    } catch {
+      return request<RevenueTransactionRow[]>(
+        "/rest/v1/transactions?select=*,commission_splits(*)&order=created_at.desc",
+        { method: "GET", token }
+      );
+    }
+  }
+
+  async function createRevenueTransaction(input: RevenueTransactionInput) {
+    const stored = readStoredSession();
+    if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rules = await getCommissionRules().catch(() => []);
+      const rule = rules.find((item) => item.model === input.advisor_model);
+      const fallbackRule = getDefaultRevenueRule(input.advisor_model);
+      const capReached = Boolean(input.cap_reached);
+      const calculation = calculateCommission({
+        transaction_amount: input.transaction_amount,
+        commission_rate: input.commission_rate,
+        advisor_model: input.advisor_model,
+        source_type: input.source_type,
+        has_referral: input.has_referral,
+        referral_percentage: rule?.referral_percentage ?? fallbackRule.referral_percentage,
+        cap_enabled: rule?.cap_enabled ?? fallbackRule.cap_enabled,
+        cap_reached: capReached,
+        currency: input.currency,
+        advisor_percentage: rule?.advisor_percentage ?? fallbackRule.advisor_percentage,
+        office_percentage: rule?.office_percentage ?? fallbackRule.office_percentage,
+        post_cap_own_office_percentage: rule?.post_cap_own_office_percentage ?? fallbackRule.post_cap_own_office_percentage,
+        post_cap_office_generated_percentage: rule?.post_cap_office_generated_percentage ?? fallbackRule.post_cap_office_generated_percentage
+      });
+      const rows = await request<RevenueTransactionRow[]>("/rest/v1/transactions", {
+        method: "POST",
+        token: stored.access_token,
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          property_id: input.property_id || null,
+          advisor_id: input.advisor_id,
+          title: input.title.trim(),
+          transaction_type: input.transaction_type || "sale",
+          status: input.status || "draft",
+          transaction_amount: input.transaction_amount,
+          currency: input.currency || "TRY",
+          commission_rate: input.commission_rate,
+          gross_commission: calculation.gross_commission,
+          advisor_model: input.advisor_model || "core",
+          source_type: input.source_type || null,
+          close_date: input.close_date || null,
+          notes: input.notes?.trim() || null,
+          created_by: stored.user.id
+        })
+      });
+      const transaction = rows[0] ?? null;
+      if (!transaction) return null;
+
+      const splitRows = [
+        {
+          transaction_id: transaction.id,
+          advisor_id: input.advisor_id,
+          split_type: "advisor_share",
+          percentage: calculation.gross_commission ? calculation.advisor_share / calculation.gross_commission * 100 : null,
+          amount: calculation.advisor_share,
+          currency: input.currency,
+          description: "Danışman payı"
+        },
+        {
+          transaction_id: transaction.id,
+          advisor_id: null,
+          split_type: "office_share",
+          percentage: calculation.gross_commission ? calculation.office_share / calculation.gross_commission * 100 : null,
+          amount: calculation.office_share,
+          currency: input.currency,
+          description: "Ofis payı"
+        }
+      ];
+
+      if (calculation.referral_reward > 0) {
+        splitRows.push({
+          transaction_id: transaction.id,
+          advisor_id: input.referral_advisor_id || null,
+          split_type: "referral_reward",
+          percentage: rule?.referral_percentage ?? fallbackRule.referral_percentage ?? null,
+          amount: calculation.referral_reward,
+          currency: input.currency,
+          description: "Referral teşviki"
+        });
+      }
+
+      if (calculation.cap_adjustment > 0) {
+        splitRows.push({
+          transaction_id: transaction.id,
+          advisor_id: input.advisor_id,
+          split_type: "cap_adjustment",
+          percentage: null,
+          amount: calculation.cap_adjustment,
+          currency: input.currency,
+          description: "Tavan indirimi"
+        });
+      }
+
+      await request<CommissionSplitRow[]>("/rest/v1/commission_splits", {
+        method: "POST",
+        token: stored.access_token,
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify(splitRows)
+      }).catch(() => []);
+
+      void logActivity({
+        action: "transaction_created",
+        entity_type: "transaction",
+        entity_id: transaction.id,
+        entity_title: transaction.title,
+        summary: "Gelir motorunda işlem oluşturuldu.",
+        metadata: {
+          status: transaction.status,
+          transaction_type: transaction.transaction_type,
+          advisor_model: transaction.advisor_model,
+          source_type: transaction.source_type,
+          gross_commission: transaction.gross_commission
+        }
+      });
+      void logActivity({
+        action: "commission_calculated",
+        entity_type: "transaction",
+        entity_id: transaction.id,
+        entity_title: transaction.title,
+        summary: calculation.applied_rule_summary,
+        metadata: {
+          gross_commission: calculation.gross_commission,
+          advisor_share: calculation.advisor_share,
+          office_share: calculation.office_share,
+          referral_reward: calculation.referral_reward,
+          cap_adjustment: calculation.cap_adjustment
+        }
+      });
+      void createNotification({
+        recipient_advisor_id: input.advisor_id,
+        type: "transaction_created",
+        title: "Yeni işlem oluşturuldu",
+        body: transaction.title,
+        entity_type: "transaction",
+        entity_id: transaction.id,
+        entity_title: transaction.title,
+        priority: "normal",
+        action_url: "/menu/commissions",
+        metadata: {
+          status: transaction.status,
+          advisor_model: transaction.advisor_model,
+          gross_commission: transaction.gross_commission
+        }
+      });
+
+      return { ...transaction, commission_splits: splitRows as CommissionSplitRow[] };
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function updateRevenueTransactionStatus(id: string, status: RevenueTransactionStatus) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<RevenueTransactionRow[]>(
+        `/rest/v1/transactions?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          token,
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ status, updated_at: new Date().toISOString() })
+        }
+      );
+      const row = rows[0] ?? null;
+      if (row) {
+        const action =
+          status === "collected"
+            ? "transaction_collected"
+            : status === "paid_out"
+              ? "advisor_payout_marked"
+              : "transaction_updated";
+
+        void logActivity({
+          action,
+          entity_type: "transaction",
+          entity_id: row.id,
+          entity_title: row.title,
+          summary: `İşlem durumu ${status} olarak güncellendi.`,
+          metadata: {
+            status,
+            advisor_model: row.advisor_model,
+            gross_commission: row.gross_commission
+          }
+        });
+
+        if (status === "collected") {
+          void createNotification({
+            type: "system_notice",
+            title: "İşlem tahsil edildi",
+            body: row.title,
+            entity_type: "transaction",
+            entity_id: row.id,
+            entity_title: row.title,
+            priority: "high",
+            action_url: "/menu/commissions",
+            metadata: {
+              gross_commission: row.gross_commission,
+              advisor_model: row.advisor_model
+            }
+          });
+        }
+
+        if (status === "paid_out" && row.advisor_id) {
+          void createNotification({
+            recipient_advisor_id: row.advisor_id,
+            type: "advisor_payout_marked",
+            title: "Danışman hakedişi ödendi",
+            body: row.title,
+            entity_type: "transaction",
+            entity_id: row.id,
+            entity_title: row.title,
+            priority: "normal",
+            action_url: "/menu/commissions",
+            metadata: {
+              gross_commission: row.gross_commission,
+              advisor_model: row.advisor_model
+            }
+          });
+        }
+      }
+
+      return row;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
   async function createSignedImageUrl(storagePath: string) {
     const token = getAccessToken();
     if (!token) return "";
@@ -1998,6 +2408,18 @@ export function createSupabaseAuthClient(): any {
     getDeals,
 
     getCommissions,
+
+    getAdvisors,
+
+    getCommissionRules,
+
+    getAdvisorCapProgress,
+
+    getRevenueTransactions,
+
+    createRevenueTransaction,
+
+    updateRevenueTransactionStatus,
 
     getPropertyMedia,
 

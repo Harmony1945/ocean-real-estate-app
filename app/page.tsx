@@ -16,7 +16,8 @@ import {
   type AdvisorSearchRequestRow,
   type AdvisorTaskRow,
   type PropertyInput,
-  type PropertyMediaRow
+  type PropertyMediaRow,
+  type RevenueTransactionRow
 } from "@/lib/supabase/client";
 import {
   PropertyPhotoManager,
@@ -947,6 +948,7 @@ export default function Home() {
   const [matchRows, setMatchRows] = useState<AdvisorMatchRow[]>([]);
   const [dealRows, setDealRows] = useState<AdvisorDealRow[]>([]);
   const [commissionRows, setCommissionRows] = useState<AdvisorCommissionRow[]>([]);
+  const [revenueRows, setRevenueRows] = useState<RevenueTransactionRow[]>([]);
   const [selectedId, setSelectedId] = useState<EntityId>(
     () => demoMode ? initialOpportunities[0].id : ""
   );
@@ -997,10 +999,11 @@ export default function Home() {
         const nextRequests: SearchRequest[] = requestRows.map((row: AdvisorSearchRequestRow) =>
           fromSearchRequestRow(row, currentUser)
         );
-        const [tasks, deals, commissions, dashboardMedia] = await Promise.allSettled([
+        const [tasks, deals, commissions, revenueTransactions, dashboardMedia] = await Promise.allSettled([
           supabase.getTasks(),
           supabase.getDeals(),
           supabase.getCommissions(),
+          supabase.getRevenueTransactions(),
           Promise.all(
             propertyRows.slice(0, 12).map(async (row: AdvisorPropertyRow) => [
               row.id,
@@ -1016,6 +1019,7 @@ export default function Home() {
         setMatchRows(matches);
         setDealRows(deals.status === "fulfilled" ? deals.value : []);
         setCommissionRows(commissions.status === "fulfilled" ? commissions.value : []);
+        setRevenueRows(revenueTransactions.status === "fulfilled" ? revenueTransactions.value : []);
         setPropertyMedia(dashboardMedia.status === "fulfilled" ? Object.fromEntries(dashboardMedia.value) : {});
         setSelectedId(nextPortfolios[0]?.id ?? "");
         setDataError("");
@@ -1030,6 +1034,7 @@ export default function Home() {
         setMatchRows([]);
         setDealRows([]);
         setCommissionRows([]);
+        setRevenueRows([]);
         setSelectedId("");
         setDataError(getDataSetupMessage(error.message));
       })
@@ -1182,6 +1187,10 @@ export default function Home() {
   const realizedCommission = demoMode
     ? undefined
     : commissionRows.reduce((sum, row) => sum + getCommissionRowAmount(row), 0);
+  const dashboardRevenueSummary = useMemo(
+    () => demoMode ? undefined : buildDashboardRevenueSummary(revenueRows),
+    [demoMode, revenueRows]
+  );
   const activePageTitle: Record<ActivePage, string> = {
     dashboard: "OCEAN BrokerageOS",
     portfolios: "Tüm Portföyler",
@@ -2045,6 +2054,7 @@ export default function Home() {
               deals={opportunities}
               dealCount={demoMode ? undefined : dealRows.length}
               realizedCommission={realizedCommission}
+              revenueSummary={dashboardRevenueSummary}
             />
 
             <section className="mt-6 grid min-w-0 gap-4 sm:mt-8 sm:gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
@@ -4139,11 +4149,19 @@ function DashboardList({
 function SummaryCards({
   deals,
   dealCount,
-  realizedCommission
+  realizedCommission,
+  revenueSummary
 }: {
   deals: Opportunity[];
   dealCount?: number;
   realizedCommission?: number;
+  revenueSummary?: {
+    potentialCommission: number;
+    realizedCommission: number;
+    officeShare: number;
+    advisorPayout: number;
+    currency: string;
+  };
 }) {
   const totalPortfolioValue = deals.reduce(
     (sum, deal) => sum + Number(deal.value || 0),
@@ -4158,6 +4176,40 @@ function SummaryCards({
   const potentialCommission = deals
     .filter((deal) => deal.stage !== "Kapandı")
     .reduce((sum, deal) => sum + getOpportunityCommission(deal), 0);
+
+  if (revenueSummary) {
+    return (
+      <section className="mt-5 grid min-w-0 gap-3 sm:mt-6 md:grid-cols-4">
+        <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Potansiyel Komisyon</p>
+          <p className="mt-2 break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-2xl">
+            {money(revenueSummary.potentialCommission)}
+          </p>
+        </div>
+
+        <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Gerçekleşen Komisyon</p>
+          <p className="mt-2 break-words text-xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300 sm:text-2xl">
+            {money(revenueSummary.realizedCommission)}
+          </p>
+        </div>
+
+        <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Ofis Payı</p>
+          <p className="mt-2 break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-2xl">
+            {money(revenueSummary.officeShare)}
+          </p>
+        </div>
+
+        <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Danışman Hakedişi</p>
+          <p className="mt-2 break-words text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-2xl">
+            {money(revenueSummary.advisorPayout)}
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="mt-5 grid min-w-0 gap-3 sm:mt-6 md:grid-cols-3">
@@ -4187,6 +4239,32 @@ function SummaryCards({
 
 function getCommissionRowAmount(row: AdvisorCommissionRow) {
   return Number(row.amount ?? row.net_commission ?? row.gross_commission ?? row.commission ?? 0);
+}
+
+function buildDashboardRevenueSummary(rows: RevenueTransactionRow[]) {
+  return rows.reduce((summary, row) => {
+    const splits = row.commission_splits || [];
+    const gross = Number(row.gross_commission || 0);
+    const realized = row.status === "collected" || row.status === "paid_out";
+    summary.potentialCommission += realized ? 0 : gross;
+    summary.realizedCommission += realized ? gross : 0;
+    summary.officeShare += getDashboardSplitAmount(splits, "office_share");
+    summary.advisorPayout += getDashboardSplitAmount(splits, "advisor_share");
+    summary.currency = row.currency || summary.currency;
+    return summary;
+  }, {
+    potentialCommission: 0,
+    realizedCommission: 0,
+    officeShare: 0,
+    advisorPayout: 0,
+    currency: "TRY"
+  });
+}
+
+function getDashboardSplitAmount(splits: NonNullable<RevenueTransactionRow["commission_splits"]>, splitType: string) {
+  return splits
+    .filter((split) => split.split_type === splitType)
+    .reduce((sum, split) => sum + Number(split.amount || 0), 0);
 }
 
 function buildLineChart(values: number[]) {

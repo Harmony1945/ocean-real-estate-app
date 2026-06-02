@@ -34,10 +34,12 @@ export function PropertyPhotoManager({
   media,
   message,
   progress,
+  refreshingId = "",
   removingId = "",
   uploadId,
   onMarkCover,
   onRemove,
+  onRefreshWatermark,
   onUpload
 }: {
   disabled: boolean;
@@ -46,10 +48,12 @@ export function PropertyPhotoManager({
   media: PropertyPhotoPreviewItem[];
   message: string;
   progress: number | null;
+  refreshingId?: string;
   removingId?: string;
   uploadId: string;
   onMarkCover: (mediaId: string) => void;
   onRemove?: (mediaId: string) => void;
+  onRefreshWatermark?: (mediaId: string) => void;
   onUpload: (event: ChangeEvent<HTMLInputElement>) => void;
 }) {
   const remaining = Math.max(PROPERTY_PHOTO_LIMIT - media.length, 0);
@@ -82,9 +86,11 @@ export function PropertyPhotoManager({
             key={item.id}
             item={item}
             markingCoverId={markingCoverId}
+            refreshingId={refreshingId}
             removingId={removingId}
             onMarkCover={onMarkCover}
             onRemove={onRemove}
+            onRefreshWatermark={onRefreshWatermark}
           />
         ))}
 
@@ -125,15 +131,19 @@ export function PropertyPhotoManager({
 function PropertyPhotoPreviewCard({
   item,
   markingCoverId,
+  refreshingId,
   removingId,
   onMarkCover,
-  onRemove
+  onRemove,
+  onRefreshWatermark
 }: {
   item: PropertyPhotoPreviewItem;
   markingCoverId: string;
+  refreshingId: string;
   removingId: string;
   onMarkCover: (mediaId: string) => void;
   onRemove?: (mediaId: string) => void;
+  onRefreshWatermark?: (mediaId: string) => void;
 }) {
   const [previewFailed, setPreviewFailed] = useState(false);
   const previewUrl = item.signed_url || item.preview_url || "";
@@ -162,17 +172,27 @@ function PropertyPhotoPreviewCard({
             <button
               className="text-xs font-medium text-slate-700 transition hover:text-slate-950 disabled:opacity-50 dark:text-slate-300 dark:hover:text-white"
               type="button"
-              disabled={Boolean(markingCoverId || removingId)}
+              disabled={Boolean(markingCoverId || refreshingId || removingId)}
               onClick={() => onMarkCover(item.id)}
             >
               {markingCoverId === item.id ? "İşleniyor..." : "Kapak yap"}
+            </button>
+          ) : null}
+          {!item.is_pending && onRefreshWatermark ? (
+            <button
+              className="text-xs font-medium text-slate-700 transition hover:text-slate-950 disabled:opacity-50 dark:text-slate-300 dark:hover:text-white"
+              type="button"
+              disabled={Boolean(markingCoverId || refreshingId || removingId)}
+              onClick={() => onRefreshWatermark(item.id)}
+            >
+              {refreshingId === item.id ? "Yenileniyor..." : "Watermark Yenile"}
             </button>
           ) : null}
           {!item.is_pending && onRemove ? (
             <button
               className="text-xs font-medium text-red-600 transition hover:text-red-700 disabled:opacity-50 dark:text-red-300 dark:hover:text-red-200"
               type="button"
-              disabled={Boolean(markingCoverId || removingId)}
+              disabled={Boolean(markingCoverId || refreshingId || removingId)}
               onClick={() => onRemove(item.id)}
             >
               {removingId === item.id ? "Kaldırılıyor..." : "Kaldır"}

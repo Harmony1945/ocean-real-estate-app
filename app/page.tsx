@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, PointerEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "./auth-context";
 import {
@@ -995,10 +996,16 @@ export default function Home() {
         const nextRequests: SearchRequest[] = requestRows.map((row: AdvisorSearchRequestRow) =>
           fromSearchRequestRow(row, currentUser)
         );
-        const [tasks, deals, commissions] = await Promise.allSettled([
+        const [tasks, deals, commissions, dashboardMedia] = await Promise.allSettled([
           supabase.getTasks(),
           supabase.getDeals(),
-          supabase.getCommissions()
+          supabase.getCommissions(),
+          Promise.all(
+            propertyRows.slice(0, 12).map(async (row: AdvisorPropertyRow) => [
+              row.id,
+              await supabase.getPropertyMedia(row.id).catch(() => [])
+            ] as const)
+          )
         ]);
 
         setOpportunities(nextPortfolios);
@@ -1008,6 +1015,7 @@ export default function Home() {
         setMatchRows(matches);
         setDealRows(deals.status === "fulfilled" ? deals.value : []);
         setCommissionRows(commissions.status === "fulfilled" ? commissions.value : []);
+        setPropertyMedia(dashboardMedia.status === "fulfilled" ? Object.fromEntries(dashboardMedia.value) : {});
         setSelectedId(nextPortfolios[0]?.id ?? "");
         setDataError("");
       })
@@ -1324,6 +1332,32 @@ export default function Home() {
     } catch (error) {
       console.error(error);
       setMediaMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Kapak fotoğrafı güncellenemedi.");
+    } finally {
+      setActionLoading("");
+    }
+  }
+
+  async function refreshPhotoWatermark(mediaId: string) {
+    if (!selectedOpportunity || !persistentMode || !supabase) return;
+
+    const propertyId = String(selectedOpportunity.id);
+    setActionLoading(`photo-watermark-${mediaId}`);
+    setMediaMessage("");
+
+    try {
+      const refreshedMedia = await supabase.refreshPropertyPhotoWatermark(propertyId, mediaId);
+      if (refreshedMedia) {
+        setPropertyMedia((current) => ({
+          ...current,
+          [propertyId]: (current[propertyId] ?? []).map((media) =>
+            media.id === mediaId ? refreshedMedia : media
+          )
+        }));
+      }
+      setMediaMessage("Watermark yenilendi.");
+    } catch (error) {
+      console.error(error);
+      setMediaMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Watermark yenilenemedi.");
     } finally {
       setActionLoading("");
     }
@@ -1959,7 +1993,9 @@ export default function Home() {
               currentUser={currentUser}
               activePortfolios={myActivePortfolios}
               activeSearchRequests={myActiveSearchRequests}
+              allPortfolios={opportunities}
               matchCount={demoMode ? recentMatches.length : matchRows.length}
+              mediaByProperty={propertyMedia}
               recentMatches={recentMatches}
               onAddPortfolio={openCreateForm}
               onAddSearchRequest={() => {
@@ -2120,8 +2156,10 @@ export default function Home() {
                   uploadId="property-photo-detail-upload"
                   onMarkCover={markPhotoAsCover}
                   onRemove={removePropertyPhoto}
+                  onRefreshWatermark={refreshPhotoWatermark}
                   onUpload={uploadPropertyPhotos}
                   markingCoverId={actionLoading.startsWith("photo-cover-") ? actionLoading.replace("photo-cover-", "") : ""}
+                  refreshingId={actionLoading.startsWith("photo-watermark-") ? actionLoading.replace("photo-watermark-", "") : ""}
                   removingId={actionLoading.startsWith("photo-remove-") ? actionLoading.replace("photo-remove-", "") : ""}
                 />
 
@@ -3628,7 +3666,9 @@ function AdvisorHomeScreen({
   currentUser,
   activePortfolios,
   activeSearchRequests,
+  allPortfolios,
   matchCount,
+  mediaByProperty,
   recentMatches,
   onAddPortfolio,
   onAddSearchRequest,
@@ -3638,7 +3678,9 @@ function AdvisorHomeScreen({
   currentUser: Consultant;
   activePortfolios: Opportunity[];
   activeSearchRequests: SearchRequest[];
+  allPortfolios: Opportunity[];
   matchCount: number;
+  mediaByProperty: Record<string, PropertyMediaRow[]>;
   recentMatches: Array<ReturnType<typeof getSearchMatches>[number] & { search: SearchRequest }>;
   onAddPortfolio: () => void;
   onAddSearchRequest: () => void;
@@ -3646,13 +3688,49 @@ function AdvisorHomeScreen({
   onViewMatches: () => void;
 }) {
   return (
-    <section className="mt-6 grid min-w-0 gap-4 sm:mt-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-      <div className="grid min-w-0 gap-4">
+    <section className="mt-6 grid min-w-0 gap-4 sm:mt-8">
+      <DashboardPortfolioInventory
+        mediaByProperty={mediaByProperty}
+        portfolios={allPortfolios}
+      />
+
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <DashboardMatchList
           demoMode={!isSupabaseConfigured}
           matches={recentMatches}
           onOpenPortfolio={onOpenPortfolio}
         />
+
+        <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                Bugünkü çalışma ekranı
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+                {getConsultantName(currentUser)}
+              </h2>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <DashboardMetric label="Aktif portföyüm" value={activePortfolios.length} />
+            <DashboardMetric label="Aktif arayışım" value={activeSearchRequests.length} />
+            <DashboardMetric label="Son eşleşme" value={matchCount} />
+          </div>
+
+          <div className="mt-5 grid gap-2 sm:grid-cols-3">
+            <button className="btn-primary" type="button" onClick={onAddPortfolio}>
+              Portföy Ekle
+            </button>
+            <button className="btn-secondary" type="button" onClick={onAddSearchRequest}>
+              Arayış Ekle
+            </button>
+            <button className="btn-secondary" type="button" onClick={onViewMatches}>
+              Eşleşmeleri Gör
+            </button>
+          </div>
+        </div>
 
         <DashboardList
           title="Aktif Arayışlarım"
@@ -3664,40 +3742,6 @@ function AdvisorHomeScreen({
             badge: request.urgency
           }))}
         />
-      </div>
-
-      <div className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              Bugünkü çalışma ekranı
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-              {getConsultantName(currentUser)}
-            </h2>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <DashboardMetric label="Aktif portföyüm" value={activePortfolios.length} />
-          <DashboardMetric label="Aktif arayışım" value={activeSearchRequests.length} />
-          <DashboardMetric label="Son eşleşme" value={matchCount} />
-        </div>
-
-        <div className="mt-5 grid gap-2 sm:grid-cols-3">
-          <button className="btn-primary" type="button" onClick={onAddPortfolio}>
-            Portföy Ekle
-          </button>
-          <button className="btn-secondary" type="button" onClick={onAddSearchRequest}>
-            Arayış Ekle
-          </button>
-          <button className="btn-secondary" type="button" onClick={onViewMatches}>
-            Eşleşmeleri Gör
-          </button>
-        </div>
-      </div>
-
-      <div className="grid min-w-0 gap-4">
         <DashboardList
           title="Aktif Portföylerim"
           empty="Aktif portföy yok."
@@ -3711,6 +3755,148 @@ function AdvisorHomeScreen({
         />
       </div>
     </section>
+  );
+}
+
+function DashboardPortfolioInventory({
+  mediaByProperty,
+  portfolios
+}: {
+  mediaByProperty: Record<string, PropertyMediaRow[]>;
+  portfolios: Opportunity[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const sortedPortfolios = [...portfolios].sort((a, b) =>
+    (b.createdAt || "").localeCompare(a.createdAt || "")
+  );
+  const visibleLimit = expanded ? 12 : 6;
+  const visiblePortfolios = sortedPortfolios.slice(0, visibleLimit);
+  const showExpand = sortedPortfolios.length > 6;
+  const showAllLink = sortedPortfolios.length > 12;
+
+  return (
+    <section className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            Ofis envanteri · Yeni portföyler
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+            Tüm Portföyler
+          </h2>
+        </div>
+        <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-white/10 dark:text-slate-300">
+          {sortedPortfolios.length} portföy
+        </span>
+      </div>
+
+      {visiblePortfolios.length ? (
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {visiblePortfolios.map((portfolio) => (
+            <DashboardPortfolioCard
+              key={portfolio.id}
+              media={mediaByProperty[String(portfolio.id)] ?? []}
+              portfolio={portfolio}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
+          Henüz ofis portföyü yok.
+        </p>
+      )}
+
+      {showExpand || showAllLink ? (
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          {showExpand ? (
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={() => setExpanded((current) => !current)}
+            >
+              {expanded ? "Daha Az Göster" : "Daha Fazla Göster"}
+            </button>
+          ) : null}
+          {showAllLink ? (
+            <Link href="/all-portfolios" className="btn-secondary text-center">
+              Tümünü Gör
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function DashboardPortfolioCard({
+  media,
+  portfolio
+}: {
+  media: PropertyMediaRow[];
+  portfolio: Opportunity;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const cover = [...media].sort((a, b) => {
+    if (a.is_cover && !b.is_cover) return -1;
+    if (!a.is_cover && b.is_cover) return 1;
+    return Number(a.sort_order || 0) - Number(b.sort_order || 0);
+  })[0];
+  const imageUrl = cover?.signed_url || (!isSupabaseConfigured ? "/mandarin-2.jpeg" : "");
+  const specs = [
+    portfolio.listingType || portfolio.contractType,
+    portfolio.propertyType,
+    portfolio.area ? `${portfolio.area} m²` : ""
+  ].filter(Boolean);
+
+  return (
+    <article className="overflow-hidden rounded-3xl border border-slate-200 bg-stone-50 dark:border-white/10 dark:bg-white/[0.04]">
+      <div className="relative h-40 bg-slate-100 dark:bg-white/[0.06]">
+        {imageUrl && !imageFailed ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={portfolio.title || "Portföy fotoğrafı"}
+            className="h-full w-full object-cover"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <div className="grid h-full place-items-center px-3 text-center text-xs text-slate-500 dark:text-slate-400">
+            Fotoğraf önizlemesi hazırlanıyor
+          </div>
+        )}
+        <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+          {portfolio.stage || "Durum yok"}
+        </span>
+      </div>
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="line-clamp-2 text-base font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+              {portfolio.title || "İsimsiz portföy"}
+            </h3>
+            <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+              {portfolio.location || "Konum bekleniyor"}
+            </p>
+          </div>
+          <Link href={`/properties/${portfolio.id}`} className="mini-action shrink-0">
+            Aç
+          </Link>
+        </div>
+        <p className="mt-3 text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+          {money(portfolio.value)}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {specs.map((spec) => (
+            <span key={spec} className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 dark:bg-[#080808] dark:text-slate-300">
+              {spec}
+            </span>
+          ))}
+        </div>
+        <p className="mt-3 truncate text-xs text-slate-500 dark:text-slate-400">
+          Danışman: {portfolio.ownerConsultantName || "Atanmadı"}
+        </p>
+      </div>
+    </article>
   );
 }
 

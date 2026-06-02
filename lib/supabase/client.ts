@@ -514,23 +514,10 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality = 0.88) {
   });
 }
 
-function drawRoundedRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
-  const safeRadius = Math.min(radius, width / 2, height / 2);
-  context.beginPath();
-  context.moveTo(x + safeRadius, y);
-  context.lineTo(x + width - safeRadius, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
-  context.lineTo(x + width, y + height - safeRadius);
-  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
-  context.lineTo(x + safeRadius, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
-  context.lineTo(x, y + safeRadius);
-  context.quadraticCurveTo(x, y, x + safeRadius, y);
-  context.closePath();
-}
-
 async function addOceanWatermark(file: File) {
-  if (typeof window === "undefined" || typeof document === "undefined") return file;
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    throw new Error("Watermark işlenemedi. Lütfen tekrar deneyin.");
+  }
 
   const sourceUrl = URL.createObjectURL(file);
 
@@ -551,26 +538,21 @@ async function addOceanWatermark(file: File) {
     canvas.height = height;
     context.drawImage(sourceImage, 0, 0, width, height);
 
-    const watermarkWidth = Math.min(Math.max(width * 0.22, 140), 380);
+    const watermarkWidth = Math.min(
+      Math.max(width * 0.3, Math.min(width * 0.36, 180)),
+      width * 0.34,
+      520
+    );
     const watermarkHeight = watermarkWidth * (watermarkImage.naturalHeight / watermarkImage.naturalWidth);
-    const margin = Math.max(width, height) * 0.035;
-    const pillPadding = Math.max(14, watermarkWidth * 0.08);
-    const pillX = width - watermarkWidth - margin - pillPadding;
-    const pillY = height - watermarkHeight - margin - pillPadding;
-    const pillWidth = watermarkWidth + pillPadding * 2;
-    const pillHeight = watermarkHeight + pillPadding * 2;
+    const bottomMargin = Math.max(height * 0.045, 28);
+    const watermarkX = (width - watermarkWidth) / 2;
+    const watermarkY = height - watermarkHeight - bottomMargin;
     context.save();
-    context.shadowColor = "rgba(0,0,0,0.28)";
-    context.shadowBlur = Math.max(8, width * 0.008);
-    context.fillStyle = "rgba(0,0,0,0.22)";
-    drawRoundedRect(context, pillX, pillY, pillWidth, pillHeight, Math.max(12, pillHeight * 0.28));
-    context.fill();
-    context.shadowBlur = 0;
-    context.globalAlpha = 0.88;
+    context.globalAlpha = 0.76;
     context.drawImage(
       watermarkImage,
-      width - watermarkWidth - margin,
-      height - watermarkHeight - margin,
+      watermarkX,
+      watermarkY,
       watermarkWidth,
       watermarkHeight
     );
@@ -591,11 +573,11 @@ async function preparePropertyPhotoForUpload(file: File) {
     return await addOceanWatermark(file);
   } catch (error) {
     console.warn("Ocean watermark could not be applied.", error);
-    throw new Error("Ocean watermark uygulanamadı. Fotoğraf yükleme tekrar denenmeli.");
+    throw new Error("Watermark işlenemedi. Lütfen tekrar deneyin.");
   }
 }
 
-function uploadStorageObject(path: string, file: File, token: string, onProgress?: (progress: number) => void) {
+function uploadStorageObject(path: string, file: File, token: string, onProgress?: (progress: number) => void, upsert = false) {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error("Supabase ortam değişkenleri eksik.");
   }
@@ -606,7 +588,7 @@ function uploadStorageObject(path: string, file: File, token: string, onProgress
     uploadRequest.setRequestHeader("apikey", supabaseAnonKey);
     uploadRequest.setRequestHeader("Authorization", `Bearer ${token}`);
     uploadRequest.setRequestHeader("Content-Type", file.type);
-    uploadRequest.setRequestHeader("x-upsert", "false");
+    uploadRequest.setRequestHeader("x-upsert", upsert ? "true" : "false");
 
     uploadRequest.upload.onprogress = (event) => {
       if (event.lengthComputable && onProgress) {
@@ -1196,6 +1178,71 @@ export function createSupabaseAuthClient(): any {
     }
   }
 
+  async function refreshPropertyPhotoWatermark(propertyId: string, mediaId: string) {
+    const stored = readStoredSession();
+    if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const rows = await request<PropertyMediaRow[]>(
+        `/rest/v1/property_media?id=eq.${encodeURIComponent(mediaId)}&property_id=eq.${encodeURIComponent(propertyId)}&select=*&limit=1`,
+        { method: "GET", token: stored.access_token }
+      );
+      const media = rows[0] ?? null;
+      if (!media) throw new Error("Fotoğraf kaydı bulunamadı.");
+
+      const signedUrl = await createSignedImageUrl(media.display_storage_path || media.storage_path);
+      if (!signedUrl) throw new Error("Fotoğraf yeniden işlenemedi.");
+
+      const response = await fetch(signedUrl);
+      if (!response.ok) throw new Error("Fotoğraf yeniden işlenemedi.");
+
+      const blob = await response.blob();
+      const sourceFile = new File([blob], media.file_name || "ocean-property-photo.jpg", {
+        type: blob.type || media.mime_type || "image/jpeg",
+        lastModified: Date.now()
+      });
+      const watermarkedFile = await preparePropertyPhotoForUpload(sourceFile);
+
+      await uploadStorageObject(media.storage_path, watermarkedFile, stored.access_token, undefined, true);
+      const updatedRows = await request<PropertyMediaRow[]>(
+        `/rest/v1/property_media?id=eq.${encodeURIComponent(media.id)}&property_id=eq.${encodeURIComponent(propertyId)}`,
+        {
+          method: "PATCH",
+          token: stored.access_token,
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({
+            display_storage_path: null,
+            original_storage_path: media.storage_path,
+            file_size: watermarkedFile.size,
+            mime_type: watermarkedFile.type || sourceFile.type,
+            updated_at: new Date().toISOString()
+          })
+        }
+      );
+
+      const signedRows = await withSignedImageUrls(updatedRows);
+      const row = signedRows[0] ?? null;
+      if (row) {
+        void logActivity({
+          action: "property_photo_watermark_refreshed",
+          entity_type: "property",
+          entity_id: propertyId,
+          entity_title: row.file_name || "Portföy fotoğrafı",
+          summary: "Portföy fotoğrafı watermark standardı yenilendi.",
+          metadata: {
+            media_id: row.id,
+            mime_type: row.mime_type,
+            file_size: row.file_size
+          }
+        });
+      }
+
+      return row;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
   async function markPropertyMediaCover(propertyId: string, mediaId: string) {
     const token = getAccessToken();
     if (!token) throw new Error("Oturum bulunamadı.");
@@ -1665,6 +1712,8 @@ export function createSupabaseAuthClient(): any {
     getPropertyMedia,
 
     uploadPropertyPhoto,
+
+    refreshPropertyPhotoWatermark,
 
     markPropertyMediaCover,
 

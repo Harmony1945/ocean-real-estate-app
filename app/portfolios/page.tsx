@@ -92,6 +92,7 @@ export default function PortfoliosRoutePage() {
   const [pendingPhotos, setPendingPhotos] = useState<PendingPortfolioPhoto[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [markingCoverId, setMarkingCoverId] = useState("");
+  const [refreshingWatermarkId, setRefreshingWatermarkId] = useState("");
   const [removingPhotoId, setRemovingPhotoId] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -281,7 +282,8 @@ export default function PortfoliosRoutePage() {
 
     for (let index = 0; index < files.length; index += 1) {
       setUploadProgress(Math.round((index / files.length) * 90));
-      nextMedia = await supabase.uploadPropertyPhoto(propertyId, files[index], nextMedia.length);
+      const media = await supabase.uploadPropertyPhoto(propertyId, files[index], nextMedia.length);
+      if (media) nextMedia = [...nextMedia, media];
     }
 
     setUploadProgress(100);
@@ -341,6 +343,30 @@ export default function PortfoliosRoutePage() {
       setMediaMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Kapak fotoğrafı güncellenemedi.");
     } finally {
       setMarkingCoverId("");
+    }
+  }
+
+  async function refreshPhotoWatermark(mediaId: string) {
+    if (!editingId || !persistentMode || !supabase) return;
+    setRefreshingWatermarkId(mediaId);
+    setMediaMessage("");
+
+    try {
+      const refreshedMedia = await supabase.refreshPropertyPhotoWatermark(editingId, mediaId);
+      if (refreshedMedia) {
+        setMediaByProperty((current) => ({
+          ...current,
+          [editingId]: (current[editingId] ?? []).map((media) =>
+            media.id === mediaId ? refreshedMedia : media
+          )
+        }));
+      }
+      setMediaMessage("Watermark yenilendi.");
+    } catch (error) {
+      console.error(error);
+      setMediaMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Watermark yenilenemedi.");
+    } finally {
+      setRefreshingWatermarkId("");
     }
   }
 
@@ -460,10 +486,12 @@ export default function PortfoliosRoutePage() {
             media={editingId ? mediaByProperty[editingId] ?? [] : pendingMedia}
             message={mediaMessage}
             progress={uploadProgress}
+            refreshingId={refreshingWatermarkId}
             removingId={removingPhotoId}
             uploadId={editingId ? "portfolio-edit-photo-upload" : "portfolio-create-photo-upload"}
             onMarkCover={editingId ? markPhotoAsCover : () => undefined}
             onRemove={editingId ? removePropertyPhoto : undefined}
+            onRefreshWatermark={editingId ? refreshPhotoWatermark : undefined}
             onUpload={editingId ? uploadPortfolioPhotos : addPendingPhotos}
           />
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">

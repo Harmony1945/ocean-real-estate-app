@@ -23,6 +23,7 @@ import {
   validatePropertyPhotoFiles,
   type PropertyPhotoPreviewItem
 } from "./property-photo-manager";
+import { PropertyImageFrame } from "./property-image-frame";
 import { demoSearchRequests, demoShowcasePortfolios } from "@/lib/oos/demo-data";
 import {
   booleanTextOptions,
@@ -3852,21 +3853,22 @@ function DashboardPortfolioCard({
     <article className="overflow-hidden rounded-3xl border border-slate-200 bg-stone-50 dark:border-white/10 dark:bg-white/[0.04]">
       <div className="relative h-40 bg-slate-100 dark:bg-white/[0.06]">
         {imageUrl && !imageFailed ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <PropertyImageFrame
             src={imageUrl}
             alt={portfolio.title || "Portföy fotoğrafı"}
-            className="h-full w-full object-cover"
+            className="h-full w-full"
+            variant="card"
             onError={() => setImageFailed(true)}
-          />
+          >
+            <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+              {portfolio.stage || "Durum yok"}
+            </span>
+          </PropertyImageFrame>
         ) : (
           <div className="grid h-full place-items-center px-3 text-center text-xs text-slate-500 dark:text-slate-400">
             Fotoğraf önizlemesi hazırlanıyor
           </div>
         )}
-        <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
-          {portfolio.stage || "Durum yok"}
-        </span>
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">

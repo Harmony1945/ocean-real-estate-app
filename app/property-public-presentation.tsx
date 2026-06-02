@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { PropertySharePayload } from "@/lib/supabase/client";
 import { DEMO_PROPERTY_IMAGE } from "./property-listing-card";
+import { PropertyImageFrame } from "./property-image-frame";
 import { formatStatusLabel } from "@/lib/oos/status-labels";
 import { booleanToText, formatDuesAmount } from "@/lib/oos/property-fields";
 
@@ -53,11 +54,12 @@ export default function PropertyPublicPresentation({ payload, printMode = false 
         <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
             <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <PropertyImageFrame
                 src={DEMO_PROPERTY_IMAGE}
                 alt={`${payload.title} fotoğrafı`}
-                className={`${printMode ? "h-[360px]" : "h-[320px] sm:h-[520px]"} w-full object-cover`}
+                className={`${printMode ? "h-[360px]" : "h-[320px] sm:h-[520px]"} w-full`}
+                priority
+                variant={printMode ? "print" : "hero"}
               />
               <div className="absolute left-4 top-4 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur">
                 {activePhotoIndex + 1}/{Math.min(photoCount, 12)} Fotoğraf

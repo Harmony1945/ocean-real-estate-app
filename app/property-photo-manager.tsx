@@ -7,6 +7,7 @@ import {
   PROPERTY_PHOTO_MIME_TYPES,
   type PropertyMediaRow
 } from "@/lib/supabase/client";
+import { PropertyImageFrame } from "./property-image-frame";
 
 export type PropertyPhotoPreviewItem = PropertyMediaRow & {
   preview_url?: string;
@@ -151,11 +152,11 @@ function PropertyPhotoPreviewCard({
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
       {previewUrl && !previewFailed ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <PropertyImageFrame
           src={previewUrl}
           alt={item.file_name || "Portföy fotoğrafı"}
-          className="h-32 w-full object-cover"
+          className="h-32 w-full"
+          variant="card"
           onError={() => setPreviewFailed(true)}
         />
       ) : (

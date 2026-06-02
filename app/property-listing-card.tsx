@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import type { AdvisorPropertyRow, PropertyMediaRow } from "@/lib/supabase/client";
 import { formatStatusLabel, getStatusPillClass } from "@/lib/oos/status-labels";
+import { PropertyImageFrame } from "./property-image-frame";
 
 export const DEMO_PROPERTY_IMAGE = "/mandarin-2.jpeg";
 
@@ -33,24 +34,24 @@ export function PropertyListingCard({ actions, demo = false, media = [], propert
     <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white dark:border-white/10 dark:bg-[#080808]">
       <div className="relative bg-slate-100 dark:bg-white/[0.06]">
         {imageUrl && !imageFailed ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <PropertyImageFrame
             src={imageUrl}
             alt={cover?.file_name || property.title || "Portföy fotoğrafı"}
-            className="h-56 w-full object-cover"
+            className="h-56 w-full"
+            variant="card"
             onError={() => setImageFailed(true)}
-          />
+          >
+            {photoCount ? (
+              <div className="absolute bottom-3 left-3 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur">
+                1/{Math.min(photoCount, 12)} Fotoğraf
+              </div>
+            ) : null}
+          </PropertyImageFrame>
         ) : (
           <div className="grid h-56 place-items-center px-4 text-center text-sm text-slate-500 dark:text-slate-400">
             Fotoğraf önizlemesi hazırlanıyor
           </div>
         )}
-
-        {photoCount ? (
-          <div className="absolute bottom-3 left-3 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur">
-            1/{Math.min(photoCount, 12)} Fotoğraf
-          </div>
-        ) : null}
       </div>
 
       {photoCount > 1 ? (

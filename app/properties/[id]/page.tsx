@@ -13,6 +13,7 @@ import {
   type PropertyShareLinkRow,
   type PropertySharePayload
 } from "@/lib/supabase/client";
+import { PropertyImageFrame } from "@/app/property-image-frame";
 import { DEMO_PROPERTY_IMAGE, formatPropertyLocation, formatPropertyPrice } from "@/app/property-listing-card";
 import { formatStatusLabel, getStatusPillClass } from "@/lib/oos/status-labels";
 import { booleanToText, formatDuesAmount, formatSquareMeters } from "@/lib/oos/property-fields";
@@ -478,13 +479,13 @@ function PropertyGallery({
             return (
               <div key={item.id} className="relative min-w-full snap-center">
                 {url && !hasFailed ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <PropertyImageFrame
                     src={url}
                     alt={item.file_name || propertyTitle}
-                    className="h-[320px] w-full select-none object-cover sm:h-[520px]"
-                    draggable={false}
-                    loading={index === 0 ? "eager" : "lazy"}
+                    className="h-[320px] w-full sm:h-[520px]"
+                    imageClassName="select-none"
+                    priority={index === 0}
+                    variant="hero"
                     onError={() => setFailedImages((current) => ({ ...current, [item.id]: true }))}
                   />
                 ) : (
@@ -504,7 +505,7 @@ function PropertyGallery({
         </div>
 
         {!media.length ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 p-4">
             <span className="rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur">
               Örnek görsel
             </span>

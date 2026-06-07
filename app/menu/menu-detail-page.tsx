@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthContext } from "../auth-context";
@@ -22,6 +23,8 @@ import {
   type CommissionSplitRow,
   type RevenueTransactionInput,
   type RevenueTransactionRow,
+  type NotificationPreferenceInput,
+  type NotificationPreferenceRow,
   type NotificationRow
 } from "@/lib/supabase/client";
 import { calculateCommission, getDefaultRevenueRule } from "@/lib/oos/revenue-rules";
@@ -126,6 +129,7 @@ const commissionRateOptions = [1, 1.5, 2, 3, 4];
 
 export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   const { user, profile } = useAuthContext();
+  const router = useRouter();
   const supabase = useMemo(() => createSupabaseAuthClient(), []);
   const [commission, setCommission] = useState(250000);
   const [incomeTaxRate, setIncomeTaxRate] = useState(20);
@@ -149,6 +153,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   const [activityFilter, setActivityFilter] = useState("all");
   const [notificationRows, setNotificationRows] = useState<NotificationRow[]>([]);
   const [notificationFilter, setNotificationFilter] = useState("all");
+  const [notificationRealtimeMessage, setNotificationRealtimeMessage] = useState("");
   const [moduleMessage, setModuleMessage] = useState("");
   const [paymentNotice, setPaymentNotice] = useState("");
   const displayName = getUserDisplayName(user, profile) || "Ocean Danışmanı";
@@ -166,8 +171,15 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
     if (notificationFilter === "unread") {
       return notificationRows.filter((row) => row.status === "unread");
     }
+    if (notificationFilter === "critical") {
+      return notificationRows.filter((row) => row.priority === "urgent" || row.priority === "high");
+    }
     return notificationRows.filter((row) => getNotificationFilterKey(row) === notificationFilter);
   }, [notificationFilter, notificationRows]);
+  const groupedNotificationRows = useMemo(
+    () => groupNotificationsForDisplay(filteredNotificationRows),
+    [filteredNotificationRows]
+  );
   const unreadNotificationCount = notificationRows.filter((row) => row.status === "unread").length;
   const selectedRevenueRule = commissionRuleRows.find((rule) => rule.model === revenueForm.advisor_model);
   const fallbackRevenueRule = getDefaultRevenueRule(revenueForm.advisor_model);
@@ -192,6 +204,7 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
   }, [revenueStatusFilter, transactionRows]);
   const revenueSummary = useMemo(() => buildRevenueSummary(transactionRows), [transactionRows]);
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
+  const seenNotificationIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!persistentMode || !supabase) return;
@@ -251,7 +264,10 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
 
       if (page.slug === "notifications") {
         const rows = await supabase.fetchNotifications();
-        if (mounted) setNotificationRows(rows);
+        if (mounted) {
+          setNotificationRows(rows);
+          seenNotificationIds.current = new Set(rows.map((row: NotificationRow) => row.id));
+        }
       }
     };
 
@@ -276,6 +292,45 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
 
     return () => {
       mounted = false;
+    };
+  }, [page.slug, persistentMode, supabase]);
+
+  useEffect(() => {
+    if (!persistentMode || !supabase || page.slug !== "notifications") return;
+
+    let mounted = true;
+    let intervalId: number | undefined;
+
+    const refreshNotifications = async () => {
+      const rows = await supabase.fetchNotifications() as NotificationRow[];
+      if (!mounted) return;
+
+      const currentIds = new Set<string>(rows.map((row) => row.id));
+      const hasNewRows = seenNotificationIds.current.size > 0 && rows.some((row: NotificationRow) => !seenNotificationIds.current.has(row.id));
+      setNotificationRows(rows);
+      seenNotificationIds.current = currentIds;
+      if (hasNewRows) setNotificationRealtimeMessage("Yeni bildirim var");
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        refreshNotifications().catch((error: Error) => {
+          console.error(error);
+        });
+      }
+    };
+
+    intervalId = window.setInterval(() => {
+      refreshNotifications().catch((error: Error) => {
+        console.error(error);
+      });
+    }, 45000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      mounted = false;
+      if (intervalId) window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [page.slug, persistentMode, supabase]);
 
@@ -308,6 +363,13 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
     setNotificationRows((current) =>
       current.map((row) => row.status === "unread" ? { ...row, status: "read", read_at: row.read_at || readAt } : row)
     );
+  }
+
+  async function openNotification(notification: NotificationRow) {
+    if (notification.status === "unread") {
+      await markNotificationRead(notification.id);
+    }
+    if (notification.action_url) router.push(notification.action_url);
   }
 
   function updateRevenueForm<Key extends keyof RevenueFormState>(key: Key, value: RevenueFormState[Key]) {
@@ -567,15 +629,37 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
                   <h2 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-100">
                     {unreadNotificationCount} okunmamış bildirim
                   </h2>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {filteredNotificationRows.length} sonuç gösteriliyor
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  className="btn-secondary w-fit"
-                  onClick={markAllNotificationsRead}
-                  disabled={!unreadNotificationCount}
-                >
-                  Tümünü Okundu Yap
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  {notificationRealtimeMessage ? (
+                    <button
+                      type="button"
+                      className="mini-action"
+                      onClick={() => setNotificationRealtimeMessage("")}
+                    >
+                      {notificationRealtimeMessage}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn-secondary w-fit"
+                    onClick={() => setNotificationFilter("unread")}
+                    disabled={!unreadNotificationCount}
+                  >
+                    Okunmamışları göster
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary w-fit"
+                    onClick={markAllNotificationsRead}
+                    disabled={!unreadNotificationCount}
+                  >
+                    Tümünü Okundu Yap
+                  </button>
+                </div>
               </div>
               <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {notificationFilters.map((filter) => (
@@ -595,16 +679,18 @@ export default function MenuDetailPage({ page }: { page: MenuPageData }) {
               </div>
             </div>
             <div className="mt-4 grid gap-3">
-              {filteredNotificationRows.map((notification) => (
+              {groupedNotificationRows.map((notification) => (
                 <NotificationCard
-                  key={notification.id}
+                  key={notification.groupKey}
                   notification={notification}
+                  groupCount={notification.groupCount}
                   onMarkRead={markNotificationRead}
+                  onOpen={openNotification}
                 />
               ))}
               {!filteredNotificationRows.length ? (
                 <article className="rounded-[1.75rem] border border-dashed border-slate-200 p-5 text-sm leading-6 text-slate-500 dark:border-white/10 dark:text-slate-400">
-                  Henüz bildiriminiz yok. Yeni eşleşmeler, portföy güncellemeleri ve sistem uyarıları burada görünecek.
+                  {getNotificationEmptyState(notificationFilter)}
                 </article>
               ) : null}
             </div>
@@ -650,6 +736,14 @@ type SettingsPreferences = {
   inAppNotifications: boolean;
   emailNotifications: boolean;
   criticalAlerts: boolean;
+  propertyNotifications: boolean;
+  matchNotifications: boolean;
+  revenueNotifications: boolean;
+  advisorApplicationNotifications: boolean;
+  systemNotifications: boolean;
+  quietHours: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
   dashboardView: "grid" | "list";
   startPage: "dashboard" | "portfolios" | "all-portfolios";
   language: "tr";
@@ -666,6 +760,14 @@ const defaultSettingsPreferences: SettingsPreferences = {
   inAppNotifications: true,
   emailNotifications: false,
   criticalAlerts: true,
+  propertyNotifications: true,
+  matchNotifications: true,
+  revenueNotifications: true,
+  advisorApplicationNotifications: true,
+  systemNotifications: true,
+  quietHours: false,
+  quietHoursStart: "",
+  quietHoursEnd: "",
   dashboardView: "grid",
   startPage: "dashboard",
   language: "tr",
@@ -675,8 +777,63 @@ const defaultSettingsPreferences: SettingsPreferences = {
   defaultPropertyType: "Daire"
 };
 
+const notificationPreferenceKeys: Array<keyof SettingsPreferences> = [
+  "inAppNotifications",
+  "emailNotifications",
+  "criticalAlerts",
+  "propertyNotifications",
+  "matchNotifications",
+  "revenueNotifications",
+  "advisorApplicationNotifications",
+  "systemNotifications",
+  "quietHours",
+  "quietHoursStart",
+  "quietHoursEnd"
+];
+
+function isNotificationPreferenceKey(key: keyof SettingsPreferences) {
+  return notificationPreferenceKeys.includes(key);
+}
+
+function notificationRowToSettingsPreferences(row: NotificationPreferenceRow): Partial<SettingsPreferences> {
+  return {
+    inAppNotifications: row.in_app_enabled,
+    emailNotifications: row.email_enabled,
+    criticalAlerts: row.critical_enabled,
+    propertyNotifications: row.property_updates_enabled,
+    matchNotifications: row.match_notifications_enabled,
+    revenueNotifications: row.revenue_notifications_enabled,
+    advisorApplicationNotifications: row.advisor_application_notifications_enabled,
+    systemNotifications: row.system_notifications_enabled,
+    quietHours: row.quiet_hours_enabled,
+    quietHoursStart: row.quiet_hours_start || "",
+    quietHoursEnd: row.quiet_hours_end || ""
+  };
+}
+
+function settingsPreferencesToNotificationInput(preferences: SettingsPreferences): NotificationPreferenceInput {
+  return {
+    in_app_enabled: preferences.inAppNotifications,
+    email_enabled: preferences.emailNotifications,
+    critical_enabled: preferences.criticalAlerts,
+    property_updates_enabled: preferences.propertyNotifications,
+    match_notifications_enabled: preferences.matchNotifications,
+    revenue_notifications_enabled: preferences.revenueNotifications,
+    advisor_application_notifications_enabled: preferences.advisorApplicationNotifications,
+    system_notifications_enabled: preferences.systemNotifications,
+    quiet_hours_enabled: preferences.quietHours,
+    quiet_hours_start: preferences.quietHours ? preferences.quietHoursStart || null : null,
+    quiet_hours_end: preferences.quietHours ? preferences.quietHoursEnd || null : null
+  };
+}
+
 function SettingsPanel() {
+  const { user } = useAuthContext();
+  const supabase = useMemo(() => createSupabaseAuthClient(), []);
   const [preferences, setPreferences] = useState<SettingsPreferences>(defaultSettingsPreferences);
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [savingPreferenceKey, setSavingPreferenceKey] = useState<keyof SettingsPreferences | "">("");
+  const serverBacked = Boolean(isSupabaseConfigured && user && supabase);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(settingsStorageKey);
@@ -694,15 +851,55 @@ function SettingsPanel() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!serverBacked || !supabase) return;
+
+    let mounted = true;
+    supabase.fetchNotificationPreferences()
+      .then((row: NotificationPreferenceRow | null) => {
+        if (!mounted || !row) return;
+        setPreferences((current) => ({
+          ...current,
+          ...notificationRowToSettingsPreferences(row)
+        }));
+        setSettingsMessage("");
+      })
+      .catch((error: Error) => {
+        if (!mounted) return;
+        setSettingsMessage(getDataSetupMessage(error.message, { optional: true }));
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [serverBacked, supabase]);
+
   function updatePreferences(nextPreferences: SettingsPreferences) {
     setPreferences(nextPreferences);
     window.localStorage.setItem(settingsStorageKey, JSON.stringify(nextPreferences));
   }
 
-  function update<Key extends keyof SettingsPreferences>(key: Key, value: SettingsPreferences[Key]) {
+  async function update<Key extends keyof SettingsPreferences>(key: Key, value: SettingsPreferences[Key]) {
     const nextPreferences = { ...preferences, [key]: value };
     updatePreferences(nextPreferences);
     if (key === "theme") saveTheme(value as ThemeMode);
+
+    if (!isNotificationPreferenceKey(key) || !serverBacked || !supabase) return;
+
+    setSavingPreferenceKey(key);
+    setSettingsMessage("");
+    try {
+      const updated = await supabase.upsertNotificationPreferences(settingsPreferencesToNotificationInput(nextPreferences));
+      if (updated) {
+        updatePreferences({ ...nextPreferences, ...notificationRowToSettingsPreferences(updated) });
+        setSettingsMessage("Bildirim tercihleri kaydedildi.");
+      }
+    } catch (error) {
+      console.error(error);
+      setSettingsMessage(error instanceof Error ? getDataSetupMessage(error.message, { optional: true }) : "Bildirim tercihleri kaydedilemedi.");
+    } finally {
+      setSavingPreferenceKey("");
+    }
   }
 
   return (
@@ -725,12 +922,38 @@ function SettingsPanel() {
 
       <SettingsSection
         eyebrow="Bildirim Tercihleri"
-        title="Yerel bildirim kanalları"
-        description="Sunucu tarafı tercih tablosu olmadığı için bu seçimler bu cihazda saklanır."
+        title="Bildirim kanalları"
+        description={serverBacked ? "Bu tercihler sunucuda saklanır ve cihazlar arasında korunur. E-posta teslimatı bu sürümde yalnızca tercih olarak kaydedilir." : "Supabase yokken bu seçimler bu cihazda yerel olarak saklanır."}
       >
+        {settingsMessage ? (
+          <p className="rounded-2xl border border-slate-200 bg-stone-50 p-3 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
+            {settingsMessage}
+          </p>
+        ) : null}
         <SettingsToggle label="Uygulama içi bildirimler" checked={preferences.inAppNotifications} onChange={(checked) => update("inAppNotifications", checked)} />
         <SettingsToggle label="E-posta bildirimleri" checked={preferences.emailNotifications} onChange={(checked) => update("emailNotifications", checked)} />
         <SettingsToggle label="Kritik uyarılar" checked={preferences.criticalAlerts} onChange={(checked) => update("criticalAlerts", checked)} />
+        <SettingsToggle label="Eşleşme bildirimleri" checked={preferences.matchNotifications} onChange={(checked) => update("matchNotifications", checked)} />
+        <SettingsToggle label="Portföy bildirimleri" checked={preferences.propertyNotifications} onChange={(checked) => update("propertyNotifications", checked)} />
+        <SettingsToggle label="Gelir bildirimleri" checked={preferences.revenueNotifications} onChange={(checked) => update("revenueNotifications", checked)} />
+        <SettingsToggle label="Başvuru bildirimleri" checked={preferences.advisorApplicationNotifications} onChange={(checked) => update("advisorApplicationNotifications", checked)} />
+        <SettingsToggle label="Sistem bildirimleri" checked={preferences.systemNotifications} onChange={(checked) => update("systemNotifications", checked)} />
+        <SettingsToggle label="Sessiz saatler" checked={preferences.quietHours} onChange={(checked) => update("quietHours", checked)} />
+        {preferences.quietHours ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+              Başlangıç
+              <input className="input mt-2" type="time" value={preferences.quietHoursStart} onChange={(event) => update("quietHoursStart", event.target.value)} />
+            </label>
+            <label className="block text-sm font-medium text-slate-500 dark:text-slate-400">
+              Bitiş
+              <input className="input mt-2" type="time" value={preferences.quietHoursEnd} onChange={(event) => update("quietHoursEnd", event.target.value)} />
+            </label>
+          </div>
+        ) : null}
+        {savingPreferenceKey ? (
+          <p className="text-xs text-slate-400">Tercih kaydediliyor...</p>
+        ) : null}
       </SettingsSection>
 
       <SettingsSection
@@ -1246,31 +1469,61 @@ const notificationFilters = [
   { value: "unread", label: "Okunmamış" },
   { value: "property", label: "Portföy" },
   { value: "match", label: "Eşleşme" },
+  { value: "search", label: "Arayış" },
+  { value: "revenue", label: "Gelir" },
   { value: "advisor_application", label: "Başvuru" },
-  { value: "system", label: "Sistem" }
+  { value: "system", label: "Sistem" },
+  { value: "critical", label: "Kritik" }
 ];
 
+type GroupedNotification = NotificationRow & {
+  groupCount: number;
+  groupKey: string;
+};
+
 function NotificationCard({
+  groupCount,
   notification,
-  onMarkRead
+  onMarkRead,
+  onOpen
 }: {
-  notification: NotificationRow;
+  groupCount: number;
+  notification: GroupedNotification;
   onMarkRead: (id: string) => void;
+  onOpen: (notification: NotificationRow) => void;
 }) {
   const unread = notification.status === "unread";
+  const actionable = Boolean(notification.action_url);
 
   return (
-    <article className={`rounded-[1.75rem] border p-5 ${
+    <article
+      role={actionable ? "button" : undefined}
+      tabIndex={actionable ? 0 : undefined}
+      onClick={actionable ? () => onOpen(notification) : undefined}
+      onKeyDown={(event) => {
+        if (!actionable) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen(notification);
+        }
+      }}
+      className={`rounded-[1.75rem] border p-5 text-left transition ${
       unread
-        ? "border-slate-300 bg-white dark:border-white/15 dark:bg-white/[0.07]"
-        : "border-slate-200 bg-stone-50 dark:border-white/10 dark:bg-white/[0.04]"
-    }`}>
+        ? "border-slate-300 bg-white shadow-sm dark:border-white/15 dark:bg-white/[0.07]"
+        : "border-slate-200 bg-stone-50 opacity-85 dark:border-white/10 dark:bg-white/[0.04]"
+    } ${actionable ? "cursor-pointer hover:border-slate-300 hover:bg-white dark:hover:border-white/20 dark:hover:bg-white/[0.07]" : ""}`}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-white/[0.08] dark:text-slate-300">
-              {formatNotificationType(notification.type)}
+              {formatNotificationCategory(notification)}
             </span>
+            {groupCount > 1 ? (
+              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-medium text-indigo-700 dark:bg-indigo-400/10 dark:text-indigo-200">
+                {groupCount} olay
+              </span>
+            ) : null}
             <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${getNotificationPriorityClass(notification.priority)}`}>
               {formatNotificationPriority(notification.priority)}
             </span>
@@ -1289,6 +1542,7 @@ function NotificationCard({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <span aria-hidden="true" className={`mt-1 h-2.5 w-2.5 rounded-full ${unread ? "bg-emerald-500" : "bg-slate-300 dark:bg-white/20"}`} />
           <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
             unread
               ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200"
@@ -1297,12 +1551,12 @@ function NotificationCard({
             {unread ? "Okunmamış" : "Okundu"}
           </span>
           {notification.action_url ? (
-            <Link href={notification.action_url} className="mini-action">
+            <button type="button" className="mini-action" onClick={(event) => { event.stopPropagation(); onOpen(notification); }}>
               Aç
-            </Link>
+            </button>
           ) : null}
           {unread ? (
-            <button type="button" className="mini-action" onClick={() => onMarkRead(notification.id)}>
+            <button type="button" className="mini-action" onClick={(event) => { event.stopPropagation(); onMarkRead(notification.id); }}>
               Okundu
             </button>
           ) : null}
@@ -1351,8 +1605,59 @@ function getActivityFilterKey(activity: ActivityLogRow) {
 function getNotificationFilterKey(notification: NotificationRow) {
   if (notification.type.includes("property") || notification.entity_type === "property") return "property";
   if (notification.type.includes("match") || notification.entity_type === "match") return "match";
+  if (notification.type.includes("search_request") || notification.entity_type === "search_request") return "search";
+  if (
+    notification.type.includes("revenue") ||
+    notification.type.includes("transaction") ||
+    notification.type.includes("commission") ||
+    notification.entity_type === "revenue_transaction" ||
+    notification.entity_type === "commission"
+  ) return "revenue";
   if (notification.type.includes("advisor_application") || notification.entity_type === "advisor_application") return "advisor_application";
   return "system";
+}
+
+function groupNotificationsForDisplay(rows: NotificationRow[]): GroupedNotification[] {
+  const groups = new Map<string, GroupedNotification>();
+
+  rows.forEach((row) => {
+    const critical = row.priority === "urgent" || row.priority === "high";
+    const groupable =
+      !critical &&
+      row.entity_type &&
+      row.entity_id &&
+      (row.type === "property_photo_uploaded" || row.type === "property_photo_removed");
+    const created = row.created_at ? new Date(row.created_at).getTime() : 0;
+    const windowKey = groupable && created ? Math.floor(created / (30 * 60 * 1000)) : row.id;
+    const groupKey = groupable
+      ? `${row.type}:${row.entity_type}:${row.entity_id}:${windowKey}`
+      : row.id;
+    const current = groups.get(groupKey);
+
+    if (!current) {
+      groups.set(groupKey, { ...row, groupCount: 1, groupKey });
+      return;
+    }
+
+    current.groupCount += 1;
+    if (row.status === "unread") current.status = "unread";
+  });
+
+  return [...groups.values()];
+}
+
+function formatNotificationCategory(notification: NotificationRow) {
+  const filterKey = getNotificationFilterKey(notification);
+  const labels: Record<string, string> = {
+    property: "Portföy",
+    match: "Eşleşme",
+    search: "Arayış",
+    revenue: "Gelir",
+    advisor_application: "Başvuru",
+    system: "Sistem"
+  };
+
+  return labels[filterKey] || "Bildirim";
 }
 
 function formatNotificationType(type: string) {
@@ -1365,13 +1670,32 @@ function formatNotificationType(type: string) {
     property_share_deactivated: "Paylaşım",
     search_request_created: "Arayış",
     match_created: "Eşleşme",
+    match_found: "Eşleşme",
     advisor_application_submitted: "Başvuru",
     advisor_application_approved: "Başvuru",
     advisor_application_rejected: "Başvuru",
+    revenue_transaction_created: "Gelir",
+    transaction_created: "Gelir",
+    commission_updated: "Gelir",
     system_notice: "Sistem"
   };
 
   return labels[type] || "Bildirim";
+}
+
+function getNotificationEmptyState(filter: string) {
+  const labels: Record<string, string> = {
+    unread: "Okunmamış bildirim yok. Yeni operasyon sinyalleri geldiğinde burada öne çıkar.",
+    property: "Bu filtrede portföy bildirimi yok.",
+    match: "Bu filtrede eşleşme bildirimi yok.",
+    search: "Bu filtrede arayış bildirimi yok.",
+    revenue: "Bu filtrede gelir bildirimi yok.",
+    advisor_application: "Bu filtrede başvuru bildirimi yok.",
+    system: "Bu filtrede sistem bildirimi yok.",
+    critical: "Kritik bildirim yok."
+  };
+
+  return labels[filter] || "Henüz bildiriminiz yok. Yeni eşleşmeler, portföy güncellemeleri ve sistem uyarıları burada görünecek.";
 }
 
 function formatNotificationPriority(priority: string) {

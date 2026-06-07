@@ -118,16 +118,30 @@ export default function OOSNavigation({ user, profile, onLogout }: OOSNavigation
     }
 
     let mounted = true;
-    supabase.getUnreadNotificationCount()
-      .then((count: number) => {
-        if (mounted) setUnreadNotificationCount(count);
-      })
-      .catch(() => {
-        if (mounted) setUnreadNotificationCount(0);
-      });
+    let intervalId: number | undefined;
+
+    const refreshUnreadCount = () => {
+      supabase.getUnreadNotificationCount()
+        .then((count: number) => {
+          if (mounted) setUnreadNotificationCount(count);
+        })
+        .catch(() => {
+          if (mounted) setUnreadNotificationCount(0);
+        });
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refreshUnreadCount();
+    };
+
+    refreshUnreadCount();
+    intervalId = window.setInterval(refreshUnreadCount, 45000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       mounted = false;
+      if (intervalId) window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [supabase, user]);
 

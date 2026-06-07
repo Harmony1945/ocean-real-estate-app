@@ -15,6 +15,7 @@ import {
   type AdvisorPropertyRow,
   type AdvisorSearchRequestRow,
   type AdvisorTaskRow,
+  type NotificationRow,
   type PropertyInput,
   type PropertyMediaRow,
   type RevenueTransactionRow
@@ -1124,6 +1125,7 @@ export default function Home() {
   const [dealRows, setDealRows] = useState<AdvisorDealRow[]>([]);
   const [commissionRows, setCommissionRows] = useState<AdvisorCommissionRow[]>([]);
   const [revenueRows, setRevenueRows] = useState<RevenueTransactionRow[]>([]);
+  const [dashboardNotifications, setDashboardNotifications] = useState<NotificationRow[]>([]);
   const [selectedId, setSelectedId] = useState<EntityId>(
     () => demoMode ? initialOpportunities[0].id : ""
   );
@@ -1178,11 +1180,12 @@ export default function Home() {
         const nextRequests: SearchRequest[] = requestRows.map((row: AdvisorSearchRequestRow) =>
           fromSearchRequestRow(row, currentUser)
         );
-        const [tasks, deals, commissions, revenueTransactions, dashboardMedia] = await Promise.allSettled([
+        const [tasks, deals, commissions, revenueTransactions, notificationRows, dashboardMedia] = await Promise.allSettled([
           supabase.getTasks(),
           supabase.getDeals(),
           supabase.getCommissions(),
           supabase.getRevenueTransactions(),
+          supabase.fetchNotifications(),
           Promise.all(
             propertyRows.slice(0, 12).map(async (row: AdvisorPropertyRow) => [
               row.id,
@@ -1199,6 +1202,7 @@ export default function Home() {
         setDealRows(deals.status === "fulfilled" ? deals.value : []);
         setCommissionRows(commissions.status === "fulfilled" ? commissions.value : []);
         setRevenueRows(revenueTransactions.status === "fulfilled" ? revenueTransactions.value : []);
+        setDashboardNotifications(notificationRows.status === "fulfilled" ? notificationRows.value : []);
         setPropertyMedia(dashboardMedia.status === "fulfilled" ? Object.fromEntries(dashboardMedia.value) : {});
         setSelectedId(nextPortfolios[0]?.id ?? "");
         setDataError("");
@@ -1214,6 +1218,7 @@ export default function Home() {
         setDealRows([]);
         setCommissionRows([]);
         setRevenueRows([]);
+        setDashboardNotifications([]);
         setSelectedId("");
         setDataError(getDataSetupMessage(error.message));
       })
@@ -2290,6 +2295,7 @@ export default function Home() {
               activePortfolios={myActivePortfolios}
               activeSearchRequests={myActiveSearchRequests}
               allPortfolios={opportunities}
+              notifications={dashboardNotifications}
               matchCount={demoMode ? recentMatches.length : matchRows.length}
               mediaByProperty={propertyMedia}
               recentMatches={recentMatches}
@@ -4024,6 +4030,7 @@ function AdvisorHomeScreen({
   activePortfolios,
   activeSearchRequests,
   allPortfolios,
+  notifications,
   matchCount,
   mediaByProperty,
   recentMatches,
@@ -4036,6 +4043,7 @@ function AdvisorHomeScreen({
   activePortfolios: Opportunity[];
   activeSearchRequests: SearchRequest[];
   allPortfolios: Opportunity[];
+  notifications: NotificationRow[];
   matchCount: number;
   mediaByProperty: Record<string, PropertyMediaRow[]>;
   recentMatches: Array<ReturnType<typeof getSearchMatches>[number] & { search: SearchRequest }>;
@@ -4111,8 +4119,76 @@ function AdvisorHomeScreen({
           onSelect={onOpenPortfolio}
         />
       </div>
+
+      <DashboardNotificationSnapshot notifications={notifications} />
     </section>
   );
+}
+
+function DashboardNotificationSnapshot({ notifications }: { notifications: NotificationRow[] }) {
+  const latest = notifications.slice(0, 3);
+  const unreadCount = notifications.filter((notification) => notification.status === "unread").length;
+
+  return (
+    <section className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Operasyon sinyalleri</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+            Bildirimler
+          </h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {unreadCount ? `${unreadCount} okunmamış bildirim` : "Yeni okunmamış bildirim yok"}
+          </p>
+        </div>
+        <Link href="/menu/notifications" className="btn-secondary w-fit">
+          Tüm Bildirimler
+        </Link>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        {latest.map((notification) => (
+          <Link
+            key={notification.id}
+            href={notification.action_url || "/menu/notifications"}
+            className="rounded-2xl border border-slate-200 bg-stone-50 p-3 transition hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-white/20 dark:hover:bg-white/[0.07]"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">
+                  {notification.title}
+                </p>
+                <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                  {notification.entity_title || formatDashboardNotificationCategory(notification)}
+                </p>
+              </div>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                notification.status === "unread"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200"
+                  : "bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400"
+              }`}>
+                {formatTimeAgo(notification.created_at)}
+              </span>
+            </div>
+          </Link>
+        ))}
+        {!latest.length ? (
+          <p className="rounded-2xl border border-dashed border-slate-200 bg-stone-50 p-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
+            Henüz operasyon bildirimi yok.
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function formatDashboardNotificationCategory(notification: NotificationRow) {
+  if (notification.type.includes("property") || notification.entity_type === "property") return "Portföy";
+  if (notification.type.includes("match") || notification.entity_type === "match") return "Eşleşme";
+  if (notification.type.includes("search_request") || notification.entity_type === "search_request") return "Arayış";
+  if (notification.type.includes("revenue") || notification.type.includes("transaction") || notification.type.includes("commission")) return "Gelir";
+  if (notification.type.includes("advisor_application")) return "Başvuru";
+  return "Sistem";
 }
 
 function DashboardPortfolioInventory({

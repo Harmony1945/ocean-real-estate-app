@@ -355,6 +355,44 @@ export type NotificationInput = {
   metadata?: Record<string, unknown>;
 };
 
+export type NotificationPreferenceRow = {
+  id: string;
+  profile_id: string;
+  advisor_id: string | null;
+  in_app_enabled: boolean;
+  email_enabled: boolean;
+  critical_enabled: boolean;
+  property_updates_enabled: boolean;
+  match_notifications_enabled: boolean;
+  revenue_notifications_enabled: boolean;
+  advisor_application_notifications_enabled: boolean;
+  system_notifications_enabled: boolean;
+  quiet_hours_enabled: boolean;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type NotificationPreferenceInput = Partial<Omit<
+  NotificationPreferenceRow,
+  "id" | "profile_id" | "advisor_id" | "created_at" | "updated_at"
+>>;
+
+export const defaultNotificationPreferences: Omit<NotificationPreferenceRow, "id" | "profile_id" | "advisor_id" | "created_at" | "updated_at"> = {
+  in_app_enabled: true,
+  email_enabled: false,
+  critical_enabled: true,
+  property_updates_enabled: true,
+  match_notifications_enabled: true,
+  revenue_notifications_enabled: true,
+  advisor_application_notifications_enabled: true,
+  system_notifications_enabled: true,
+  quiet_hours_enabled: false,
+  quiet_hours_start: null,
+  quiet_hours_end: null
+};
+
 export type CommissionRuleRow = {
   id: string;
   name: string;
@@ -656,6 +694,30 @@ function sanitizeNotificationMetadata(metadata: NotificationInput["metadata"] = 
   return sanitizeActivityMetadata(metadata);
 }
 
+function notificationPreferenceKeyForType(type: string): keyof NotificationPreferenceRow | null {
+  if (type.startsWith("property_")) return "property_updates_enabled";
+  if (type.startsWith("match_")) return "match_notifications_enabled";
+  if (type.startsWith("revenue_") || type.startsWith("transaction_") || type.startsWith("commission_")) {
+    return "revenue_notifications_enabled";
+  }
+  if (type.startsWith("advisor_application_")) return "advisor_application_notifications_enabled";
+  if (type === "system_notice") return "system_notifications_enabled";
+  return null;
+}
+
+function shouldCreateNotificationFromPreferences(
+  preferences: NotificationPreferenceRow | null,
+  input: NotificationInput
+) {
+  if (!preferences) return true;
+  const priority = input.priority || "normal";
+  if (priority === "urgent" || priority === "high") return preferences.critical_enabled;
+  if (!preferences.in_app_enabled) return false;
+  const preferenceKey = notificationPreferenceKeyForType(input.type);
+  if (!preferenceKey) return true;
+  return Boolean(preferences[preferenceKey]);
+}
+
 function loadImageElement(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -838,6 +900,8 @@ export function createSupabaseAuthClient(): any {
   async function createNotification(input: NotificationInput) {
     try {
       const token = getAccessToken();
+      const preferences = await fetchNotificationPreferences().catch(() => null);
+      if (!shouldCreateNotificationFromPreferences(preferences, input)) return null;
       const row = await request<NotificationRow[] | NotificationRow>("/rest/v1/rpc/create_notification", {
         method: "POST",
         token,
@@ -865,6 +929,65 @@ export function createSupabaseAuthClient(): any {
 
   async function createNotifications(inputs: NotificationInput[]) {
     return Promise.all(inputs.map((input) => createNotification(input)));
+  }
+
+  async function fetchNotificationPreferences() {
+    const stored = readStoredSession();
+    const token = stored?.access_token;
+    if (!token || !stored?.user.id) return null;
+
+    try {
+      const rows = await request<NotificationPreferenceRow[]>(
+        `/rest/v1/notification_preferences?profile_id=eq.${encodeURIComponent(stored.user.id)}&select=*&limit=1`,
+        { method: "GET", token }
+      );
+
+      return rows[0] ?? {
+        id: "",
+        profile_id: stored.user.id,
+        advisor_id: null,
+        ...defaultNotificationPreferences
+      };
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
+  async function upsertNotificationPreferences(input: NotificationPreferenceInput) {
+    const stored = readStoredSession();
+    const token = stored?.access_token;
+    if (!token || !stored?.user.id) throw new Error("Oturum bulunamadı.");
+
+    const advisorId = await getCurrentAdvisorId().catch(() => null);
+    const rows = await request<NotificationPreferenceRow[]>("/rest/v1/notification_preferences?on_conflict=profile_id", {
+      method: "POST",
+      token,
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=representation"
+      },
+      body: JSON.stringify({
+        profile_id: stored.user.id,
+        advisor_id: advisorId,
+        ...defaultNotificationPreferences,
+        ...input
+      })
+    });
+    const preferences = rows[0] ?? null;
+
+    await logActivity({
+      action: "notification_preferences_updated",
+      entity_type: "notification_preferences",
+      entity_id: preferences?.id ?? null,
+      entity_title: "Bildirim tercihleri",
+      summary: "Bildirim tercihleri güncellendi.",
+      metadata: {
+        in_app_enabled: preferences?.in_app_enabled,
+        email_enabled: preferences?.email_enabled,
+        quiet_hours_enabled: preferences?.quiet_hours_enabled
+      }
+    });
+
+    return preferences;
   }
 
   async function getActivityLogs() {
@@ -2400,6 +2523,10 @@ export function createSupabaseAuthClient(): any {
     markAllNotificationsRead,
 
     getUnreadNotificationCount,
+
+    fetchNotificationPreferences,
+
+    upsertNotificationPreferences,
 
     getPortfolios,
 

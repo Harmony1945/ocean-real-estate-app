@@ -32,6 +32,15 @@ import {
   type ParsedPropertyImport
 } from "@/lib/oos/property-import-parser";
 import {
+  buildPropertyFilterChips,
+  defaultPropertyFilters,
+  filterPropertyItems,
+  getUniquePropertyOptions,
+  hasActivePropertyFilters,
+  type PropertyFilterItem,
+  type PropertyFilterState
+} from "@/lib/oos/property-filters";
+import {
   booleanTextOptions,
   deedStatusOptions,
   heatingTypeOptions,
@@ -4115,13 +4124,49 @@ function DashboardPortfolioInventory({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const sortedPortfolios = [...portfolios].sort((a, b) =>
-    (b.createdAt || "").localeCompare(a.createdAt || "")
+  const [filters, setFilters] = useState<PropertyFilterState>(defaultPropertyFilters);
+  const dashboardFilterKeys: Array<keyof PropertyFilterState> = ["query", "city", "district", "propertyType"];
+  const filterItems = useMemo(
+    () => portfolios.map((portfolio) => createDashboardFilterItem(portfolio, mediaByProperty[String(portfolio.id)] ?? [])),
+    [mediaByProperty, portfolios]
   );
+  const cityOptions = useMemo(() => getUniquePropertyOptions(filterItems, "city"), [filterItems]);
+  const districtOptions = useMemo(
+    () => getUniquePropertyOptions(filterItems.filter((item) => !filters.city || item.city === filters.city), "district"),
+    [filterItems, filters.city]
+  );
+  const typeOptions = useMemo(() => getUniquePropertyOptions(filterItems, "propertyType"), [filterItems]);
+  const filteredIds = useMemo(
+    () => filterPropertyItems(filterItems, filters).map((item) => item.id),
+    [filterItems, filters]
+  );
+  const portfolioById = useMemo(
+    () => new Map(portfolios.map((portfolio) => [String(portfolio.id), portfolio])),
+    [portfolios]
+  );
+  const sortedPortfolios = filteredIds
+    .map((id) => portfolioById.get(id))
+    .filter(Boolean) as Opportunity[];
   const visibleLimit = expanded ? 12 : 6;
   const visiblePortfolios = sortedPortfolios.slice(0, visibleLimit);
   const showExpand = sortedPortfolios.length > 6;
   const showAllLink = sortedPortfolios.length > 12;
+  const filtersActive = hasActivePropertyFilters(filters, dashboardFilterKeys);
+  const activeChips = buildPropertyFilterChips(filters).filter((chip) => dashboardFilterKeys.includes(chip.key));
+
+  function updateFilter<K extends keyof PropertyFilterState>(key: K, value: PropertyFilterState[K]) {
+    setFilters((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === "city" ? { district: "" } : {})
+    }));
+    setExpanded(false);
+  }
+
+  function clearFilters() {
+    setFilters(defaultPropertyFilters);
+    setExpanded(false);
+  }
 
   return (
     <section className="oos-card min-w-0 rounded-3xl p-4 sm:p-5">
@@ -4138,6 +4183,11 @@ function DashboardPortfolioInventory({
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-white/10 dark:text-slate-300">
             {sortedPortfolios.length} portföy
           </span>
+          {filtersActive ? (
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200">
+              Filtre aktif
+            </span>
+          ) : null}
           <button
             type="button"
             className="mini-action"
@@ -4148,6 +4198,45 @@ function DashboardPortfolioInventory({
           </button>
         </div>
       </div>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]">
+        <input
+          className="input"
+          placeholder="Portföy ara"
+          value={filters.query}
+          onChange={(event) => updateFilter("query", event.target.value)}
+        />
+        <select className="input" value={filters.city} onChange={(event) => updateFilter("city", event.target.value)}>
+          <option value="">Tüm iller</option>
+          {cityOptions.map((city) => <option key={city} value={city}>{city}</option>)}
+        </select>
+        <select className="input" value={filters.district} onChange={(event) => updateFilter("district", event.target.value)}>
+          <option value="">Tüm ilçeler</option>
+          {districtOptions.map((district) => <option key={district} value={district}>{district}</option>)}
+        </select>
+        <select className="input" value={filters.propertyType} onChange={(event) => updateFilter("propertyType", event.target.value)}>
+          <option value="">Tüm tipler</option>
+          {typeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+        </select>
+        <button className="btn-secondary" type="button" onClick={clearFilters}>
+          Temizle
+        </button>
+      </div>
+
+      {activeChips.length ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {activeChips.map((chip) => (
+            <button
+              key={`${chip.key}-${chip.label}`}
+              className="rounded-full border border-slate-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300"
+              type="button"
+              onClick={() => updateFilter(chip.key, defaultPropertyFilters[chip.key])}
+            >
+              {chip.label} ×
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {visiblePortfolios.length && viewMode === "grid" ? (
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -4177,7 +4266,7 @@ function DashboardPortfolioInventory({
 
       {!visiblePortfolios.length ? (
         <p className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-stone-50 px-3 py-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
-          Henüz ofis portföyü yok.
+          {filtersActive ? "Bu filtrelerle eşleşen portföy bulunamadı." : "Henüz ofis portföyü yok."}
         </p>
       ) : null}
 
@@ -4201,6 +4290,40 @@ function DashboardPortfolioInventory({
       ) : null}
     </section>
   );
+}
+
+function createDashboardFilterItem(portfolio: Opportunity, media: PropertyMediaRow[]): PropertyFilterItem {
+  const [city, district, neighborhood] = (portfolio.location || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return {
+    id: String(portfolio.id),
+    title: portfolio.title,
+    city,
+    district,
+    neighborhood,
+    addressText: portfolio.addressText,
+    listingType: portfolio.listingType || portfolio.contractType,
+    propertyType: portfolio.propertyType,
+    roomCount: portfolio.rooms,
+    price: portfolio.value,
+    currency: portfolio.currency,
+    grossArea: parseArea(portfolio.area),
+    netArea: parseArea(portfolio.netArea),
+    advisorId: portfolio.ownerConsultantId ? String(portfolio.ownerConsultantId) : undefined,
+    advisorName: portfolio.ownerConsultantName,
+    status: portfolio.stage,
+    hasPhotos: media.length > 0,
+    hasCoordinates: Boolean(portfolio.latitude && portfolio.longitude),
+    hasElevator: portfolio.hasElevator ?? null,
+    inSite: portfolio.inSite ?? null,
+    parkingType: portfolio.parkingType,
+    deedStatus: portfolio.deedStatus,
+    exchangeAvailable: portfolio.exchangeAvailable ?? null,
+    createdAt: portfolio.createdAt
+  };
 }
 
 function getDashboardCover(media: PropertyMediaRow[]) {

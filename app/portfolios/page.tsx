@@ -23,6 +23,15 @@ import {
   textToBoolean,
   yesNoTextOptions
 } from "@/lib/oos/property-fields";
+import {
+  buildPropertyFilterChips,
+  createPropertyFilterItem,
+  defaultPropertyFilters,
+  filterPropertyRows,
+  getUniquePropertyOptions,
+  hasActivePropertyFilters,
+  type PropertyFilterState
+} from "@/lib/oos/property-filters";
 import { PropertyListingCard, formatPropertyLocation, formatPropertyPrice } from "../property-listing-card";
 import {
   PropertyPhotoManager,
@@ -101,6 +110,7 @@ export default function PortfoliosRoutePage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<PropertyFilterState>(defaultPropertyFilters);
   const persistentMode = Boolean(isSupabaseConfigured && user && supabase);
 
   useEffect(() => {
@@ -435,6 +445,39 @@ export default function PortfoliosRoutePage() {
   const missingCount = items.filter((item) => !formatPropertyLocation(item) || !item.asking_price).length;
   const showingDemoFallback = !items.length && !loading;
   const displayItems = showingDemoFallback ? demoPortfolios : items;
+  const portfolioFilterKeys: Array<keyof PropertyFilterState> = ["query", "city", "district", "listingType", "propertyType", "status", "photos", "coordinates"];
+  const filterItems = useMemo(
+    () => displayItems.map((item) => createPropertyFilterItem(item, mediaByProperty[item.id] ?? [])),
+    [displayItems, mediaByProperty]
+  );
+  const cityOptions = useMemo(() => getUniquePropertyOptions(filterItems, "city"), [filterItems]);
+  const districtOptions = useMemo(
+    () => getUniquePropertyOptions(filterItems.filter((item) => !filters.city || item.city === filters.city), "district"),
+    [filterItems, filters.city]
+  );
+  const portfolioFilterOptions = useMemo(() => ({
+    listingType: [...new Set([...listingTypeOptions, ...getUniquePropertyOptions(filterItems, "listingType")])],
+    propertyType: [...new Set([...propertyTypeOptions, ...getUniquePropertyOptions(filterItems, "propertyType")])],
+    status: getUniquePropertyOptions(filterItems, "status")
+  }), [filterItems]);
+  const filteredDisplayItems = useMemo(
+    () => filterPropertyRows(displayItems, filters, mediaByProperty),
+    [displayItems, filters, mediaByProperty]
+  );
+  const filtersActive = hasActivePropertyFilters(filters, portfolioFilterKeys);
+  const activeChips = buildPropertyFilterChips(filters).filter((chip) => portfolioFilterKeys.includes(chip.key));
+
+  function updateFilter<K extends keyof PropertyFilterState>(key: K, value: PropertyFilterState[K]) {
+    setFilters((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === "city" ? { district: "" } : {})
+    }));
+  }
+
+  function clearFilters() {
+    setFilters(defaultPropertyFilters);
+  }
 
   return (
     <main className="min-h-screen bg-stone-50 px-4 py-5 pb-[calc(env(safe-area-inset-bottom)+7rem)] text-slate-950 dark:bg-black dark:text-neutral-50 sm:px-6 md:pb-8 lg:px-8">
@@ -563,8 +606,61 @@ export default function PortfoliosRoutePage() {
           </p>
         ) : null}
 
+        <section className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#080808]">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Portföylerim filtresi</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {filteredDisplayItems.length} portföy gösteriliyor
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] lg:w-[420px]">
+              <input
+                className="input"
+                placeholder="Portföy ara"
+                value={filters.query}
+                onChange={(event) => updateFilter("query", event.target.value)}
+              />
+              <button className="btn-secondary" type="button" onClick={clearFilters}>
+                Temizle
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <PortfolioFilterSelect label="İl" value={filters.city} onChange={(value) => updateFilter("city", value)} options={cityOptions} emptyLabel="Tüm iller" />
+            <PortfolioFilterSelect label="İlçe" value={filters.district} onChange={(value) => updateFilter("district", value)} options={districtOptions} emptyLabel="Tüm ilçeler" />
+            <PortfolioFilterSelect label="İlan tipi" value={filters.listingType} onChange={(value) => updateFilter("listingType", value)} options={portfolioFilterOptions.listingType} emptyLabel="Tümü" />
+            <PortfolioFilterSelect label="Gayrimenkul tipi" value={filters.propertyType} onChange={(value) => updateFilter("propertyType", value)} options={portfolioFilterOptions.propertyType} emptyLabel="Tümü" />
+            <PortfolioFilterSelect label="Durum" value={filters.status} onChange={(value) => updateFilter("status", value)} options={portfolioFilterOptions.status} emptyLabel="Tümü" />
+            <PortfolioFilterSelect label="Fotoğraf" value={filters.photos} onChange={(value) => updateFilter("photos", value as PropertyFilterState["photos"])} options={[
+              { value: "with", label: "Fotoğrafı olanlar" },
+              { value: "without", label: "Fotoğrafsız" }
+            ]} emptyLabel="Tümü" />
+            <PortfolioFilterSelect label="Harita konumu" value={filters.coordinates} onChange={(value) => updateFilter("coordinates", value as PropertyFilterState["coordinates"])} options={[
+              { value: "with", label: "Harita konumu olanlar" },
+              { value: "missing", label: "Konumu eksik" }
+            ]} emptyLabel="Tümü" />
+          </div>
+
+          {activeChips.length ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {activeChips.map((chip) => (
+                <button
+                  key={`${chip.key}-${chip.label}`}
+                  className="rounded-full border border-slate-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300"
+                  type="button"
+                  onClick={() => updateFilter(chip.key, defaultPropertyFilters[chip.key])}
+                >
+                  {chip.label} ×
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </section>
+
         <section className="mt-6 grid gap-4 md:grid-cols-2">
-          {displayItems.map((item) => (
+          {filteredDisplayItems.length ? filteredDisplayItems.map((item) => (
             <PropertyListingCard
               key={item.id}
               demo={showingDemoFallback || !isSupabaseConfigured}
@@ -581,7 +677,11 @@ export default function PortfoliosRoutePage() {
                 )
               }
             />
-          ))}
+          )) : (
+            <article className="rounded-[2rem] border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 md:col-span-2">
+              {filtersActive ? "Bu filtrelerle eşleşen portföy bulunamadı." : "Henüz portföy yok."}
+            </article>
+          )}
         </section>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -591,6 +691,34 @@ export default function PortfoliosRoutePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function PortfolioFilterSelect({
+  emptyLabel,
+  label,
+  onChange,
+  options,
+  value
+}: {
+  emptyLabel: string;
+  label: string;
+  onChange: (value: string) => void;
+  options: Array<string | { value: string; label: string }>;
+  value: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
+      <select className="input" value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{emptyLabel}</option>
+        {options.map((option) => {
+          const optionValue = typeof option === "string" ? option : option.value;
+          const optionLabel = typeof option === "string" ? option : option.label;
+          return <option key={`${optionValue}-${optionLabel}`} value={optionValue}>{optionLabel}</option>;
+        })}
+      </select>
+    </label>
   );
 }
 

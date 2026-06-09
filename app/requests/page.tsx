@@ -289,7 +289,12 @@ export default function RequestsRoutePage() {
                   </span>
                 </div>
               </div>
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
+                {item.id.startsWith("demo-") ? null : (
+                  <Link className="mini-action" href={`/search-requests/${item.id}`}>
+                    Detay
+                  </Link>
+                )}
                 <button className="mini-action" type="button" onClick={() => editRequest(item)}>Düzenle</button>
                 <button className="mini-action" type="button" disabled={busyId === item.id} onClick={() => closeRequest(item.id)}>{busyId === item.id ? "İşleniyor..." : "Kapat"}</button>
                 <button className="mini-action !text-red-600" type="button" disabled={busyId === item.id} onClick={() => deleteRequest(item.id)}>Sil</button>

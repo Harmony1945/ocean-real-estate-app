@@ -30,6 +30,7 @@ import {
 import { calculateCommission, getDefaultRevenueRule } from "@/lib/oos/revenue-rules";
 import { createCheckoutSession } from "@/lib/oos/payments";
 import { demoShowcasePortfolios } from "@/lib/oos/demo-data";
+import { formatAdvisorMatchStatus } from "@/lib/oos/advisor-match-workflow";
 import { formatStatusLabel } from "@/lib/oos/status-labels";
 import { getPreferredTheme, saveTheme, type ThemeMode } from "../theme";
 
@@ -1854,6 +1855,9 @@ function MatchCard({
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200">
             %{score} Uyum
           </span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
+            {formatAdvisorMatchStatus(match.advisor_match_status)}
+          </span>
         </div>
       </div>
       {matchSummary ? (
@@ -1881,6 +1885,11 @@ function MatchCard({
         </p>
       ) : null}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        {match.search_request_id ? (
+          <Link className="btn-primary text-center" href={`/search-requests/${match.search_request_id}`}>
+            Aksiyona Geç
+          </Link>
+        ) : null}
         {phoneHref ? (
           <a className="btn-secondary text-center" href={phoneHref}>
             İletişime Geç{contact?.name ? ` · ${contact.name}` : ""}

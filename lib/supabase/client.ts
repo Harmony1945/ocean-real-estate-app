@@ -148,6 +148,17 @@ export type AdvisorTaskRow = {
   updated_at?: string;
 };
 
+export type AdvisorMatchWorkflowStatus =
+  | "new"
+  | "advisor_contacted"
+  | "presented_to_client"
+  | "client_interested"
+  | "showing_scheduled"
+  | "negative"
+  | "follow_up"
+  | "converted_to_deal"
+  | string;
+
 export type AdvisorMatchRow = {
   id: string;
   property_id?: string | null;
@@ -158,8 +169,16 @@ export type AdvisorMatchRow = {
   search_request?: AdvisorSearchRequestRow | null;
   score?: number | null;
   match_score?: number | null;
+  match_reasons?: Record<string, unknown> | null;
+  property_advisor_id?: string | null;
+  request_advisor_id?: string | null;
+  advisor_match_status?: AdvisorMatchWorkflowStatus | null;
+  advisor_match_note?: string | null;
+  advisor_match_status_updated_at?: string | null;
+  advisor_match_status_updated_by?: string | null;
   status?: string | null;
   created_at?: string;
+  updated_at?: string;
   [key: string]: unknown;
 };
 
@@ -353,6 +372,12 @@ export type NotificationInput = {
   priority?: NotificationPriority;
   action_url?: string | null;
   metadata?: Record<string, unknown>;
+};
+
+export type AdvisorMatchWorkflowInput = {
+  match_id: string;
+  advisor_match_status?: string | null;
+  advisor_match_note?: string | null;
 };
 
 export type NotificationPreferenceRow = {
@@ -670,6 +695,20 @@ function createShareToken() {
 
 function isUuid(value?: string | null) {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+}
+
+function formatAdvisorMatchWorkflowStatus(status?: string | null) {
+  const labels: Record<string, string> = {
+    new: "Yeni Eşleşme",
+    advisor_contacted: "Danışmanla İletişime Geçildi",
+    presented_to_client: "Müşteriye Sunuldu",
+    client_interested: "Müşteri İlgilendi",
+    showing_scheduled: "Gösterim Planlandı",
+    negative: "Olumsuz",
+    follow_up: "Takipte",
+    converted_to_deal: "İşleme Döndü"
+  };
+  return labels[status || "new"] || "Yeni Eşleşme";
 }
 
 function sanitizeActivityMetadata(metadata: ActivityLogInput["metadata"] = {}) {
@@ -1187,6 +1226,22 @@ export function createSupabaseAuthClient(): any {
     }
   }
 
+  async function getSearchRequest(id: string) {
+    const token = getAccessToken();
+    if (!token) return null;
+
+    try {
+      const rows = await request<AdvisorSearchRequestRow[]>(
+        `/rest/v1/search_requests?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+        { method: "GET", token }
+      );
+
+      return rows[0] ?? null;
+    } catch (error) {
+      throw new Error(dataError(error));
+    }
+  }
+
   async function createSearchRequest(searchRequest: SearchRequestInput) {
     const stored = readStoredSession();
     if (!stored?.access_token) throw new Error("Oturum bulunamadı.");
@@ -1492,6 +1547,90 @@ export function createSupabaseAuthClient(): any {
       );
     } catch {
       return getOperationalRows<AdvisorMatchRow>("matches");
+    }
+  }
+
+  async function updateAdvisorMatchWorkflow(input: AdvisorMatchWorkflowInput) {
+    const token = getAccessToken();
+    if (!token) throw new Error("Oturum bulunamadı.");
+
+    try {
+      const row = await request<AdvisorMatchRow[] | AdvisorMatchRow>("/rest/v1/rpc/update_advisor_match_workflow", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          input_match_id: input.match_id,
+          input_status: input.advisor_match_status ?? null,
+          input_note: input.advisor_match_note ?? null
+        })
+      });
+      const updated = Array.isArray(row) ? row[0] ?? null : row;
+
+      if (updated) {
+        const statusLabel = formatAdvisorMatchWorkflowStatus(updated.advisor_match_status);
+        const currentAdvisorId = await getCurrentAdvisorId().catch(() => "");
+        const propertyAdvisorId = String(updated.property_advisor_id || "");
+        const requestAdvisorId = String(updated.request_advisor_id || "");
+        const recipientAdvisorId =
+          currentAdvisorId && currentAdvisorId === propertyAdvisorId
+            ? requestAdvisorId
+            : currentAdvisorId && currentAdvisorId === requestAdvisorId
+              ? propertyAdvisorId
+              : "";
+
+        if (input.advisor_match_status) {
+          void logActivity({
+            action: "advisor_match_status_updated",
+            entity_type: "match",
+            entity_id: updated.id,
+            entity_title: statusLabel,
+            summary: "Danışman eşleşme statüsü güncellendi.",
+            metadata: {
+              status: updated.advisor_match_status,
+              property_id: updated.property_id,
+              search_request_id: updated.search_request_id
+            }
+          });
+        }
+
+        if (typeof input.advisor_match_note === "string") {
+          void logActivity({
+            action: "advisor_match_note_updated",
+            entity_type: "match",
+            entity_id: updated.id,
+            entity_title: "Eşleşme notu",
+            summary: "Danışman eşleşme notu güncellendi.",
+            metadata: {
+              status: updated.advisor_match_status,
+              property_id: updated.property_id,
+              search_request_id: updated.search_request_id
+            }
+          });
+        }
+
+        if (recipientAdvisorId && input.advisor_match_status) {
+          void createNotification({
+            recipient_advisor_id: recipientAdvisorId,
+            type: "match_status_updated",
+            title: "Eşleşme statüsü güncellendi",
+            body: `Danışman eşleşmeye aksiyon aldı: ${statusLabel}.`,
+            entity_type: "match",
+            entity_id: updated.id,
+            entity_title: statusLabel,
+            priority: updated.advisor_match_status === "converted_to_deal" ? "high" : "normal",
+            action_url: updated.search_request_id ? `/search-requests/${updated.search_request_id}` : "/menu/matches",
+            metadata: {
+              status: updated.advisor_match_status,
+              property_id: updated.property_id,
+              search_request_id: updated.search_request_id
+            }
+          });
+        }
+      }
+
+      return updated;
+    } catch (error) {
+      throw new Error(dataError(error));
     }
   }
 
@@ -2538,6 +2677,8 @@ export function createSupabaseAuthClient(): any {
 
     getSearchRequests,
 
+    getSearchRequest,
+
     createSearchRequest,
 
     updateSearchRequest,
@@ -2557,6 +2698,8 @@ export function createSupabaseAuthClient(): any {
     deleteProperty,
 
     getMatches,
+
+    updateAdvisorMatchWorkflow,
 
     getDeals,
 

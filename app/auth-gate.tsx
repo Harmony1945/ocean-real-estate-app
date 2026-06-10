@@ -57,6 +57,8 @@ const publicRoutePrefixes = [
 ];
 
 function isPublicRoute(pathname: string) {
+  if (pathname.startsWith("/properties/demo-")) return true;
+
   return publicRoutePrefixes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
@@ -572,27 +574,27 @@ function AuthCard({
   }
 
   return (
-    <section className="rounded-lg border border-white/20 bg-white/95 p-5 text-[#071321] shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
+    <section className="rounded-[2rem] border border-white/20 bg-black/70 p-5 text-white shadow-[0_30px_120px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:p-6">
       <div>
-        <p className="text-sm font-semibold text-[#587160]">OceanOS Girişi</p>
+        <p className="text-sm font-semibold text-white/50">OceanOS Girişi</p>
         <h2 className="mt-2 text-2xl font-semibold">Danışman ve yönetim paneli</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          Portföy, arayış, eşleşme, bildirim ve komisyon süreçleri için özel Ocean çalışma alanı.
+        <p className="mt-2 text-sm leading-6 text-white/60">
+          Danışman hesabınızla devam edin veya yeni profil oluşturun.
         </p>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 rounded-lg bg-slate-100 p-1">
+      <div className="mt-5 grid grid-cols-2 rounded-2xl bg-white/10 p-1">
         <button
           type="button"
           onClick={() => onModeChange("login")}
-          className={`rounded-md px-3 py-2 text-sm transition ${mode === "login" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+          className={`rounded-xl px-3 py-2 text-sm transition ${mode === "login" ? "bg-white text-slate-950 shadow-sm" : "text-white/60 hover:text-white"}`}
         >
           Giriş
         </button>
         <button
           type="button"
           onClick={() => onModeChange("signup")}
-          className={`rounded-md px-3 py-2 text-sm transition ${mode === "signup" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+          className={`rounded-xl px-3 py-2 text-sm transition ${mode === "signup" ? "bg-white text-slate-950 shadow-sm" : "text-white/60 hover:text-white"}`}
         >
           Kayıt
         </button>
@@ -603,7 +605,7 @@ function AuthCard({
           type="button"
           onClick={continueWithGoogle}
           disabled={loading || !isConfigured}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-55"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white px-4 py-3 text-sm font-medium text-slate-950 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-55"
         >
           <GoogleIcon />
           Google ile devam et
@@ -611,7 +613,7 @@ function AuthCard({
         {mode === "signup" ? (
           <>
             <input
-              className="input !rounded-md !border-slate-200 !bg-white !px-4 !py-3 !text-slate-950 placeholder:!text-slate-400"
+              className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
               placeholder="Ad Soyad"
               value={form.name}
               onChange={(event) => update("name", event.target.value)}
@@ -621,11 +623,11 @@ function AuthCard({
             />
             <div className="grid gap-2 sm:grid-cols-[140px_minmax(0,1fr)]">
               <div className="relative">
-                <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-slate-700">
+                <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-white">
                   {getCountryDisplay(selectedSignupCountry)}
                 </span>
                 <select
-                  className="input !rounded-md !border-slate-200 !bg-white !py-3 !pl-4 !pr-4 !text-transparent"
+                  className="input !rounded-2xl !border-white/10 !bg-white/10 !py-3 !pl-4 !pr-4 !text-transparent focus:!border-white/25 focus:!ring-white/10"
                   aria-label="Telefon ülke kodu"
                   value={form.phoneCountryCode}
                   onChange={(event) => update("phoneCountryCode", event.target.value)}
@@ -638,7 +640,7 @@ function AuthCard({
                 </select>
               </div>
               <input
-                className="input !rounded-md !border-slate-200 !bg-white !px-4 !py-3 !text-slate-950 placeholder:!text-slate-400"
+                className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
                 inputMode="tel"
                 placeholder="555 111 22 33"
                 value={form.phone}
@@ -648,7 +650,7 @@ function AuthCard({
           </>
         ) : null}
         <input
-          className="input !rounded-md !border-slate-200 !bg-white !px-4 !py-3 !text-slate-950 placeholder:!text-slate-400"
+          className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
           placeholder="Kullanıcı adı veya e-posta"
           value={form.email}
           onChange={(event) => update("email", event.target.value)}
@@ -657,7 +659,7 @@ function AuthCard({
           }}
         />
         <input
-          className="input !rounded-md !border-slate-200 !bg-white !px-4 !py-3 !text-slate-950 placeholder:!text-slate-400"
+          className="input !rounded-2xl !border-white/10 !bg-white/10 !px-4 !py-3 !text-white placeholder:!text-white/45 focus:!border-white/25 focus:!ring-white/10"
           placeholder="Şifre"
           type="password"
           value={form.password}
@@ -668,32 +670,32 @@ function AuthCard({
         />
         {mode === "login" ? (
           <div className="flex justify-end">
-            <Link href="/forgot-password" className="text-xs font-medium text-slate-500 transition hover:text-[#011c40]">
+            <Link href="/forgot-password" className="text-xs font-medium text-white/50 transition hover:text-white">
               Şifremi unuttum
             </Link>
           </div>
         ) : null}
         {!isConfigured ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">
+          <p className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-sm leading-6 text-white/70">
             Supabase kurulumu bekleniyor. `NEXT_PUBLIC_SUPABASE_URL` ve `NEXT_PUBLIC_SUPABASE_ANON_KEY` eklenince gerçek giriş aktif olur.
           </p>
         ) : null}
         {notice ? (
-          <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <p className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-100">
             {notice}
           </p>
         ) : null}
-        {localError || error ? <p className="text-sm text-red-600">{localError || error}</p> : null}
+        {localError || error ? <p className="text-sm text-red-200">{localError || error}</p> : null}
         <button
           type="button"
           onClick={submit}
           disabled={loading || !isConfigured}
-          className="w-full rounded-md bg-[#011c40] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#062b5d] disabled:cursor-not-allowed disabled:opacity-55"
+          className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-950 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-55"
         >
           {loading ? "Kontrol ediliyor..." : mode === "signup" ? "Kaydol" : "Oturum aç"}
         </button>
       </div>
-      <p className="mt-5 text-center text-xs leading-5 text-slate-500">OOS advisors private workspace</p>
+      <p className="mt-5 text-center text-xs leading-5 text-white/40">OOS advisors private workspace</p>
     </section>
   );
 }

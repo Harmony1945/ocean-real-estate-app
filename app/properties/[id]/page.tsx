@@ -15,12 +15,51 @@ import {
 } from "@/lib/supabase/client";
 import { PropertyImageFrame } from "@/app/property-image-frame";
 import { DEMO_PROPERTY_IMAGE, formatPropertyLocation, formatPropertyPrice } from "@/app/property-listing-card";
+import { demoShowcasePortfolios, type DemoPortfolio } from "@/lib/oos/demo-data";
 import { formatStatusLabel, getStatusPillClass } from "@/lib/oos/status-labels";
 import { booleanToText, formatDuesAmount, formatSquareMeters } from "@/lib/oos/property-fields";
 
 type PropertyTab = "Genel Bilgiler" | "Konum" | "Özellikler" | "Medya" | "Operasyon";
 
 const tabs: PropertyTab[] = ["Genel Bilgiler", "Konum", "Özellikler", "Medya", "Operasyon"];
+
+function getDemoPropertyRow(propertyId: string): AdvisorPropertyRow | null {
+  const portfolio = demoShowcasePortfolios.find((item) => item.id === propertyId);
+  if (!portfolio) return null;
+
+  const [district, neighborhood] = portfolio.location.split("/").map((part) => part.trim());
+
+  return {
+    id: portfolio.id,
+    advisor_id: null,
+    title: portfolio.title,
+    description: portfolio.description,
+    address_text: portfolio.location,
+    listing_type: getDemoListingType(portfolio),
+    property_type: portfolio.propertyType,
+    usage_type: portfolio.contractType,
+    city: "İstanbul",
+    district: portfolio.district || district || null,
+    neighborhood: neighborhood || null,
+    gross_area: Number(portfolio.area) || null,
+    net_area: null,
+    room_count: portfolio.rooms || null,
+    latitude: portfolio.latitude,
+    longitude: portfolio.longitude,
+    asking_price: portfolio.value,
+    currency: "TRY",
+    status: "active",
+    is_public: true,
+    created_at: "2026-06-01T09:00:00.000Z",
+    updated_at: "2026-06-01T09:00:00.000Z"
+  };
+}
+
+function getDemoListingType(portfolio: DemoPortfolio) {
+  return portfolio.contractType.toLocaleLowerCase("tr-TR").includes("kiralama")
+    ? "Kiralık"
+    : "Satılık";
+}
 
 export default function PropertyDetailPage() {
   const params = useParams<{ id: string }>();
@@ -37,8 +76,21 @@ export default function PropertyDetailPage() {
   const [manualShareUrl, setManualShareUrl] = useState("");
   const [shareLoading, setShareLoading] = useState(false);
   const propertyId = params?.id || "";
+  const isDemoProperty = propertyId.startsWith("demo-");
 
   useEffect(() => {
+    if (isDemoProperty) {
+      const demoProperty = getDemoPropertyRow(propertyId);
+      setProperty(demoProperty);
+      setMedia([]);
+      setShareLink(null);
+      setManualShareUrl("");
+      setShareMessage("");
+      setMessage(demoProperty ? "" : "Portföy bulunamadı.");
+      setLoading(false);
+      return;
+    }
+
     if (!user || !supabase || !propertyId) {
       setLoading(false);
       setMessage("Portföy bulunamadı. Bu portföye erişim yetkiniz olmayabilir.");
@@ -77,7 +129,7 @@ export default function PropertyDetailPage() {
     return () => {
       mounted = false;
     };
-  }, [propertyId, supabase, user]);
+  }, [isDemoProperty, propertyId, supabase, user]);
 
   const orderedMedia = useMemo(() => {
     return [...media].sort((a, b) => {
@@ -191,7 +243,7 @@ export default function PropertyDetailPage() {
     <main className="min-h-screen bg-stone-50 px-4 py-5 pb-[calc(env(safe-area-inset-bottom)+7rem)] text-slate-950 dark:bg-black dark:text-neutral-50 sm:px-6 md:pb-8 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-col gap-3 border-b border-slate-200 pb-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" className="mini-action w-fit">Dashboard’a Dön</Link>
+          <Link href="/" className="mini-action w-fit">{isDemoProperty ? "Ana Sayfaya Dön" : "Dashboard’a Dön"}</Link>
           <p className="text-sm text-slate-500 dark:text-slate-400">OceanOS portföy detayı</p>
         </header>
 
@@ -226,7 +278,8 @@ export default function PropertyDetailPage() {
             propertyTitle={property.title}
             onSelectPhoto={setActivePhotoIndex}
             actions={
-              <>
+              isDemoProperty ? null : (
+                <>
                 <button
                   className="grid h-11 w-11 place-items-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur transition hover:bg-black/65 disabled:opacity-50"
                   type="button"
@@ -247,7 +300,8 @@ export default function PropertyDetailPage() {
                 >
                   PDF
                 </Link>
-              </>
+                </>
+              )
             }
           />
         </section>

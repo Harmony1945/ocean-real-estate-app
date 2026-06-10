@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { AuthProvider } from "./auth-context";
 import BrandLogo from "./brand-logo";
+import PublicHomepageShell from "./components/public-homepage/public-homepage-shell";
 import OOSNavigation from "./oos-navigation";
 import { applyTheme, getPreferredTheme, saveTheme, themeStorageKey, type ThemeMode } from "./theme";
 import ThemeToggle from "./theme-toggle";
@@ -15,6 +16,12 @@ import {
   type AdvisorProfile,
   type SupabaseAuthUser
 } from "@/lib/supabase/client";
+import {
+  OCEAN_CONTACT_ADDRESS,
+  OCEAN_CONTACT_EMAIL,
+  OCEAN_CONTACT_MAILTO,
+  OCEAN_CONTACT_PHONE
+} from "@/lib/oos/contact";
 import { legalPages } from "@/lib/oos/legal-pages";
 
 type AuthMode = "login" | "signup";
@@ -412,6 +419,27 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  if (pathname === "/" && (authLoading || !authUser)) {
+    return (
+      <PublicHomepageShell
+        oceanOSCard={
+          <AuthCard
+            mode={authMode}
+            form={authForm}
+            loading={authLoading}
+            error={authError}
+            notice={authNotice}
+            isConfigured={isSupabaseConfigured}
+            onModeChange={setAuthMode}
+            onFormChange={setAuthForm}
+            onSubmit={submitAuth}
+            onGoogle={continueWithGoogle}
+          />
+        }
+      />
+    );
+  }
+
   if (authLoading) {
     return (
       <AuthScreen
@@ -475,6 +503,198 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       {dashboardReady ? children : null}
       <OOSNavigation user={authUser} profile={profile} onLogout={logout} />
     </AuthProvider>
+  );
+}
+
+function AuthCard({
+  mode,
+  form,
+  loading,
+  error,
+  notice,
+  isConfigured,
+  onModeChange,
+  onFormChange,
+  onSubmit,
+  onGoogle
+}: {
+  mode: AuthMode;
+  form: AuthForm;
+  loading: boolean;
+  error: string;
+  notice: string;
+  isConfigured: boolean;
+  onModeChange: (mode: AuthMode) => void;
+  onFormChange: (form: AuthForm) => void;
+  onSubmit: () => void;
+  onGoogle: () => void;
+}) {
+  const [localError, setLocalError] = useState("");
+  const selectedSignupCountry =
+    phoneCountries.find((country) => country.value === form.phoneCountryCode || country.code === form.phoneCountryCode) ||
+    defaultPhoneCountry;
+
+  function update(key: keyof AuthForm, value: string) {
+    onFormChange({ ...form, [key]: value });
+    setLocalError("");
+  }
+
+  function submit() {
+    if (!isConfigured) {
+      setLocalError("Supabase ortam değişkenleri eksik. Kurulum tamamlanınca giriş aktif olur.");
+      return;
+    }
+
+    if (mode === "signup") {
+      if (!form.name.trim() || !form.email.trim() || !form.password.trim() || !form.phone.trim()) {
+        setLocalError("Lütfen tüm alanları doldurun.");
+        return;
+      }
+      onSubmit();
+      return;
+    }
+
+    if (!form.email.trim() || !form.password.trim()) {
+      setLocalError("E-posta ve şifre zorunludur.");
+      return;
+    }
+
+    onSubmit();
+  }
+
+  function continueWithGoogle() {
+    if (!isConfigured) {
+      setLocalError("Supabase ortam değişkenleri eksik. Kurulum tamamlanınca Google girişi aktif olur.");
+      return;
+    }
+
+    onGoogle();
+  }
+
+  return (
+    <section className="rounded-lg border border-white/20 bg-white/95 p-5 text-[#071321] shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
+      <div>
+        <p className="text-sm font-semibold text-[#587160]">OceanOS Girişi</p>
+        <h2 className="mt-2 text-2xl font-semibold">Danışman ve yönetim paneli</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Portföy, arayış, eşleşme, bildirim ve komisyon süreçleri için özel Ocean çalışma alanı.
+        </p>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 rounded-lg bg-slate-100 p-1">
+        <button
+          type="button"
+          onClick={() => onModeChange("login")}
+          className={`rounded-md px-3 py-2 text-sm transition ${mode === "login" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+        >
+          Giriş
+        </button>
+        <button
+          type="button"
+          onClick={() => onModeChange("signup")}
+          className={`rounded-md px-3 py-2 text-sm transition ${mode === "signup" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+        >
+          Kayıt
+        </button>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <button
+          type="button"
+          onClick={continueWithGoogle}
+          disabled={loading || !isConfigured}
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-55"
+        >
+          <GoogleIcon />
+          Google ile devam et
+        </button>
+        {mode === "signup" ? (
+          <>
+            <input
+              className="input !rounded-md !border-slate-200 !bg-white !px-4 !py-3 !text-slate-950 placeholder:!text-slate-400"
+              placeholder="Ad Soyad"
+              value={form.name}
+              onChange={(event) => update("name", event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") submit();
+              }}
+            />
+            <div className="grid gap-2 sm:grid-cols-[140px_minmax(0,1fr)]">
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-slate-700">
+                  {getCountryDisplay(selectedSignupCountry)}
+                </span>
+                <select
+                  className="input !rounded-md !border-slate-200 !bg-white !py-3 !pl-4 !pr-4 !text-transparent"
+                  aria-label="Telefon ülke kodu"
+                  value={form.phoneCountryCode}
+                  onChange={(event) => update("phoneCountryCode", event.target.value)}
+                >
+                  {phoneCountries.map((country) => (
+                    <option key={country.value} value={country.value} className="text-slate-950">
+                      {country.flag} {country.label} {country.code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <input
+                className="input !rounded-md !border-slate-200 !bg-white !px-4 !py-3 !text-slate-950 placeholder:!text-slate-400"
+                inputMode="tel"
+                placeholder="555 111 22 33"
+                value={form.phone}
+                onChange={(event) => update("phone", event.target.value)}
+              />
+            </div>
+          </>
+        ) : null}
+        <input
+          className="input !rounded-md !border-slate-200 !bg-white !px-4 !py-3 !text-slate-950 placeholder:!text-slate-400"
+          placeholder="Kullanıcı adı veya e-posta"
+          value={form.email}
+          onChange={(event) => update("email", event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") submit();
+          }}
+        />
+        <input
+          className="input !rounded-md !border-slate-200 !bg-white !px-4 !py-3 !text-slate-950 placeholder:!text-slate-400"
+          placeholder="Şifre"
+          type="password"
+          value={form.password}
+          onChange={(event) => update("password", event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") submit();
+          }}
+        />
+        {mode === "login" ? (
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className="text-xs font-medium text-slate-500 transition hover:text-[#011c40]">
+              Şifremi unuttum
+            </Link>
+          </div>
+        ) : null}
+        {!isConfigured ? (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">
+            Supabase kurulumu bekleniyor. `NEXT_PUBLIC_SUPABASE_URL` ve `NEXT_PUBLIC_SUPABASE_ANON_KEY` eklenince gerçek giriş aktif olur.
+          </p>
+        ) : null}
+        {notice ? (
+          <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {notice}
+          </p>
+        ) : null}
+        {localError || error ? <p className="text-sm text-red-600">{localError || error}</p> : null}
+        <button
+          type="button"
+          onClick={submit}
+          disabled={loading || !isConfigured}
+          className="w-full rounded-md bg-[#011c40] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#062b5d] disabled:cursor-not-allowed disabled:opacity-55"
+        >
+          {loading ? "Kontrol ediliyor..." : mode === "signup" ? "Kaydol" : "Oturum aç"}
+        </button>
+      </div>
+      <p className="mt-5 text-center text-xs leading-5 text-slate-500">OOS advisors private workspace</p>
+    </section>
   );
 }
 
@@ -985,9 +1205,11 @@ function OceanCorporateFooter() {
               Ofis değil, sistem. OceanOS, gayrimenkul danışmanlarının portföy, arayış, eşleşme ve işlem süreçlerini yönetmesi için geliştirilmiş dijital operasyon sistemidir.
             </p>
             <div className="mt-6 space-y-2 text-sm text-white/65">
-              <p>+90 (216) 280 01 00</p>
-              <p>info@oceanrealestate.com.tr</p>
-              <p>Acarlar Mahallesi, Acarkent Sitesi 9. Cadde, Coliseum 5. Kat, Archerson, 34820</p>
+              <p>{OCEAN_CONTACT_PHONE}</p>
+              <a href={OCEAN_CONTACT_MAILTO} className="transition hover:text-white">
+                {OCEAN_CONTACT_EMAIL}
+              </a>
+              <p>{OCEAN_CONTACT_ADDRESS}</p>
             </div>
           </div>
           <div className="grid gap-x-8 gap-y-7 sm:grid-cols-2 lg:grid-cols-4">

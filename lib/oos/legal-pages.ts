@@ -1,3 +1,5 @@
+import { OCEAN_CONTACT_ADDRESS, OCEAN_CONTACT_EMAIL, OCEAN_CONTACT_PHONE } from "./contact";
+
 export type LegalPage = {
   slug: string;
   title: string;
@@ -45,7 +47,7 @@ export const legalPages: LegalPage[] = [
         heading: "Haklarınız",
         body: [
           "KVKK kapsamında kişisel verilerinizle ilgili bilgi talep etme, düzeltme, silme, işlemeye itiraz etme ve mevzuatta belirtilen diğer haklarınızı kullanabilirsiniz.",
-          "Talepleriniz için info@oceanrealestate.com.tr adresinden iletişime geçebilirsiniz."
+          `Talepleriniz için ${OCEAN_CONTACT_EMAIL} adresinden iletişime geçebilirsiniz.`
         ]
       }
     ]
@@ -206,7 +208,7 @@ export const legalPages: LegalPage[] = [
         heading: "Rızanın Geri Alınması",
         body: [
           "Kullanıcı, verdiği açık rızayı mevzuata uygun şekilde geri alabilir. Rızanın geri alınması, geri alma tarihinden sonraki işlemler için geçerlidir.",
-          "Talepler için info@oceanrealestate.com.tr adresinden iletişime geçilebilir."
+          `Talepler için ${OCEAN_CONTACT_EMAIL} adresinden iletişime geçilebilir.`
         ]
       }
     ]
@@ -254,16 +256,16 @@ export const legalPages: LegalPage[] = [
       {
         heading: "Başvuru Kanalları",
         body: [
-          "Başvurularınızı info@oceanrealestate.com.tr adresine iletebilirsiniz.",
+          `Başvurularınızı ${OCEAN_CONTACT_EMAIL} adresine iletebilirsiniz.`,
           "İlgili başvuru değerlendirme sürecinde sizden ek bilgi veya belge talep edilebilir."
         ]
       },
       {
         heading: "İletişim Bilgileri",
         body: [
-          "Telefon: +90 (216) 280 01 00",
-          "E-posta: info@oceanrealestate.com.tr",
-          "Adres: Acarlar Mahallesi, Acarkent Sitesi 9. Cadde, Coliseum 5. Kat, Archerson, 34820 Beykoz / İstanbul"
+          `Telefon: ${OCEAN_CONTACT_PHONE}`,
+          `E-posta: ${OCEAN_CONTACT_EMAIL}`,
+          `Adres: ${OCEAN_CONTACT_ADDRESS}`
         ]
       }
     ]

@@ -1,3 +1,5 @@
+import { OCEAN_CONTACT_EMAIL } from "@/lib/oos/contact";
+
 export type MenuPageSlug =
   | "profile"
   | "notifications"
@@ -183,7 +185,7 @@ export const menuPages: MenuPageData[] = [
       { title: "Paylaşım Linkleri", body: "Dış paylaşım linkleri sadece güvenli portföy sunum bilgisini gösterir.", meta: "Share" },
       { title: "PDF Çıktısı", body: "PDF çıktısı WhatsApp veya e-posta ile paylaşılabilecek sade satış materyali üretir.", meta: "PDF" },
       { title: "Danışman Başvuruları", body: "Başvurular sözleşme, kırmızı çizgiler ve komisyon modeli kabulüyle admin onayına gider.", meta: "Onay" },
-      { title: "Sistem ve Giriş Sorunları", body: "Destek için Ocean Real Estate operasyon ekibiyle info@oceanrealestate.com.tr üzerinden iletişime geçebilirsiniz.", meta: "Destek" }
+      { title: "Sistem ve Giriş Sorunları", body: `Destek için Ocean Real Estate operasyon ekibiyle ${OCEAN_CONTACT_EMAIL} üzerinden iletişime geçebilirsiniz.`, meta: "Destek" }
     ]
   },
   {

@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import ThemeToggle from "../theme-toggle";
+import {
+  OCEAN_CONTACT_ADDRESS,
+  OCEAN_CONTACT_EMAIL,
+  OCEAN_CONTACT_MAILTO,
+  OCEAN_CONTACT_PHONE
+} from "@/lib/oos/contact";
 
 export const metadata: Metadata = {
   title: "İletişim | Ocean Real Estate",
@@ -32,16 +38,18 @@ export default function ContactPage() {
           </div>
           <div>
             <p className="text-xs text-white/40">Telefon</p>
-            <p className="mt-2 font-medium text-white">+90 (216) 280 01 00</p>
+            <p className="mt-2 font-medium text-white">{OCEAN_CONTACT_PHONE}</p>
           </div>
           <div>
             <p className="text-xs text-white/40">E-posta</p>
-            <p className="mt-2 font-medium text-white">info@oceanrealestate.com.tr</p>
+            <a href={OCEAN_CONTACT_MAILTO} className="mt-2 block font-medium text-white transition hover:text-white/80">
+              {OCEAN_CONTACT_EMAIL}
+            </a>
           </div>
           <div>
             <p className="text-xs text-white/40">Adres</p>
             <p className="mt-2 max-w-md font-medium text-white">
-              Acarlar Mahallesi, Acarkent Sitesi 9. Cadde, Coliseum 5. Kat, Archerson, 34820 Beykoz / İstanbul
+              {OCEAN_CONTACT_ADDRESS}
             </p>
           </div>
         </section>

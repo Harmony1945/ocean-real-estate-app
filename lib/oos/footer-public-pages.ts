@@ -1,3 +1,5 @@
+import { OCEAN_CONTACT_EMAIL } from "./contact";
+
 export type PublicContentPage = {
   slug: string;
   title: string;
@@ -132,7 +134,7 @@ export const publicContentPages: PublicContentPage[] = [
       {
         heading: "İletişim",
         body: [
-          "Destek talepleriniz için info@oceanrealestate.com.tr adresine e-posta gönderebilirsiniz."
+          `Destek talepleriniz için ${OCEAN_CONTACT_EMAIL} adresine e-posta gönderebilirsiniz.`
         ]
       }
     ]

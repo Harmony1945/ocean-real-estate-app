@@ -27,6 +27,7 @@ import {
 } from "./property-photo-manager";
 import { PropertyImageFrame } from "./property-image-frame";
 import { PropertyLocationPicker, type PropertyLocationSelection } from "./property-location-picker";
+import PublicHomepageShell from "./components/public-homepage/public-homepage-shell";
 import { demoSearchRequests, demoShowcasePortfolios } from "@/lib/oos/demo-data";
 import {
   parsePropertyImportText,
@@ -2139,7 +2140,7 @@ export default function Home() {
 
   if (!isAuthenticated) {
     return (
-      <AuthScreen
+      <PublicHomepageShell
         consultants={consultants}
         mode={authMode}
         form={authForm}
@@ -3838,190 +3839,6 @@ function NotificationsCard({
         </p>
       )}
     </Card>
-  );
-}
-
-function AuthScreen({
-  consultants,
-  mode,
-  form,
-  onModeChange,
-  onFormChange,
-  onLogin
-}: {
-  consultants: Consultant[];
-  mode: AuthMode;
-  form: AuthForm;
-  onModeChange: (mode: AuthMode) => void;
-  onFormChange: (form: AuthForm) => void;
-  onLogin: (consultant: Consultant) => void;
-}) {
-  const [error, setError] = useState("");
-  const selectedConsultant = getConsultantById(form.consultantId);
-
-  function update(key: keyof AuthForm, value: string) {
-    onFormChange({ ...form, [key]: value });
-    setError("");
-  }
-
-  function changeMode(nextMode: AuthMode) {
-    onModeChange(nextMode);
-    setError("");
-  }
-
-  function submit() {
-    if (mode === "signup") {
-      if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
-        setError("Lütfen tüm alanları doldurun.");
-        return;
-      }
-
-      onLogin(selectedConsultant);
-      return;
-    }
-
-    if (!form.email.trim() || !form.password.trim()) {
-      setError("Kullanıcı adı/e-posta ve şifre zorunludur.");
-      return;
-    }
-
-    onLogin(selectedConsultant);
-  }
-
-  function continueWithGoogle() {
-    // TODO: Replace with real Google OAuth later.
-    onLogin(selectedConsultant);
-  }
-
-  return (
-    <main
-      className="relative min-h-dvh overflow-hidden bg-stone-50 px-3 text-slate-950 sm:px-4"
-      style={{
-        backgroundImage: "url('/mandarin-2.jpeg')",
-        backgroundPosition: "center",
-        backgroundSize: "cover"
-      }}
-    >
-      <div className="relative mx-auto flex min-h-dvh max-w-md items-center justify-center py-6 sm:py-8">
-        <section className="w-full rounded-3xl border border-white/60 bg-white/90 p-5 shadow-sm backdrop-blur-xl sm:p-6">
-          <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold shadow-sm">
-              O
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-              OCEAN BrokerageOS
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Brokerage operations, portfolios and commissions in one private
-              workspace.
-            </p>
-          </div>
-
-          <div className="mb-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
-            <button
-              type="button"
-              onClick={() => changeMode("login")}
-              className={`rounded-xl px-3 py-2 text-sm transition ${
-                mode === "login"
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              onClick={() => changeMode("signup")}
-              className={`rounded-xl px-3 py-2 text-sm transition ${
-                mode === "signup"
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              Signup
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {mode === "signup" ? (
-              <input
-                className="input !rounded-xl !px-4 !py-3"
-                placeholder="Ad Soyad"
-                value={form.name}
-                onChange={(event) => update("name", event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    submit();
-                  }
-                }}
-              />
-            ) : null}
-
-            <input
-              className="input !rounded-xl !px-4 !py-3"
-              placeholder="Kullanıcı adı veya e-posta"
-              value={form.email}
-              onChange={(event) => update("email", event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  submit();
-                }
-              }}
-            />
-
-            <input
-              className="input !rounded-xl !px-4 !py-3"
-              placeholder="Şifre"
-              type="password"
-              value={form.password}
-              onChange={(event) => update("password", event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  submit();
-                }
-              }}
-            />
-
-            <select
-              className="input !rounded-xl !px-4 !py-3"
-              value={form.consultantId}
-              onChange={(event) => update("consultantId", event.target.value)}
-            >
-              {consultants.map((consultant) => (
-                <option key={consultant.id} value={consultant.id}>
-                  {getConsultantName(consultant)}
-                </option>
-              ))}
-            </select>
-
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-
-            <button
-              type="button"
-              onClick={submit}
-              className="w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
-            >
-              {mode === "signup" ? "Hesap Oluştur" : "Giriş Yap"}
-            </button>
-
-            <button
-              type="button"
-              onClick={continueWithGoogle}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 transition hover:bg-slate-50"
-            >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 text-xs font-semibold">
-                G
-              </span>
-              Continue with Google
-            </button>
-          </div>
-
-          <p className="mt-6 text-center text-xs text-slate-400">
-            Private workspace for OCEAN advisors.
-          </p>
-        </section>
-      </div>
-    </main>
   );
 }
 

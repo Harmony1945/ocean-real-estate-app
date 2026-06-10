@@ -163,8 +163,8 @@ function PublicHero(props: PublicHomepageShellProps) {
 function PublicNavigation() {
   return (
     <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-      <Link href="/" aria-label="Ocean Real Estate ana sayfa" className="inline-flex h-20 items-center overflow-hidden sm:h-24">
-        <BrandLogo variant="full" size="xl" className="max-h-24" fallbackClassName="text-3xl font-semibold" />
+      <Link href="/" aria-label="Ocean Real Estate ana sayfa" className="inline-flex h-24 items-center overflow-hidden sm:h-28">
+        <BrandLogo variant="full" size="xl" className="max-h-28 !w-44 sm:!w-56 lg:!w-72" fallbackClassName="text-3xl font-semibold" />
       </Link>
       <nav className="flex flex-wrap gap-x-2 gap-y-1 text-sm font-medium text-white/80 sm:justify-end">
         {navItems.map((item) => (

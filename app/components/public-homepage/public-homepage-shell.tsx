@@ -107,19 +107,28 @@ export default function PublicHomepageShell({
 
 function PublicHero(props: PublicHomepageShellProps) {
   return (
-    <section className="relative min-h-screen bg-[#011c40] text-white">
+    <>
+      <DesktopHero {...props} />
+      <MobileHero {...props} />
+    </>
+  );
+}
+
+function DesktopHero(props: PublicHomepageShellProps) {
+  return (
+    <section className="relative hidden min-h-screen bg-[#011c40] text-white md:block">
       <Image
         src="/mandarin-2.jpeg"
         alt="Ocean Real Estate Mandarin premium gayrimenkul atmosferi"
         fill
         priority
-        sizes="100vw"
+        sizes="(min-width: 768px) 100vw, 0px"
         className="object-cover object-center"
       />
       <div className="absolute inset-0 bg-gradient-to-r from-[#011c40]/90 via-[#011c40]/60 to-[#011c40]/30" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/24" />
       <div className="relative mx-auto flex min-h-screen max-w-[1760px] flex-col px-5 py-7 sm:px-8 lg:px-12 xl:px-16">
-        <PublicNavigation />
+        <DesktopNavigation />
         <div className="grid flex-1 items-center gap-12 py-12 lg:grid-cols-[minmax(0,1fr)_minmax(390px,0.42fr)] lg:gap-16 xl:gap-24">
           <div className="max-w-5xl">
             <p className="text-sm font-medium uppercase tracking-[0.28em] text-white/70">Ocean Real Estate</p>
@@ -137,12 +146,12 @@ function PublicHero(props: PublicHomepageShellProps) {
               <Link href="#portfoy-birak" className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/35 px-7 py-3 text-sm font-semibold text-white transition hover:border-white/70 hover:bg-white/10">
                 Portföyünü Bize Bırak
               </Link>
-              <Link href="#oceanos" className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/20 px-7 py-3 text-sm font-semibold text-white/80 transition hover:border-white/50 hover:text-white">
+              <Link href="#desktop-oceanos" className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/20 px-7 py-3 text-sm font-semibold text-white/80 transition hover:border-white/50 hover:text-white">
                 OceanOS Girişi
               </Link>
             </div>
           </div>
-          <div id="oceanos">
+          <div id="desktop-oceanos">
             {props.oceanOSCard || (
               <OceanOSLoginCard
                 consultants={props.consultants ?? []}
@@ -160,7 +169,57 @@ function PublicHero(props: PublicHomepageShellProps) {
   );
 }
 
-function PublicNavigation() {
+function MobileHero(props: PublicHomepageShellProps) {
+  return (
+    <section className="relative overflow-hidden bg-[#011c40] text-white md:hidden">
+      <Image
+        src="/mandarin-2.jpeg"
+        alt="Ocean Real Estate Mandarin premium gayrimenkul atmosferi"
+        fill
+        priority
+        sizes="(max-width: 767px) 100vw, 0px"
+        className="object-cover object-center"
+      />
+      <div className="absolute inset-0 bg-[#011c40]/72" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-[#011c40]/78" />
+      <div className="relative flex min-h-[100svh] flex-col px-5 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-5">
+        <MobileNavigation />
+        <div className="flex flex-1 flex-col justify-center py-10">
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/65">Ocean Real Estate</p>
+          <h1 className="mt-5 max-w-[18rem] text-[2.65rem] font-semibold leading-[0.98] tracking-tight">
+            İstanbul’un premium gayrimenkul sistemi.
+          </h1>
+          <p className="mt-5 max-w-sm text-sm leading-6 text-white/75">
+            Portföy, proje ve danışman süreçleri için modern Ocean altyapısı.
+          </p>
+          <MobileSearchBar />
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <Link href="#portfoyler" className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-[#011c40] transition hover:bg-white/90">
+              Portföyleri İncele
+            </Link>
+            <Link href="#mobile-oceanos" className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/30 px-4 text-sm font-semibold text-white transition hover:border-white/60 hover:bg-white/10">
+              OceanOS Girişi
+            </Link>
+          </div>
+        </div>
+      </div>
+      <div id="mobile-oceanos" className="relative bg-[#011c40] px-5 pb-10 pt-2">
+        {props.oceanOSCard || (
+          <OceanOSLoginCard
+            consultants={props.consultants ?? []}
+            mode={props.mode ?? "login"}
+            form={props.form ?? { name: "", email: "", password: "", consultantId: "" }}
+            onFormChange={props.onFormChange ?? (() => undefined)}
+            onLogin={props.onLogin ?? (() => undefined)}
+            onModeChange={props.onModeChange ?? (() => undefined)}
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function DesktopNavigation() {
   return (
     <header className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
       <Link href="/" aria-label="Ocean Real Estate ana sayfa" className="inline-flex h-24 items-center overflow-hidden sm:h-28">
@@ -168,11 +227,58 @@ function PublicNavigation() {
       </Link>
       <nav className="flex flex-wrap gap-x-2 gap-y-1 text-sm font-medium text-white/80 sm:justify-end">
         {navItems.map((item) => (
-          <Link key={`${item.label}-${item.href}`} href={item.href} className="rounded-full px-3.5 py-2 transition hover:bg-white/10 hover:text-white">
+          <Link key={`${item.label}-${item.href}`} href={item.label === "OceanOS" ? "#desktop-oceanos" : item.href} className="rounded-full px-3.5 py-2 transition hover:bg-white/10 hover:text-white">
             {item.label}
           </Link>
         ))}
       </nav>
+    </header>
+  );
+}
+
+function MobileNavigation() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  function closeMenu() {
+    setIsOpen(false);
+  }
+
+  return (
+    <header className="relative z-20">
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/" aria-label="Ocean Real Estate ana sayfa" className="inline-flex h-16 items-center overflow-hidden">
+          <BrandLogo variant="full" size="lg" className="max-h-16 !w-40" fallbackClassName="text-2xl font-semibold" />
+        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="#mobile-oceanos" className="inline-flex min-h-10 items-center rounded-full border border-white/25 px-3 text-xs font-semibold text-white/85">
+            OceanOS
+          </Link>
+          <button
+            type="button"
+            onClick={() => setIsOpen((current) => !current)}
+            className="inline-flex min-h-10 items-center rounded-full bg-white px-4 text-xs font-semibold text-[#011c40] shadow-sm"
+            aria-expanded={isOpen}
+            aria-controls="mobile-public-menu"
+          >
+            Menü
+          </button>
+        </div>
+      </div>
+      {isOpen ? (
+        <nav id="mobile-public-menu" className="mt-4 rounded-[1.5rem] border border-white/15 bg-black/55 p-2 shadow-2xl shadow-black/25 backdrop-blur-xl">
+          {navItems.map((item) => (
+            <Link
+              key={`${item.label}-${item.href}-mobile`}
+              href={item.label === "OceanOS" ? "#mobile-oceanos" : item.href}
+              onClick={closeMenu}
+              className="flex min-h-11 items-center justify-between rounded-2xl px-4 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white"
+            >
+              {item.label}
+              <span aria-hidden="true">›</span>
+            </Link>
+          ))}
+        </nav>
+      ) : null}
     </header>
   );
 }
@@ -197,6 +303,32 @@ function PublicSearchBar() {
         onChange={(event) => setQuery(event.target.value)}
       />
       <button type="submit" className="min-h-12 rounded-full bg-white px-6 text-sm font-semibold text-[#011c40] transition hover:bg-white/90">
+        Ara
+      </button>
+    </form>
+  );
+}
+
+function MobileSearchBar() {
+  const [query, setQuery] = useState("");
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (typeof window !== "undefined") {
+      window.location.hash = "portfoyler";
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="relative mt-7">
+      <input
+        aria-label="Mobil public portföy arama"
+        className="min-h-12 w-full rounded-full border border-white/15 bg-white/95 py-3 pl-5 pr-14 text-sm text-[#071321] outline-none placeholder:text-slate-500"
+        placeholder="Bölge, proje veya portföy ara..."
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      <button type="submit" className="absolute right-1.5 top-1.5 grid h-9 w-9 place-items-center rounded-full bg-[#011c40] text-sm font-semibold text-white" aria-label="Ara">
         Ara
       </button>
     </form>
@@ -333,7 +465,7 @@ function FeaturedPropertiesSection() {
   const portfolios = demoShowcasePortfolios.slice(0, 6);
 
   return (
-    <section id="portfoyler" className="px-5 py-20 sm:px-8 lg:px-12 xl:px-16">
+    <section id="portfoyler" className="px-5 py-14 md:py-20 sm:px-8 lg:px-12 xl:px-16">
       <div className="mx-auto max-w-[1760px]">
         <SectionIntro
           eyebrow="Vitrin"
@@ -343,16 +475,16 @@ function FeaturedPropertiesSection() {
         <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {portfolios.map((portfolio) => (
             <Link key={portfolio.id} href={`/properties/${portfolio.id}`} className="group block overflow-hidden rounded-[1.5rem] border border-black/10 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-950/10 dark:border-white/10 dark:bg-white/[0.04]">
-              <div className="relative h-72 bg-[#011c40] md:h-80">
+              <div className="relative h-60 bg-[#011c40] md:h-80">
                 <Image src="/mandarin-2.jpeg" alt={portfolio.title} fill sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#011c40]/80 via-[#011c40]/20 to-transparent" />
                 <div className="absolute bottom-5 left-5 right-5 text-white">
                   <p className="text-xs font-medium uppercase text-white/70">{portfolio.listingId}</p>
-                  <h3 className="mt-2 text-2xl font-semibold leading-snug">{portfolio.title}</h3>
+                  <h3 className="mt-2 text-xl font-semibold leading-snug md:text-2xl">{portfolio.title}</h3>
                 </div>
               </div>
               <div className="p-5">
-                <p className="text-2xl font-semibold">{formatPublicPrice(portfolio.value)}</p>
+                <p className="text-xl font-semibold md:text-2xl">{formatPublicPrice(portfolio.value)}</p>
                 <p className="mt-2 text-sm text-slate-600 dark:text-white/65">{portfolio.location}</p>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
                   <Spec label="Tip" value={portfolio.propertyType} />
@@ -373,15 +505,15 @@ function FeaturedPropertiesSection() {
 
 function RegionsSection() {
   return (
-    <section id="bolgeler" className="bg-white px-5 py-20 dark:bg-white/[0.03] sm:px-8 lg:px-12 xl:px-16">
+    <section id="bolgeler" className="bg-white px-5 py-14 dark:bg-white/[0.03] md:py-20 sm:px-8 lg:px-12 xl:px-16">
       <div className="mx-auto max-w-[1760px]">
         <SectionIntro eyebrow="Lokasyon" title="Bölgeler" subtitle="Ocean’ın güçlü olduğu seçici İstanbul lokasyonları." />
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-3 md:mt-10 lg:grid-cols-4">
           {regions.map((region) => (
-            <Link key={region.name} href={`/all-portfolios?district=${encodeURIComponent(region.name)}`} className="group rounded-[1.25rem] border border-black/10 bg-[#f7f6f2] p-5 transition hover:-translate-y-0.5 hover:border-[#011c40]/35 dark:border-white/10 dark:bg-black">
-              <h3 className="text-lg font-semibold">{region.name}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-white/65">{region.line}</p>
-              <span className="mt-5 inline-flex text-sm font-semibold text-[#011c40] dark:text-white">
+            <Link key={region.name} href={`/all-portfolios?district=${encodeURIComponent(region.name)}`} className="group rounded-[1.25rem] border border-black/10 bg-[#f7f6f2] p-4 transition hover:-translate-y-0.5 hover:border-[#011c40]/35 dark:border-white/10 dark:bg-black md:p-5">
+              <h3 className="text-base font-semibold md:text-lg">{region.name}</h3>
+              <p className="mt-3 hidden text-sm leading-6 text-slate-600 dark:text-white/65 sm:block">{region.line}</p>
+              <span className="mt-3 inline-flex text-xs font-semibold text-[#011c40] dark:text-white md:mt-5 md:text-sm">
                 Portföyleri gör
               </span>
             </Link>
@@ -394,8 +526,8 @@ function RegionsSection() {
 
 function ProjectSalesSection() {
   return (
-    <section id="projeler" className="px-5 py-20 sm:px-8 lg:px-12 xl:px-16">
-      <div className="mx-auto grid max-w-[1760px] gap-10 bg-[#011c40] p-8 text-white md:grid-cols-[1fr_0.55fr] md:p-14 xl:p-20">
+    <section id="projeler" className="px-5 py-14 md:py-20 sm:px-8 lg:px-12 xl:px-16">
+      <div className="mx-auto grid max-w-[1760px] gap-8 bg-[#011c40] p-6 text-white md:grid-cols-[1fr_0.55fr] md:p-14 xl:p-20">
         <div>
           <p className="text-sm font-medium uppercase text-white/55">Proje ve yatırım</p>
           <h2 className="mt-4 text-3xl font-semibold sm:text-5xl">Proje Satış ve Yatırım Danışmanlığı</h2>
@@ -418,12 +550,12 @@ function ProjectSalesSection() {
 
 function WhyOceanSection() {
   return (
-    <section className="bg-white px-5 py-20 dark:bg-white/[0.03] sm:px-8 lg:px-12 xl:px-16">
+    <section className="bg-white px-5 py-14 dark:bg-white/[0.03] md:py-20 sm:px-8 lg:px-12 xl:px-16">
       <div className="mx-auto max-w-[1760px]">
         <SectionIntro eyebrow="Marka standardı" title="Neden OCEAN?" subtitle="Gayrimenkul süreçlerini kişisel hafızadan çıkarıp ölçülebilir bir operasyon düzenine taşıyan çalışma modeli." />
         <div className="mt-10 grid gap-0 border-y border-black/10 dark:border-white/10 md:grid-cols-2 lg:grid-cols-3">
           {whyOcean.map(([title, body]) => (
-            <article key={title} className="border-b border-black/10 p-6 dark:border-white/10 lg:border-r">
+            <article key={title} className="border-b border-black/10 p-5 dark:border-white/10 md:p-6 lg:border-r">
               <h3 className="text-lg font-semibold">{title}</h3>
               <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-white/65">{body}</p>
             </article>
@@ -436,9 +568,9 @@ function WhyOceanSection() {
 
 function JoinAndOwnerSection() {
   return (
-    <section className="px-5 py-20 sm:px-8 lg:px-12 xl:px-16">
+    <section className="px-5 py-14 md:py-20 sm:px-8 lg:px-12 xl:px-16">
       <div className="mx-auto grid max-w-[1760px] gap-4 lg:grid-cols-2">
-        <article id="danisman-ol" className="bg-white p-8 dark:bg-white/[0.04] lg:p-12">
+        <article id="danisman-ol" className="bg-white p-6 dark:bg-white/[0.04] md:p-8 lg:p-12">
           <p className="text-sm font-medium uppercase text-[#011c40] dark:text-white/60">Danışman modeli</p>
           <h2 className="mt-4 text-3xl font-semibold">Ocean’a Katıl</h2>
           <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-white/65">
@@ -448,7 +580,7 @@ function JoinAndOwnerSection() {
             Danışman Başvurusu
           </Link>
         </article>
-        <article id="portfoy-birak" className="bg-[#e8e8e5] p-8 dark:bg-[#10233f] lg:p-12">
+        <article id="portfoy-birak" className="bg-[#e8e8e5] p-6 dark:bg-[#10233f] md:p-8 lg:p-12">
           <p className="text-sm font-medium uppercase text-[#011c40] dark:text-white/60">Malik ve portföy sahipleri</p>
           <h2 className="mt-4 text-3xl font-semibold">Portföyünü OCEAN ile konumlandır</h2>
           <p className="mt-4 text-sm leading-7 text-slate-700 dark:text-white/70">
@@ -539,8 +671,8 @@ function SectionIntro({ eyebrow, title, subtitle }: { eyebrow: string; title: st
   return (
     <div className="max-w-5xl">
       <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#011c40] dark:text-white/60">{eyebrow}</p>
-      <h2 className="mt-4 text-4xl font-semibold sm:text-6xl">{title}</h2>
-      <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-600 dark:text-white/65 sm:text-lg sm:leading-8">{subtitle}</p>
+      <h2 className="mt-4 text-3xl font-semibold sm:text-5xl md:text-6xl">{title}</h2>
+      <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 dark:text-white/65 sm:text-lg sm:leading-8 md:mt-5">{subtitle}</p>
     </div>
   );
 }
